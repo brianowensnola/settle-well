@@ -15,6 +15,7 @@ export default function Tasks() {
   const [logs, setLogs] = useState([])
   const [collapsed, setCollapsed] = useState({})
   const [filter, setFilter] = useState('open')
+  const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [addingNote, setAddingNote] = useState(null) // task id
   const [noteText, setNoteText] = useState('')
@@ -84,29 +85,49 @@ export default function Tasks() {
       if (filter === 'open' && t.status === 'done') return false
       if (filter === 'done' && t.status !== 'done') return false
       if (filter === 'waiting' && t.status !== 'waiting') return false
+      if (assigneeFilter !== 'all' && (t.assigned_to || 'Unassigned') !== assigneeFilter) return false
       if (q && !t.text.toLowerCase().includes(q) && !(t.tag ?? '').toLowerCase().includes(q)) return false
       return true
     })
   }
 
+  const assignees = ['all', ...new Set(tasks.map(t => t.assigned_to || 'Unassigned'))]
+
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-5 flex-wrap gap-3">
-        <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Tasks</h1>
-        <div className="flex gap-2 flex-wrap">
+      <div className="mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 flex-wrap gap-3">
+          <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Tasks</h1>
           <input
             placeholder="Search..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 flex-1 sm:w-44"
+            className="border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 sm:w-44"
           />
+        </div>
+
+        {/* Status Filters */}
+        <div className="flex gap-2 flex-wrap mb-3">
           {['open', 'waiting', 'done', 'all'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f ? 'bg-gray-900 dark:bg-gray-700 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'}`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Assignee Filters */}
+        <div className="flex gap-2 flex-wrap">
+          {assignees.map(a => (
+            <button
+              key={a}
+              onClick={() => setAssigneeFilter(a)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${assigneeFilter === a ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'}`}
+            >
+              {a === 'all' ? 'All People' : a}
             </button>
           ))}
         </div>
