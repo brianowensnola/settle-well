@@ -83,7 +83,7 @@ export default function Layout() {
           <div className="space-y-1">
             {estates.length === 0 ? (
               <button
-                onClick={() => navigate('/new-estate')}
+                onClick={() => navigate('/quick-estate')}
                 className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
               >
                 + Create New Estate
