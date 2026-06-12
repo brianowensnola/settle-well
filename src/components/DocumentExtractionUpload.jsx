@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { initiateExtraction, pollExtractionStatus, mergeAllExtractions, getExtractionErrors } from '../lib/claudeExtraction'
 import { extractionStatusToLabel, formatConfidenceScore, getExtractionStats } from '../lib/extractionUtils'
 
-export default function DocumentExtractionUpload({ estateId, onExtractionComplete, onSkip }) {
+export default function DocumentExtractionUpload({ estateId, onExtractionComplete, onSkip, canSkip = true }) {
   const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
@@ -132,19 +132,21 @@ export default function DocumentExtractionUpload({ estateId, onExtractionComplet
           )}
 
           {/* Action buttons */}
-          <div className="flex gap-3 pt-4">
+          <div className={`flex gap-3 pt-4 ${canSkip ? '' : 'flex-col'}`}>
             <button
               onClick={() => onExtractionComplete?.(extractionData.answers)}
-              className="flex-1 bg-green-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-green-700"
+              className={`${canSkip ? 'flex-1' : 'w-full'} bg-green-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-green-700`}
             >
-              Use Extracted Data
+              Continue to Intake Review
             </button>
-            <button
-              onClick={onSkip}
-              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-200"
-            >
-              Skip to Manual
-            </button>
+            {canSkip && (
+              <button
+                onClick={onSkip}
+                className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-200"
+              >
+                Skip
+              </button>
+            )}
           </div>
         </div>
       </div>

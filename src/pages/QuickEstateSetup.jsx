@@ -111,7 +111,7 @@ export default function QuickEstateSetup() {
     navigate('/intake-review')
   }
 
-  // Extraction flow
+  // Extraction flow (mandatory for first-time users)
   if (showExtraction && createdEstate) {
     return (
       <div className="min-h-screen p-4 bg-white dark:bg-gray-950">
@@ -122,6 +122,9 @@ export default function QuickEstateSetup() {
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               {form.deceased_dod} • {form.state_of_residence}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
+              Upload documents to automatically extract key information
             </p>
           </div>
 
