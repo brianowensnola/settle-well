@@ -69,19 +69,19 @@ export default function Dashboard() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 flex-wrap">
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{currentEstate.deceased_name}</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">{currentEstate.deceased_name}</h1>
           <span className="text-xs sm:text-sm text-gray-400">Died {dod} · {days} days ago · {currentEstate.state_of_residence}</span>
         </div>
         <div className="text-xs sm:text-sm text-gray-500 mt-0.5">Executor: {currentEstate.administrator_name}</div>
       </div>
 
       {/* Progress */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Task Progress</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Task Progress</span>
           <span className="text-sm text-gray-500">{done} / {total} complete</span>
         </div>
-        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
           <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
         </div>
         <div className="text-xs text-gray-400 mt-1">{pct}%</div>
@@ -89,8 +89,8 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         {/* Priority */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Priority Items</h2>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Priority Items</h2>
           {urgent.length === 0 && <p className="text-sm text-gray-400">All caught up.</p>}
           <div className="space-y-2">
             {urgent.map(t => (
@@ -98,7 +98,7 @@ export default function Dashboard() {
                 <span className={`shrink-0 mt-0.5 text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_STYLES[t.status]}`}>
                   {STATUS_LABELS[t.status]}
                 </span>
-                <span className="text-sm text-gray-700 group-hover:text-gray-900 leading-snug">{t.text}</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:text-white leading-snug">{t.text}</span>
               </Link>
             ))}
           </div>
@@ -106,8 +106,8 @@ export default function Dashboard() {
         </div>
 
         {/* Financial Snapshot */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Financial Snapshot</h2>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Financial Snapshot</h2>
           <div className="space-y-2">
             <Row label="Account balance" value={fmt(totalBalance)} />
             <Row label="Monthly obligations" value={fmt(monthlyBurn)} />
@@ -119,8 +119,8 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Recent Activity</h2>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Recent Activity</h2>
         {logs.length === 0 && <p className="text-sm text-gray-400">No activity yet.</p>}
         <div className="space-y-2">
           {logs.map(log => (
@@ -130,7 +130,7 @@ export default function Dashboard() {
                 {log.estate_tasks && (
                   <span className="text-gray-400 text-xs mr-1">[{log.estate_tasks.text?.slice(0, 40)}]</span>
                 )}
-                <span className="text-gray-700">{log.note}</span>
+                <span className="text-gray-700 dark:text-gray-300">{log.note}</span>
               </div>
             </div>
           ))}
@@ -144,7 +144,7 @@ function Row({ label, value }) {
   return (
     <div className="flex justify-between text-sm">
       <span className="text-gray-500">{label}</span>
-      <span className="font-medium text-gray-800">{value}</span>
+      <span className="font-medium text-gray-800 dark:text-white">{value}</span>
     </div>
   )
 }

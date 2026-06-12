@@ -28,13 +28,13 @@ export default function HeirView() {
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto w-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">{currentEstate.name}</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{currentEstate.name}</h1>
         <p className="text-sm text-gray-500 mt-1">Heir view — your to-do list from Brian</p>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-4">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <span className="text-sm font-semibold text-gray-700">Your Action Items ({pending.length} pending)</span>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden mb-4">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 dark:bg-gray-800">
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Your Action Items ({pending.length} pending)</span>
         </div>
         {pending.length === 0 && (
           <div className="px-4 py-4 text-sm text-gray-400">No pending items. Check back soon.</div>
@@ -48,7 +48,7 @@ export default function HeirView() {
                   className="mt-0.5 w-5 h-5 rounded border-2 border-gray-300 shrink-0 hover:border-green-500 transition-colors"
                 />
                 <div>
-                  <div className="text-sm font-medium text-gray-800">{todo.title}</div>
+                  <div className="text-sm font-medium text-gray-800 dark:text-white">{todo.title}</div>
                   {todo.detail && <div className="text-sm text-gray-500 mt-1 leading-relaxed">{todo.detail}</div>}
                 </div>
               </div>
@@ -58,8 +58,8 @@ export default function HeirView() {
       </div>
 
       {done.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 dark:bg-gray-800">
             <span className="text-sm font-semibold text-gray-500">Completed</span>
           </div>
           <div className="divide-y divide-gray-100">

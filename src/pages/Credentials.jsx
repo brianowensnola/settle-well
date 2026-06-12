@@ -105,7 +105,7 @@ export default function Credentials() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <h1 className="text-xl font-semibold text-gray-900">Credentials Vault</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Credentials Vault</h1>
         <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">
           + Add credential
         </button>
@@ -116,13 +116,13 @@ export default function Credentials() {
           placeholder="Search sites, usernames, categories..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+          className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
         />
       </div>
 
       {/* Add/Edit Form */}
       {(adding || editing) && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4 space-y-3">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Site/Service Name *</label>
@@ -130,7 +130,7 @@ export default function Credentials() {
                 value={form.site}
                 onChange={e => setForm(p => ({ ...p, site: e.target.value }))}
                 placeholder="e.g., Gmail, Wells Fargo, PayPal"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
               />
             </div>
             <div>
@@ -138,7 +138,7 @@ export default function Credentials() {
               <select
                 value={form.account_type}
                 onChange={e => setForm(p => ({ ...p, account_type: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
               >
                 {Object.entries(ACCOUNT_TYPES).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -154,7 +154,7 @@ export default function Credentials() {
                 value={form.username}
                 onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
                 placeholder="username or email"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
               />
             </div>
             <div>
@@ -164,7 +164,7 @@ export default function Credentials() {
                 value={form.password}
                 onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
                 placeholder="password"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
               />
             </div>
           </div>
@@ -175,7 +175,7 @@ export default function Credentials() {
               value={form.category}
               onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
               placeholder="e.g., Deceased's Accounts, Business"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
             />
           </div>
 
@@ -186,11 +186,11 @@ export default function Credentials() {
               onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
               placeholder="Account number, recovery email, etc."
               rows={2}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
             />
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-gray-600">
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <input
               type="checkbox"
               checked={form.is_critical}
@@ -209,7 +209,7 @@ export default function Credentials() {
                 setEditing(null)
                 setForm({ site: '', username: '', password: '', account_type: 'other', category: '', notes: '', is_critical: false })
               }}
-              className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100"
+              className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800"
             >
               Cancel
             </button>
@@ -218,7 +218,7 @@ export default function Credentials() {
       )}
 
       {/* Credentials List */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
         {filtered.length === 0 && (
           <div className="p-6 text-sm text-gray-400">
             {credentials.length === 0 ? 'No credentials yet. Add one to get started.' : 'No results found.'}
@@ -230,9 +230,9 @@ export default function Credentials() {
               <div className="flex items-start justify-between mb-2 flex-wrap gap-2">
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-medium text-gray-900">{cred.site}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{cred.site}</span>
                     {cred.is_critical && <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded">Critical</span>}
-                    {cred.account_type && <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{ACCOUNT_TYPES[cred.account_type]}</span>}
+                    {cred.account_type && <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">{ACCOUNT_TYPES[cred.account_type]}</span>}
                   </div>
                   {cred.category && <div className="text-xs text-gray-400">{cred.category}</div>}
                 </div>
@@ -254,10 +254,10 @@ export default function Credentials() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-2">
-                <div className="bg-gray-50 p-2 rounded flex items-center justify-between">
+                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded flex items-center justify-between">
                   <div>
                     <div className="text-xs text-gray-400">Username</div>
-                    <div className="text-gray-800 font-mono text-sm break-all">{cred.username}</div>
+                    <div className="text-gray-800 dark:text-white font-mono text-sm break-all">{cred.username}</div>
                   </div>
                   <button
                     onClick={() => copyToClipboard(cred.username, 'copy')}
@@ -267,10 +267,10 @@ export default function Credentials() {
                   </button>
                 </div>
 
-                <div className="bg-gray-50 p-2 rounded flex items-center justify-between">
+                <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded flex items-center justify-between">
                   <div>
                     <div className="text-xs text-gray-400">Password</div>
-                    <div className="text-gray-800 font-mono text-sm">
+                    <div className="text-gray-800 dark:text-white font-mono text-sm">
                       {showPassword[cred.id] ? cred.password : '••••••••'}
                     </div>
                   </div>
@@ -291,7 +291,7 @@ export default function Credentials() {
                 </div>
               </div>
 
-              {cred.notes && <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded mb-2">{cred.notes}</div>}
+              {cred.notes && <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-2 rounded mb-2">{cred.notes}</div>}
 
               <div className="text-xs text-gray-400">Added {cred.created_at?.slice(0, 10)}</div>
             </div>

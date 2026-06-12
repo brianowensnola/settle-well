@@ -87,7 +87,7 @@ export default function DocumentUpload() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-semibold text-gray-900">Bulk Document Upload</h1>
+        <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">Bulk Document Upload</h1>
         <p className="text-xs md:text-sm text-gray-500 mt-1">Upload all your PDFs, photos, and documents at once</p>
       </div>
 
@@ -98,11 +98,11 @@ export default function DocumentUpload() {
       )}
 
       {/* Upload Area */}
-      <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-6 hover:border-gray-400 transition-colors">
+      <div className="bg-white dark:bg-gray-900 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-6 hover:border-gray-400 transition-colors">
         <label className="cursor-pointer">
           <div className="flex flex-col items-center">
             <div className="text-4xl mb-2">📁</div>
-            <p className="text-gray-900 font-medium">Drop files here or click to browse</p>
+            <p className="text-gray-900 dark:text-white font-medium">Drop files here or click to browse</p>
             <p className="text-xs text-gray-500 mt-1">PDF, JPG, PNG, HEIC, DOCX • Max 50MB per file</p>
           </div>
           <input
@@ -118,13 +118,13 @@ export default function DocumentUpload() {
 
       {/* Files to Upload */}
       {files.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700">Ready to upload ({files.length})</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Ready to upload ({files.length})</h2>
             {!uploading && (
               <button
                 onClick={() => setFiles([])}
-                className="text-xs text-gray-500 hover:text-gray-700 underline"
+                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-300 underline"
               >
                 Clear all
               </button>
@@ -132,8 +132,8 @@ export default function DocumentUpload() {
           </div>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {files.map((file, i) => (
-              <div key={i} className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded text-sm">
-                <span className="text-gray-700 truncate">{file.name}</span>
+              <div key={i} className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-sm">
+                <span className="text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
                 {!uploading && (
                   <button
                     onClick={() => removeFile(i)}
@@ -150,13 +150,13 @@ export default function DocumentUpload() {
 
       {/* Completed */}
       {completed.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Uploaded ({completed.length})</h2>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Uploaded ({completed.length})</h2>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {completed.map(doc => (
               <div key={doc.id} className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded text-sm">
                 <span className="text-green-600">✓</span>
-                <span className="text-gray-700 truncate">{doc.name}</span>
+                <span className="text-gray-700 dark:text-gray-300 truncate">{doc.name}</span>
               </div>
             ))}
           </div>
@@ -179,7 +179,7 @@ export default function DocumentUpload() {
               setCompleted([])
               setUploadProgress({})
             }}
-            className="px-4 py-2.5 text-gray-600 rounded-lg text-sm hover:bg-gray-100"
+            className="px-4 py-2.5 text-gray-600 dark:text-gray-400 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800"
           >
             Reset
           </button>

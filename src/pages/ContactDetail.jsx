@@ -49,38 +49,38 @@ export default function ContactDetail() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto w-full">
-      <Link to="/contacts" className="text-sm text-gray-400 hover:text-gray-600 mb-4 block">← Back to contacts</Link>
+      <Link to="/contacts" className="text-sm text-gray-400 hover:text-gray-600 dark:text-gray-400 mb-4 block">← Back to contacts</Link>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
         {editing ? (
           <div className="space-y-3">
             {[['name','Name'],['company','Company'],['phone','Phone'],['phone2','Phone 2'],['email','Email'],['address','Address']].map(([k,l]) => (
               <div key={k}>
                 <label className="text-xs text-gray-500 block mb-1">{l}</label>
                 <input value={editData[k] ?? ''} onChange={e => setEditData(p => ({ ...p, [k]: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                  className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
               </div>
             ))}
             <div>
               <label className="text-xs text-gray-500 block mb-1">Role</label>
               <select value={editData.role ?? 'other'} onChange={e => setEditData(p => ({ ...p, role: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none">
                 {Object.entries(CONTACT_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <textarea value={editData.notes ?? ''} onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
               rows={3} placeholder="Notes..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
             <div className="flex gap-2">
               <button onClick={saveEdit} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">Save</button>
-              <button onClick={() => setEditing(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100">Cancel</button>
+              <button onClick={() => setEditing(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
             </div>
           </div>
         ) : (
           <div>
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">{contact.name}</h1>
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{contact.name}</h1>
                 {contact.company && <div className="text-sm text-gray-500">{contact.company}</div>}
                 <div className="text-xs text-gray-400 mt-0.5">{CONTACT_ROLES[contact.role] ?? contact.role}</div>
               </div>
@@ -92,18 +92,18 @@ export default function ContactDetail() {
               {contact.phone2 && <div><span className="text-gray-400">Phone 2: </span>{contact.phone2}</div>}
               {contact.email && <div><span className="text-gray-400">Email: </span>{contact.email}</div>}
               {contact.address && <div><span className="text-gray-400">Address: </span>{contact.address}</div>}
-              {contact.notes && <div className="text-gray-600 mt-2 pt-2 border-t border-gray-100">{contact.notes}</div>}
+              {contact.notes && <div className="text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100">{contact.notes}</div>}
             </div>
           </div>
         )}
       </div>
 
       {/* Log interaction */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Log Interaction</h2>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Log Interaction</h2>
         <div className="flex gap-3 mb-2">
           {['outbound','inbound'].map(d => (
-            <label key={d} className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+            <label key={d} className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
               <input type="radio" name="direction" value={d} checked={logForm.direction === d} onChange={() => setLogForm(p => ({ ...p, direction: d }))} />
               {d === 'outbound' ? 'I called / sent' : 'They called / sent'}
             </label>
@@ -114,7 +114,7 @@ export default function ContactDetail() {
           onChange={e => setLogForm(p => ({ ...p, summary: e.target.value }))}
           placeholder="What was discussed or decided..."
           rows={3}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none mb-2"
+          className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none mb-2"
         />
         <button onClick={logInteraction} disabled={!logForm.summary.trim()} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40">
           Log
@@ -122,14 +122,14 @@ export default function ContactDetail() {
       </div>
 
       {/* Interaction history */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Interaction History</h2>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Interaction History</h2>
         {interactions.length === 0 && <p className="text-sm text-gray-400">No interactions logged.</p>}
         <div className="space-y-3">
           {interactions.map(i => (
-            <div key={i.id} className="text-sm border-l-2 border-gray-200 pl-3">
+            <div key={i.id} className="text-sm border-l-2 border-gray-200 dark:border-gray-800 pl-3">
               <div className="text-xs text-gray-400 mb-0.5">{i.created_at?.slice(0, 10)} · {i.direction}</div>
-              <div className="text-gray-700">{i.summary}</div>
+              <div className="text-gray-700 dark:text-gray-300">{i.summary}</div>
             </div>
           ))}
         </div>

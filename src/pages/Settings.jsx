@@ -81,10 +81,10 @@ export default function Settings() {
 
   return (
     <div className="p-4 md:p-6 max-w-xl mx-auto w-full">
-      <h1 className="text-xl font-semibold text-gray-900 mb-5">Settings</h1>
+      <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-5">Settings</h1>
 
-      <form onSubmit={save} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-700">Estate Details</h2>
+      <form onSubmit={save} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Estate Details</h2>
         {[
           ['name', 'Estate Name'],
           ['administrator_name', 'Executor Name'],
@@ -94,13 +94,13 @@ export default function Settings() {
           <div key={k}>
             <label className="text-xs text-gray-500 block mb-1">{l}</label>
             <input value={form[k] ?? ''} onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
           </div>
         ))}
         <div>
           <label className="text-xs text-gray-500 block mb-1">Status</label>
           <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+            className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none">
             <option value="active">Active</option>
             <option value="closed">Closed</option>
           </select>
@@ -110,8 +110,8 @@ export default function Settings() {
         </button>
       </form>
 
-      <div className="mt-4 bg-white border border-gray-200 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Estate Info (read-only)</h2>
+      <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Estate Info (read-only)</h2>
         <div className="space-y-1 text-sm">
           <div><span className="text-gray-400">Deceased: </span>{currentEstate.deceased_name}</div>
           <div><span className="text-gray-400">Date of Birth: </span>{currentEstate.deceased_dob ?? '—'}</div>
@@ -119,11 +119,11 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="mt-4 bg-white border border-gray-200 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Users & Invites</h2>
+      <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Users & Invites</h2>
 
         {/* Invite form */}
-        <form onSubmit={inviteUser} className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-2">
+        <form onSubmit={inviteUser} className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 space-y-2">
           <label className="text-xs text-gray-500 block">Invite heir or observer by email</label>
           <div className="flex gap-2">
             <input
@@ -131,12 +131,12 @@ export default function Settings() {
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
               placeholder="heir@example.com"
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+              className="flex-1 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
             />
             <select
               value={inviteRole}
               onChange={e => setInviteRole(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+              className="border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
             >
               <option value="heir">Heir</option>
               <option value="observer">Observer</option>
@@ -157,10 +157,10 @@ export default function Settings() {
           {users.map(user => {
             const inviteUrl = !user.auth_user_id ? `https://bryant-estate-admin.netlify.app/invite?email=${encodeURIComponent(user.email)}` : null
             return (
-              <div key={user.id} className="px-3 py-2 border border-gray-100 rounded-lg bg-gray-50">
+              <div key={user.id} className="px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-800">
                 <div className="flex items-center justify-between mb-1">
                   <div>
-                    <div className="font-medium text-gray-800">{user.email}</div>
+                    <div className="font-medium text-gray-800 dark:text-white">{user.email}</div>
                     <div className="text-xs text-gray-400">{user.role} {user.auth_user_id ? '(confirmed)' : '(pending)'}</div>
                   </div>
                   <button
@@ -177,7 +177,7 @@ export default function Settings() {
                         type="text"
                         readOnly
                         value={inviteUrl}
-                        className="w-full text-xs bg-white border border-gray-200 rounded px-2 py-1 text-gray-700 truncate"
+                        className="w-full text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded px-2 py-1 text-gray-700 dark:text-gray-300 truncate"
                       />
                     </div>
                     <button

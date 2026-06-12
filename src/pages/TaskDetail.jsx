@@ -90,9 +90,9 @@ export default function TaskDetail() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto w-full">
-      <Link to="/tasks" className="text-sm text-gray-400 hover:text-gray-600 mb-4 block">← Back to tasks</Link>
+      <Link to="/tasks" className="text-sm text-gray-400 hover:text-gray-600 dark:text-gray-400 mb-4 block">← Back to tasks</Link>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
         <div className="flex items-start gap-3 mb-3">
           <button
             onClick={cycleStatus}
@@ -100,24 +100,24 @@ export default function TaskDetail() {
           >
             {task.status === 'done' ? '✓ Done' : STATUS_LABELS[task.status]}
           </button>
-          {task.tag && <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">{task.tag}</span>}
+          {task.tag && <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full">{task.tag}</span>}
         </div>
-        <h1 className={`text-lg font-medium text-gray-900 leading-snug mb-1 ${task.status === 'done' ? 'line-through text-gray-400' : ''}`}>
+        <h1 className={`text-lg font-medium text-gray-900 dark:text-white leading-snug mb-1 ${task.status === 'done' ? 'line-through text-gray-400' : ''}`}>
           {task.text}
         </h1>
         <div className="text-xs text-gray-400">Added {task.date_added}</div>
       </div>
 
       {/* Sub-tasks */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">Sub-tasks</h2>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Sub-tasks</h2>
           <button onClick={() => setAddingSub(true)} className="text-xs text-blue-600 hover:underline">+ Add sub-task</button>
         </div>
         {subtasks.length === 0 && !addingSub && <p className="text-sm text-gray-400">No sub-tasks.</p>}
         <div className="space-y-2">
           {subtasks.map(st => (
-            <div key={st.id} className={`flex items-center gap-2 text-sm ${st.status === 'done' ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+            <div key={st.id} className={`flex items-center gap-2 text-sm ${st.status === 'done' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
               <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_STYLES[st.status]}`}>{STATUS_LABELS[st.status]}</span>
               {st.text}
             </div>
@@ -131,23 +131,23 @@ export default function TaskDetail() {
               onChange={e => setNewSubText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') saveSubtask(); if (e.key === 'Escape') setAddingSub(false) }}
               placeholder="Sub-task..."
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="flex-1 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
             <button onClick={saveSubtask} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add</button>
-            <button onClick={() => setAddingSub(false)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100">Cancel</button>
+            <button onClick={() => setAddingSub(false)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
           </div>
         )}
       </div>
 
       {/* Log */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Notes / Log</h2>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Notes / Log</h2>
         {logs.length === 0 && <p className="text-sm text-gray-400 mb-3">No notes yet.</p>}
         <div className="space-y-3 mb-4">
           {logs.map(log => (
-            <div key={log.id} className="text-sm border-l-2 border-gray-200 pl-3">
+            <div key={log.id} className="text-sm border-l-2 border-gray-200 dark:border-gray-800 pl-3">
               <div className="text-xs text-gray-400 mb-0.5">{log.created_at?.slice(0, 10)} · {log.created_by}</div>
-              <div className="text-gray-700 leading-relaxed">{log.note}</div>
+              <div className="text-gray-700 dark:text-gray-300 leading-relaxed">{log.note}</div>
               {!log.spawned_task_id && (
                 <button
                   onClick={() => noteToTask(log)}
@@ -168,7 +168,7 @@ export default function TaskDetail() {
             onChange={e => setNoteText(e.target.value)}
             placeholder="Add a note..."
             rows={3}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
+            className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
           />
           <button
             onClick={saveNote}

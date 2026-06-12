@@ -92,19 +92,19 @@ export default function Tasks() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-5 flex-wrap gap-3">
-        <h1 className="text-lg md:text-xl font-semibold text-gray-900">Tasks</h1>
+        <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Tasks</h1>
         <div className="flex gap-2 flex-wrap">
           <input
             placeholder="Search..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 flex-1 sm:w-44"
+            className="border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 flex-1 sm:w-44"
           />
           {['open', 'waiting', 'done', 'all'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'}`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
@@ -131,7 +131,7 @@ export default function Tasks() {
               </button>
 
               {!isCollapsed && (
-                <div className="bg-white">
+                <div className="bg-white dark:bg-gray-900">
                   {visible.map(task => (
                     <TaskRow
                       key={task.id}
@@ -158,15 +158,15 @@ export default function Tasks() {
                         onChange={e => setNewTaskText(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') saveTask(sec.id); if (e.key === 'Escape') setAddingTask(null) }}
                         placeholder="Task description..."
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                        className="flex-1 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
                       />
                       <button onClick={() => saveTask(sec.id)} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add</button>
-                      <button onClick={() => setAddingTask(null)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100">Cancel</button>
+                      <button onClick={() => setAddingTask(null)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
                     </div>
                   ) : (
                     <button
                       onClick={() => setAddingTask(sec.id)}
-                      className="w-full text-left px-4 py-2.5 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 border-t border-gray-100"
+                      className="w-full text-left px-4 py-2.5 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:bg-gray-800 border-t border-gray-100"
                     >
                       + Add task
                     </button>
@@ -198,12 +198,12 @@ function TaskRow({ task, subtasks, logs, onCycle, addingNote, noteText, onStartN
           <div className="flex items-start gap-2 flex-wrap">
             <Link
               to={`/tasks/${task.id}`}
-              className={`text-sm leading-snug ${isDone ? 'line-through text-gray-400' : 'text-gray-800 hover:text-gray-900'}`}
+              className={`text-sm leading-snug ${isDone ? 'line-through text-gray-400' : 'text-gray-800 dark:text-white hover:text-gray-900 dark:text-white'}`}
             >
               {task.text}
             </Link>
             {task.tag && (
-              <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{task.tag}</span>
+              <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">{task.tag}</span>
             )}
           </div>
 
@@ -240,15 +240,15 @@ function TaskRow({ task, subtasks, logs, onCycle, addingNote, noteText, onStartN
                 onChange={e => onNoteChange(e.target.value)}
                 placeholder="Add a note..."
                 rows={2}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
               />
               <div className="flex gap-2">
                 <button onClick={onSaveNote} className="px-3 py-1 bg-gray-900 text-white rounded-lg text-xs">Save note</button>
-                <button onClick={onCancelNote} className="px-3 py-1 text-gray-500 rounded-lg text-xs hover:bg-gray-100">Cancel</button>
+                <button onClick={onCancelNote} className="px-3 py-1 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
               </div>
             </div>
           ) : (
-            <button onClick={onStartNote} className="mt-1.5 text-xs text-gray-400 hover:text-gray-600">+ Add note</button>
+            <button onClick={onStartNote} className="mt-1.5 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-400">+ Add note</button>
           )}
         </div>
       </div>

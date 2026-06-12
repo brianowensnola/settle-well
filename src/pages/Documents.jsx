@@ -57,41 +57,41 @@ export default function Documents() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-lg md:text-xl font-semibold text-gray-900">Documents</h1>
+        <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Documents</h1>
         <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add document</button>
       </div>
 
       <div className="flex gap-2 mb-5">
         {['have', 'need'].map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === t ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === t ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'}`}>
             {t === 'have' ? `Have (${haveDocs.length})` : `Need (${needDocs.length})`}
           </button>
         ))}
       </div>
 
       {adding && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 space-y-3">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Document name</label>
               <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Type</label>
               <select value={form.doc_type} onChange={e => setForm(p => ({ ...p, doc_type: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none">
                 {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-gray-600">
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <input type="checkbox" checked={form.have} onChange={e => setForm(p => ({ ...p, have: e.target.checked }))} />
               Have it
             </label>
-            <label className="flex items-center gap-2 text-sm text-gray-600">
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <input type="checkbox" checked={form.requested} onChange={e => setForm(p => ({ ...p, requested: e.target.checked }))} />
               Requested
             </label>
@@ -100,20 +100,20 @@ export default function Documents() {
             <div>
               <label className="text-xs text-gray-500 block mb-1">Requested from</label>
               <input value={form.requested_from} onChange={e => setForm(p => ({ ...p, requested_from: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
           )}
           <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
             placeholder="Notes..." rows={2}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+            className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
           <div className="flex gap-2">
             <button onClick={addDoc} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">Save</button>
-            <button onClick={() => setAdding(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100">Cancel</button>
+            <button onClick={() => setAdding(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
           </div>
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
         {(tab === 'have' ? haveDocs : needDocs).length === 0 && (
           <div className="p-6 text-sm text-gray-400">No documents in this category.</div>
         )}
@@ -122,8 +122,8 @@ export default function Documents() {
             <div key={doc.id} className="px-4 py-3 flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-gray-800">{doc.name}</span>
-                  <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">{DOC_TYPES[doc.doc_type] ?? doc.doc_type}</span>
+                  <span className="text-sm font-medium text-gray-800 dark:text-white">{doc.name}</span>
+                  <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">{DOC_TYPES[doc.doc_type] ?? doc.doc_type}</span>
                   {doc.requested && <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Requested from {doc.requested_from}</span>}
                 </div>
                 {doc.notes && <div className="text-xs text-gray-500 mt-0.5">{doc.notes}</div>}

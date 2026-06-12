@@ -18,14 +18,14 @@ const STATUS_BADGE = {
   cancel:           'bg-red-100 text-red-700',
   cancel_on_vacate: 'bg-orange-100 text-orange-700',
   done:             'bg-green-100 text-green-700',
-  lapsed:           'bg-gray-100 text-gray-500',
+  lapsed:           'bg-gray-100 dark:bg-gray-800 text-gray-500',
   paid_out:         'bg-green-100 text-green-700',
   resolved:         'bg-green-100 text-green-700',
-  cancelled:        'bg-gray-100 text-gray-500',
-  unknown:          'bg-gray-100 text-gray-500',
+  cancelled:        'bg-gray-100 dark:bg-gray-800 text-gray-500',
+  unknown:          'bg-gray-100 dark:bg-gray-800 text-gray-500',
   in_progress:      'bg-blue-100 text-blue-700',
   waiting:          'bg-amber-100 text-amber-700',
-  likely_lapsed:    'bg-gray-100 text-gray-500',
+  likely_lapsed:    'bg-gray-100 dark:bg-gray-800 text-gray-500',
 }
 
 function fmt(n) {
@@ -85,7 +85,7 @@ export default function Finances() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-semibold text-gray-900">Finances</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Finances</h1>
         <Link to="/transactions" className="text-sm text-blue-600 hover:underline">Transaction ledger →</Link>
       </div>
 
@@ -97,9 +97,9 @@ export default function Finances() {
           { label: 'Known Liabilities', value: totalLiabilities > 0 ? fmt(totalLiabilities) : '—' },
           { label: 'Known Assets', value: totalAssets > 0 ? fmt(totalAssets) : '—' },
         ].map(s => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-xl p-4">
+          <div key={s.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
             <div className="text-xs text-gray-500 mb-1">{s.label}</div>
-            <div className="text-lg font-semibold text-gray-900">{s.value}</div>
+            <div className="text-lg font-semibold text-gray-900 dark:text-white">{s.value}</div>
           </div>
         ))}
       </div>
@@ -108,9 +108,9 @@ export default function Finances() {
         {CATEGORIES.map(cat => {
           const items = byCategory[cat.key] ?? []
           return (
-            <div key={cat.key} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <span className="text-sm font-semibold text-gray-700">{cat.label}</span>
+            <div key={cat.key} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 dark:bg-gray-800">
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{cat.label}</span>
                 <span className="text-xs text-gray-400 ml-2">({items.length})</span>
               </div>
               {items.length === 0 && (
@@ -120,37 +120,37 @@ export default function Finances() {
                 {items.map(row => (
                   <div key={row.id}>
                     <button
-                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 dark:bg-gray-800"
                       onClick={() => setExpanded(p => ({ ...p, [row.id]: !p[row.id] }))}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-sm text-gray-800 truncate">{row.name}</span>
+                        <span className="text-sm text-gray-800 dark:text-white truncate">{row.name}</span>
                         {row.status && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_BADGE[row.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_BADGE[row.status] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
                             {row.status.replace(/_/g, ' ')}
                           </span>
                         )}
                       </div>
-                      <span className="text-sm font-medium text-gray-700 shrink-0 ml-4">{amountDisplay(row)}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0 ml-4">{amountDisplay(row)}</span>
                     </button>
 
                     {expanded[row.id] && (
-                      <div className="px-4 pb-4 bg-gray-50 text-sm space-y-2">
+                      <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-800 text-sm space-y-2">
                         {row.lender && <div><span className="text-gray-400">Lender: </span>{row.lender}</div>}
                         {row.collateral && <div><span className="text-gray-400">Collateral: </span>{row.collateral}</div>}
-                        {row.notes && <div className="text-gray-600">{row.notes}</div>}
+                        {row.notes && <div className="text-gray-600 dark:text-gray-400">{row.notes}</div>}
                         {editing === row.id ? (
                           <div className="space-y-2 pt-2">
                             <textarea
                               value={editData.notes ?? ''}
                               onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
                               rows={3}
-                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
                               placeholder="Notes..."
                             />
                             <div className="flex gap-2">
                               <button onClick={saveEdit} className="px-3 py-1 bg-gray-900 text-white rounded-lg text-xs">Save</button>
-                              <button onClick={() => setEditing(null)} className="px-3 py-1 text-gray-500 rounded-lg text-xs hover:bg-gray-100">Cancel</button>
+                              <button onClick={() => setEditing(null)} className="px-3 py-1 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
                             </div>
                           </div>
                         ) : (
