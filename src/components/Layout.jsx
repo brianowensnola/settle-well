@@ -81,35 +81,44 @@ export default function Layout() {
           {/* Estates Section */}
           <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">Estates</div>
           <div className="space-y-1">
-            {estates.map(estate => {
-              const isExpanded = expandedEstate === estate.id
-              return (
-                <div key={estate.id}>
-                  <button
-                    onClick={() => {
-                      setExpandedEstate(isExpanded ? null : estate.id)
-                      switchEstate(estate)
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
-                      currentEstate?.id === estate.id
-                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    <span>{estate.deceased_name}</span>
-                    <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
-                  </button>
+            {estates.length === 0 ? (
+              <button
+                onClick={() => navigate('/new-estate')}
+                className="w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              >
+                + Create New Estate
+              </button>
+            ) : (
+              estates.map(estate => {
+                const isExpanded = expandedEstate === estate.id
+                return (
+                  <div key={estate.id}>
+                    <button
+                      onClick={() => {
+                        setExpandedEstate(isExpanded ? null : estate.id)
+                        switchEstate(estate)
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                        currentEstate?.id === estate.id
+                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      <span>{estate.deceased_name}</span>
+                      <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+                    </button>
 
-                  {isExpanded && (
-                    <div className="ml-2 mt-1 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
-                      {SINGLE_ESTATE_NAV.map(({ to, label }) =>
-                        renderNavLink(to, label)
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                    {isExpanded && (
+                      <div className="ml-2 mt-1 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
+                        {SINGLE_ESTATE_NAV.map(({ to, label }) =>
+                          renderNavLink(to, label)
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
           </div>
         </nav>
 
