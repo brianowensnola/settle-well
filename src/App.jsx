@@ -28,6 +28,7 @@ import MailIntake from './pages/MailIntake'
 import Credentials from './pages/Credentials'
 import Settings from './pages/Settings'
 import ConfirmEmail from './pages/ConfirmEmail'
+import TaskAssignments from './pages/TaskAssignments'
 
 function RequireAuth({ children }) {
   const user = useUser()
@@ -66,6 +67,7 @@ function AppRoutes() {
         <Route path="/quick-estate" element={<QuickEstateSetup />} />
         <Route path="/all-estates" element={<AllEstates />} />
         <Route path="/all-tasks" element={<AllTasks />} />
+        <Route path="/task-assignments" element={<TaskAssignments />} />
         <Route path="/intake-review" element={<IntakeReview />} />
         <Route path="/checklist" element={<EstateChecklist />} />
         <Route path="/send-to-attorney" element={<SendToAttorney />} />
