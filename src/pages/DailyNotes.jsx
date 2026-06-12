@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
+import { useUser } from '../lib/AuthContext'
 
 export default function DailyNotes() {
   const { currentEstate } = useEstate()
+  const user = useUser()
   const [notes, setNotes] = useState([])
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [content, setContent] = useState('')
@@ -48,6 +50,7 @@ export default function DailyNotes() {
             note_date: selectedDate,
             content,
             tags,
+            created_by: user?.id,
           })
       }
 
