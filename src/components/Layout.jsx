@@ -14,17 +14,14 @@ const MOBILE_NAV = [
   { to: '/contacts',    label: '👥', icon: 'Contacts' },
 ]
 
-const DESKTOP_NAV = [
-  { to: '/all-estates',  label: 'All Estates', multiOnly: true },
-  { to: '/all-tasks',    label: 'All Tasks', multiOnly: true },
-  { to: '/tasks-all',    label: 'Task Management' },
+const SINGLE_ESTATE_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
+  { to: '/tasks',       label: 'Tasks' },
   { to: '/mail',        label: 'Mail Intake' },
   { to: '/intake-review', label: 'Intake Review' },
   { to: '/checklist',    label: 'Estate Checklist' },
   { to: '/send-to-attorney', label: 'Send to Attorney' },
   { to: '/send-documents', label: 'Send Documents' },
-  { to: '/tasks',       label: 'Tasks' },
   { to: '/finances',    label: 'Finances' },
   { to: '/notes',       label: 'Daily Notes' },
   { to: '/documents',   label: 'Documents' },
@@ -39,70 +36,80 @@ export default function Layout() {
   const { currentEstate, role, estates, switchEstate } = useEstate()
   const user = useUser()
   const { isDark, setIsDark } = useDarkMode()
-  const [showEstatePicker, setShowEstatePicker] = useState(false)
+  const [expandedEstate, setExpandedEstate] = useState(currentEstate?.id)
 
   async function signOut() {
     await supabase.auth.signOut()
     navigate('/login')
   }
 
+  const renderNavLink = (to, label) => (
+    <NavLink
+      key={to}
+      to={to}
+      className={({ isActive }) =>
+        `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+          isActive
+            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+        }`
+      }
+    >
+      {label}
+    </NavLink>
+  )
+
   return (
     <div className="flex flex-col-reverse md:flex-row min-h-screen bg-white dark:bg-gray-950 dark:text-white">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-52 shrink-0 flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
-          <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Estate Admin</div>
-          {currentEstate && (
-            <div className="relative">
-              <button
-                onClick={() => setShowEstatePicker(!showEstatePicker)}
-                className="w-full text-left text-sm font-semibold text-gray-800 dark:text-white leading-tight hover:text-gray-600 dark:hover:text-gray-300 py-1"
-              >
-                {currentEstate.deceased_name} ▼
-              </button>
-              {showEstatePicker && estates.length > 1 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-10">
-                  {estates.map(estate => (
-                    <button
-                      key={estate.id}
-                      onClick={() => {
-                        switchEstate(estate)
-                        setShowEstatePicker(false)
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                        currentEstate?.id === estate.id
-                          ? 'bg-gray-900 dark:bg-gray-700 text-white'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {estate.deceased_name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Estate Admin</div>
         </div>
 
-        <nav className="flex-1 py-3 space-y-0.5 px-2">
-          {DESKTOP_NAV.map(({ to, label, multiOnly }) => {
-            if (multiOnly && estates.length <= 1) return null
-            return (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-                  }`
-                }
-              >
-                {label}
-              </NavLink>
-            )
-          })}
+        <nav className="flex-1 py-3 space-y-0.5 px-2 overflow-y-auto">
+          {/* Multi-Estate Section */}
+          {estates.length > 1 && (
+            <>
+              <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
+              {renderNavLink('/all-estates', 'All Estates')}
+              {renderNavLink('/all-tasks', 'All Tasks')}
+            </>
+          )}
+
+          {/* Estates Section */}
+          <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">Estates</div>
+          <div className="space-y-1">
+            {estates.map(estate => {
+              const isExpanded = expandedEstate === estate.id
+              return (
+                <div key={estate.id}>
+                  <button
+                    onClick={() => {
+                      setExpandedEstate(isExpanded ? null : estate.id)
+                      switchEstate(estate)
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-between ${
+                      currentEstate?.id === estate.id
+                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span>{estate.deceased_name}</span>
+                    <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="ml-2 mt-1 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
+                      {SINGLE_ESTATE_NAV.map(({ to, label }) =>
+                        renderNavLink(to, label)
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </nav>
 
         <div className="p-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
