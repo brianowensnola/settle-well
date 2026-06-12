@@ -15,9 +15,11 @@ export default function TaskDetail() {
   const [task, setTask] = useState(null)
   const [subtasks, setSubtasks] = useState([])
   const [logs, setLogs] = useState([])
+  const [linkedDocs, setLinkedDocs] = useState([])
   const [noteText, setNoteText] = useState('')
   const [newSubText, setNewSubText] = useState('')
   const [addingSub, setAddingSub] = useState(false)
+  const [uploading, setUploading] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,14 +28,16 @@ export default function TaskDetail() {
   }, [id])
 
   async function load() {
-    const [t, st, l] = await Promise.all([
+    const [t, st, l, d] = await Promise.all([
       supabase.from('estate_tasks').select('*').eq('id', id).single(),
       supabase.from('estate_tasks').select('*').eq('parent_task_id', id).order('sort_order'),
       supabase.from('estate_task_logs').select('*').eq('task_id', id).order('created_at'),
+      supabase.from('estate_documents').select('*').eq('linked_task_id', id),
     ])
     setTask(t.data)
     setSubtasks(st.data ?? [])
     setLogs(l.data ?? [])
+    setLinkedDocs(d.data ?? [])
     setLoading(false)
   }
 
@@ -83,6 +87,25 @@ export default function TaskDetail() {
       setSubtasks(prev => [...prev, data])
       setLogs(prev => prev.map(l => l.id === log.id ? { ...l, spawned_task_id: data.id } : l))
     }
+  }
+
+  async function uploadDocument(file) {
+    if (!file || !currentEstate) return
+    setUploading(true)
+    const path = `${currentEstate.id}/tasks/${Date.now()}_${file.name}`
+    const { error } = await supabase.storage.from('estate-documents').upload(path, file)
+    if (!error) {
+      const { data } = await supabase.from('estate_documents').insert({
+        estate_id: currentEstate.id,
+        name: file.name,
+        doc_type: 'task',
+        file_path: path,
+        have: true,
+        linked_task_id: id,
+      }).select().single()
+      if (data) setLinkedDocs(prev => [...prev, data])
+    }
+    setUploading(null)
   }
 
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
@@ -137,6 +160,27 @@ export default function TaskDetail() {
             <button onClick={() => setAddingSub(false)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
           </div>
         )}
+      </div>
+
+      {/* Documents */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Documents</h2>
+          <label className="text-xs text-blue-600 hover:underline cursor-pointer">
+            {uploading ? 'Uploading...' : '+ Upload'}
+            <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.docx"
+              onChange={e => uploadDocument(e.target.files[0])} disabled={uploading} />
+          </label>
+        </div>
+        {linkedDocs.length === 0 && <p className="text-sm text-gray-400">No documents linked to this task.</p>}
+        <div className="space-y-2">
+          {linkedDocs.map(doc => (
+            <div key={doc.id} className="flex items-center gap-2 text-sm">
+              <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">{doc.doc_type}</span>
+              <span className="text-gray-700 dark:text-gray-300">{doc.name}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Log */}
