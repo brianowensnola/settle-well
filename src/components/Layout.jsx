@@ -16,8 +16,7 @@ const MOBILE_NAV = [
 
 const DESKTOP_NAV = [
   { to: '/all-estates',  label: 'All Estates', multiOnly: true },
-  { to: '/all-tasks',    label: 'All Tasks', multiOnly: true },
-  { to: '/task-assignments', label: 'Task Assignments' },
+  { to: '/tasks-all',    label: 'Task Management' },
   { to: '/dashboard',   label: 'Dashboard' },
   { to: '/mail',        label: 'Mail Intake' },
   { to: '/intake-review', label: 'Intake Review' },
