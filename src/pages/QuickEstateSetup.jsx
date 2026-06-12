@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useUser } from '../lib/AuthContext'
@@ -7,12 +7,23 @@ import { useEstate } from '../lib/EstateContext'
 export default function QuickEstateSetup() {
   const navigate = useNavigate()
   const user = useUser()
-  const { reload } = useEstate()
+  const { currentEstate, reload } = useEstate()
   const [form, setForm] = useState({
     deceased_name: '',
     deceased_dod: '',
     state_of_residence: '',
   })
+
+  // Pre-fill form if editing existing estate
+  useEffect(() => {
+    if (currentEstate) {
+      setForm({
+        deceased_name: currentEstate.deceased_name || '',
+        deceased_dod: currentEstate.deceased_dod || '',
+        state_of_residence: currentEstate.state_of_residence || '',
+      })
+    }
+  }, [currentEstate])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -26,37 +37,51 @@ export default function QuickEstateSetup() {
     setError('')
 
     try {
-      // Create estate
-      const { data: estate, error: estateError } = await supabase
-        .from('estates')
-        .insert({
-          name: `${form.deceased_name} Estate`,
-          deceased_name: form.deceased_name,
-          deceased_dod: form.deceased_dod,
-          state_of_residence: form.state_of_residence,
-          administrator_name: user?.email?.split('@')[0] || 'Administrator',
-          administrator_email: user?.email,
-          status: 'active',
-          intake_complete: false,
-          intake_answers: {},
-        })
-        .select()
-        .single()
+      if (currentEstate) {
+        // Update existing estate
+        const { error: updateError } = await supabase
+          .from('estates')
+          .update({
+            deceased_name: form.deceased_name,
+            deceased_dod: form.deceased_dod,
+            state_of_residence: form.state_of_residence,
+          })
+          .eq('id', currentEstate.id)
 
-      if (estateError) throw estateError
+        if (updateError) throw updateError
+      } else {
+        // Create new estate
+        const { data: estate, error: estateError } = await supabase
+          .from('estates')
+          .insert({
+            name: `${form.deceased_name} Estate`,
+            deceased_name: form.deceased_name,
+            deceased_dod: form.deceased_dod,
+            state_of_residence: form.state_of_residence,
+            administrator_name: user?.email?.split('@')[0] || 'Administrator',
+            administrator_email: user?.email,
+            status: 'active',
+            intake_complete: false,
+            intake_answers: {},
+          })
+          .select()
+          .single()
 
-      // Link user as administrator
-      const { error: linkError } = await supabase
-        .from('estate_users')
-        .insert({
-          estate_id: estate.id,
-          auth_user_id: user.id,
-          name: user?.email?.split('@')[0] || 'Administrator',
-          email: user?.email,
-          role: 'administrator',
-        })
+        if (estateError) throw estateError
 
-      if (linkError) throw linkError
+        // Link user as administrator
+        const { error: linkError } = await supabase
+          .from('estate_users')
+          .insert({
+            estate_id: estate.id,
+            auth_user_id: user.id,
+            name: user?.email?.split('@')[0] || 'Administrator',
+            email: user?.email,
+            role: 'administrator',
+          })
+
+        if (linkError) throw linkError
+      }
 
       // Create default sections
       const sections = [
