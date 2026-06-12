@@ -54,7 +54,7 @@ export default function ContactDetail() {
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
         {editing ? (
           <div className="space-y-3">
-            {[['name','Name'],['company','Company'],['phone','Phone'],['phone2','Phone 2'],['email','Email'],['address','Address']].map(([k,l]) => (
+            {[['name','Name'],['company','Company']].map(([k,l]) => (
               <div key={k}>
                 <label className="text-xs text-gray-500 block mb-1">{l}</label>
                 <input value={editData[k] ?? ''} onChange={e => setEditData(p => ({ ...p, [k]: e.target.value }))}
@@ -68,6 +68,53 @@ export default function ContactDetail() {
                 {Object.entries(CONTACT_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
+
+            {/* Phones */}
+            <div>
+              <label className="text-xs text-gray-500 block mb-2">Phone Numbers</label>
+              <div className="space-y-2">
+                {(editData.phones ?? []).map((phone, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input value={phone} onChange={e => {
+                      const updated = [...(editData.phones ?? [])]
+                      updated[idx] = e.target.value
+                      setEditData(p => ({ ...p, phones: updated }))
+                    }}
+                      className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    {(editData.phones ?? []).length > 0 && (
+                      <button onClick={() => setEditData(p => ({ ...p, phones: (p.phones ?? []).filter((_, i) => i !== idx) }))}
+                        className="px-2 py-2 text-gray-400 hover:text-red-500">×</button>
+                    )}
+                  </div>
+                ))}
+                <button onClick={() => setEditData(p => ({ ...p, phones: [...(p.phones ?? []), ''] }))}
+                  className="text-xs text-blue-600 hover:text-blue-700">+ Add phone</button>
+              </div>
+            </div>
+
+            {/* Emails */}
+            <div>
+              <label className="text-xs text-gray-500 block mb-2">Email Addresses</label>
+              <div className="space-y-2">
+                {(editData.emails ?? []).map((email, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input value={email} onChange={e => {
+                      const updated = [...(editData.emails ?? [])]
+                      updated[idx] = e.target.value
+                      setEditData(p => ({ ...p, emails: updated }))
+                    }}
+                      className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    {(editData.emails ?? []).length > 0 && (
+                      <button onClick={() => setEditData(p => ({ ...p, emails: (p.emails ?? []).filter((_, i) => i !== idx) }))}
+                        className="px-2 py-2 text-gray-400 hover:text-red-500">×</button>
+                    )}
+                  </div>
+                ))}
+                <button onClick={() => setEditData(p => ({ ...p, emails: [...(p.emails ?? []), ''] }))}
+                  className="text-xs text-blue-600 hover:text-blue-700">+ Add email</button>
+              </div>
+            </div>
+
             <textarea value={editData.notes ?? ''} onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
               rows={3} placeholder="Notes..."
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
@@ -81,18 +128,16 @@ export default function ContactDetail() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{contact.name}</h1>
-                {contact.company && <div className="text-sm text-gray-500">{contact.company}</div>}
+                {contact.company && <div className="text-sm text-gray-500 dark:text-gray-400">{contact.company}</div>}
                 <div className="text-xs text-gray-400 mt-0.5">{CONTACT_ROLES[contact.role] ?? contact.role}</div>
               </div>
               <button onClick={() => { setEditing(true); setEditData({ ...contact }) }}
                 className="text-xs text-blue-600 hover:underline">Edit</button>
             </div>
             <div className="space-y-1 text-sm">
-              {contact.phone && <div><span className="text-gray-400">Phone: </span>{contact.phone}</div>}
-              {contact.phone2 && <div><span className="text-gray-400">Phone 2: </span>{contact.phone2}</div>}
-              {contact.email && <div><span className="text-gray-400">Email: </span>{contact.email}</div>}
-              {contact.address && <div><span className="text-gray-400">Address: </span>{contact.address}</div>}
-              {contact.notes && <div className="text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100">{contact.notes}</div>}
+              {contact.phones?.length > 0 && contact.phones.map((p, i) => <div key={i}><span className="text-gray-400">Phone: </span>{p}</div>)}
+              {contact.emails?.length > 0 && contact.emails.map((e, i) => <div key={i}><span className="text-gray-400">Email: </span>{e}</div>)}
+              {contact.notes && <div className="text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">{contact.notes}</div>}
             </div>
           </div>
         )}

@@ -9,7 +9,7 @@ export default function Contacts() {
   const [contacts, setContacts] = useState([])
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ name: '', company: '', role: 'other', phone: '', email: '', notes: '' })
+  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], emails: [''], notes: '' })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,20 +25,27 @@ export default function Contacts() {
 
   async function save() {
     if (!form.name) return
-    const { data } = await supabase.from('estate_contacts').insert({ ...form, estate_id: currentEstate.id }).select().single()
+    const phones = form.phones.filter(p => p.trim())
+    const emails = form.emails.filter(e => e.trim())
+    const { data } = await supabase.from('estate_contacts').insert({
+      ...form,
+      phones,
+      emails,
+      estate_id: currentEstate.id
+    }).select().single()
     if (data) setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
     setAdding(false)
-    setForm({ name: '', company: '', role: 'other', phone: '', email: '', notes: '' })
+    setForm({ name: '', company: '', role: 'other', phones: [''], emails: [''], notes: '' })
   }
 
   async function seedContacts() {
     const keyContacts = [
-      { name: 'Paul Mullin', company: 'Cotts Law Firm', role: 'attorney', phone: '', email: '', notes: 'Estate planning & probate attorney' },
-      { name: 'Cotts Law Firm', company: '', role: 'attorney', phone: '', email: '', notes: 'Legal counsel for estate matters' },
-      { name: 'Guardian Funeral Home', company: '', role: 'funeral_home', phone: '', email: '', notes: 'Funeral arrangements & cremation' },
-      { name: 'PNC Bank', company: '', role: 'bank', phone: '', email: '', notes: 'Estate accounts & financial assets' },
-      { name: 'Truist', company: '', role: 'bank', phone: '', email: '', notes: 'Banking & investment accounts' },
-      { name: 'Goodleap', company: '', role: 'lender', phone: '', email: '', notes: 'HELOC & lending services' },
+      { name: 'Paul Mullin', company: 'Cotts Law Firm', role: 'attorney', phones: [], emails: [], notes: 'Estate planning & probate attorney' },
+      { name: 'Cotts Law Firm', company: '', role: 'attorney', phones: [], emails: [], notes: 'Legal counsel for estate matters' },
+      { name: 'Guardian Funeral Home', company: '', role: 'funeral_home', phones: [], emails: [], notes: 'Funeral arrangements & cremation' },
+      { name: 'PNC Bank', company: '', role: 'bank', phones: [], emails: [], notes: 'Estate accounts & financial assets' },
+      { name: 'Truist', company: '', role: 'bank', phones: [], emails: [], notes: 'Banking & investment accounts' },
+      { name: 'Goodleap', company: '', role: 'lender', phones: [], emails: [], notes: 'HELOC & lending services' },
     ]
 
     for (const contact of keyContacts) {
@@ -95,24 +102,63 @@ export default function Contacts() {
               <input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))}
                 className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
-            <div>
+            <div className="col-span-2">
               <label className="text-xs text-gray-500 block mb-1">Role</label>
               <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                 className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
                 {Object.entries(CONTACT_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Phone</label>
-              <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Email</label>
-              <input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          </div>
+
+          {/* Phones */}
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">Phone Numbers</label>
+            <div className="space-y-2">
+              {form.phones.map((phone, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input value={phone} onChange={e => {
+                    const updated = [...form.phones]
+                    updated[idx] = e.target.value
+                    setForm(p => ({ ...p, phones: updated }))
+                  }}
+                    placeholder="Phone number"
+                    className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                  {form.phones.length > 1 && (
+                    <button onClick={() => setForm(p => ({ ...p, phones: p.phones.filter((_, i) => i !== idx) }))}
+                      className="px-2 py-2 text-gray-400 hover:text-red-500">×</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={() => setForm(p => ({ ...p, phones: [...p.phones, ''] }))}
+                className="text-xs text-blue-600 hover:text-blue-700">+ Add phone</button>
             </div>
           </div>
+
+          {/* Emails */}
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">Email Addresses</label>
+            <div className="space-y-2">
+              {form.emails.map((email, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input value={email} onChange={e => {
+                    const updated = [...form.emails]
+                    updated[idx] = e.target.value
+                    setForm(p => ({ ...p, emails: updated }))
+                  }}
+                    placeholder="Email address"
+                    className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                  {form.emails.length > 1 && (
+                    <button onClick={() => setForm(p => ({ ...p, emails: p.emails.filter((_, i) => i !== idx) }))}
+                      className="px-2 py-2 text-gray-400 hover:text-red-500">×</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={() => setForm(p => ({ ...p, emails: [...p.emails, ''] }))}
+                className="text-xs text-blue-600 hover:text-blue-700">+ Add email</button>
+            </div>
+          </div>
+
           <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
             placeholder="Notes..." rows={2}
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
@@ -134,14 +180,14 @@ export default function Contacts() {
               </div>
               <div className="divide-y divide-gray-100">
                 {group.map(c => (
-                  <Link key={c.id} to={`/contacts/${c.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:bg-gray-800">
+                  <Link key={c.id} to={`/contacts/${c.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800">
                     <div className="flex-1">
                       <div className="text-sm font-medium text-gray-800 dark:text-white">{c.name}</div>
-                      {c.company && <div className="text-xs text-gray-500">{c.company}</div>}
+                      {c.company && <div className="text-xs text-gray-500 dark:text-gray-400">{c.company}</div>}
                     </div>
-                    <div className="text-right text-xs text-gray-400">
-                      {c.phone && <div>{c.phone}</div>}
-                      {c.email && <div>{c.email}</div>}
+                    <div className="text-right text-xs text-gray-400 space-y-0.5">
+                      {c.phones?.length > 0 && c.phones.map((p, i) => <div key={i}>{p}</div>)}
+                      {c.emails?.length > 0 && c.emails.map((e, i) => <div key={i}>{e}</div>)}
                     </div>
                   </Link>
                 ))}
