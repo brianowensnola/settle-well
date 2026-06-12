@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
@@ -26,9 +27,10 @@ const DESKTOP_NAV = [
 
 export default function Layout() {
   const navigate = useNavigate()
-  const { currentEstate, role } = useEstate()
+  const { currentEstate, role, estates, switchEstate } = useEstate()
   const user = useUser()
   const { isDark, setIsDark } = useDarkMode()
+  const [showEstatePicker, setShowEstatePicker] = useState(false)
 
   async function signOut() {
     await supabase.auth.signOut()
@@ -42,7 +44,34 @@ export default function Layout() {
         <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
           <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">Estate Admin</div>
           {currentEstate && (
-            <div className="text-sm font-semibold text-gray-800 dark:text-white leading-tight">{currentEstate.deceased_name}</div>
+            <div className="relative">
+              <button
+                onClick={() => setShowEstatePicker(!showEstatePicker)}
+                className="w-full text-left text-sm font-semibold text-gray-800 dark:text-white leading-tight hover:text-gray-600 dark:hover:text-gray-300 py-1"
+              >
+                {currentEstate.deceased_name} ▼
+              </button>
+              {showEstatePicker && estates.length > 1 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-10">
+                  {estates.map(estate => (
+                    <button
+                      key={estate.id}
+                      onClick={() => {
+                        switchEstate(estate)
+                        setShowEstatePicker(false)
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                        currentEstate?.id === estate.id
+                          ? 'bg-gray-900 dark:bg-gray-700 text-white'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {estate.deceased_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -101,8 +130,15 @@ export default function Layout() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-auto md:pb-0 pb-16">
-        <Outlet />
+      <main className="flex-1 min-w-0 overflow-auto md:pb-0 pb-16 flex flex-col">
+        {currentEstate && estates.length > 1 && (
+          <div className="bg-blue-600 text-white px-4 py-2 text-sm font-medium sticky top-0 z-50">
+            📋 Currently managing: <strong>{currentEstate.deceased_name}</strong> — Use sidebar to switch
+          </div>
+        )}
+        <div className="flex-1 overflow-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   )
