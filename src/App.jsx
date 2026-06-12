@@ -66,6 +66,7 @@ function AppRoutes() {
       <Route element={<RequireAuth><EstateProvider><Layout /></EstateProvider></RequireAuth>}>
         <Route path="/quick-estate" element={<QuickEstateSetup />} />
         <Route path="/all-estates" element={<AllEstates />} />
+        <Route path="/all-tasks" element={<AllTasks />} />
         <Route path="/tasks-all" element={<TaskManagement />} />
         <Route path="/intake-review" element={<IntakeReview />} />
         <Route path="/checklist" element={<EstateChecklist />} />
