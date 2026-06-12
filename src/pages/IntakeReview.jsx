@@ -41,10 +41,12 @@ const INTAKE_QUESTIONS = [
 ]
 
 export default function IntakeReview() {
-  const { currentEstate } = useEstate()
+  const { currentEstate, reload } = useEstate()
   const navigate = useNavigate()
   const [answers, setAnswers] = useState({})
+  const [editingKey, setEditingKey] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!currentEstate) return
@@ -56,15 +58,23 @@ export default function IntakeReview() {
     setLoading(false)
   }
 
+  async function updateAnswer(key, value) {
+    setSaving(true)
+    const updated = { ...answers, [key]: value }
+    await supabase.from('estates').update({
+      intake_answers: updated,
+      updated_at: new Date().toISOString()
+    }).eq('id', currentEstate.id)
+    setAnswers(updated)
+    setEditingKey(null)
+    await reload()
+    setSaving(false)
+  }
+
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
-  const formatAnswer = (key, value) => {
-    if (value === 'yes') return '✓ Yes'
-    if (value === 'no') return '✗ No'
-    if (value === null || value === undefined) return 'Not answered'
-    return String(value)
-  }
+  const question = editingKey ? INTAKE_QUESTIONS.find(q => q.key === editingKey) : null
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -74,40 +84,99 @@ export default function IntakeReview() {
           <p className="text-gray-600 dark:text-gray-400 mt-1">{currentEstate.deceased_name}</p>
         </div>
         <button
-          onClick={() => navigate('/settings')}
+          onClick={() => navigate('/new-estate')}
           className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700"
         >
-          Re-take Intake
+          Full Re-take
         </button>
       </div>
 
-      <div className="space-y-3">
-        {INTAKE_QUESTIONS.map(({ q, key }) => (
-          <div key={key} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{q}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{key}</p>
-              </div>
-              <div className="text-right">
-                <p className={`text-sm font-semibold ${
-                  answers[key] === 'yes' ? 'text-green-600 dark:text-green-400' :
-                  answers[key] === 'no' ? 'text-red-600 dark:text-red-400' :
-                  'text-gray-500 dark:text-gray-400'
-                }`}>
-                  {formatAnswer(key, answers[key])}
-                </p>
+      {editingKey && question ? (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{question.q}</h2>
+
+          {question.type === 'yes-no' && (
+            <div className="space-y-2">
+              {['yes', 'no'].map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => updateAnswer(editingKey, opt)}
+                  disabled={saving}
+                  className={`w-full px-4 py-2 rounded-lg text-sm font-medium ${
+                    answers[editingKey] === opt
+                      ? opt === 'yes' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
+                  } disabled:opacity-50`}
+                >
+                  {opt === 'yes' ? '✓ Yes' : '✗ No'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {(question.type === 'text' || question.type === 'date') && (
+            <div className="space-y-2">
+              <input
+                type={question.type}
+                value={answers[editingKey] ?? ''}
+                onChange={e => setAnswers(prev => ({ ...prev, [editingKey]: e.target.value }))}
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => updateAnswer(editingKey, answers[editingKey])}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700 disabled:opacity-50"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingKey(null)}
+                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {INTAKE_QUESTIONS.map(({ q, key }) => (
+            <button
+              key={key}
+              onClick={() => setEditingKey(key)}
+              className="w-full text-left bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 hover:border-gray-300 dark:hover:border-gray-700 transition-colors"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{q}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{key}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-sm font-semibold ${
+                    answers[key] === 'yes' ? 'text-green-600 dark:text-green-400' :
+                    answers[key] === 'no' ? 'text-red-600 dark:text-red-400' :
+                    'text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {answers[key] === 'yes' ? '✓ Yes' : answers[key] === 'no' ? '✗ No' : answers[key] || 'Not answered'}
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Click to edit</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-        <p className="text-sm text-blue-900 dark:text-blue-300">
-          💡 <strong>Tip:</strong> Circumstances change. If something you marked "no" becomes relevant, you can re-take the full intake anytime to update your answers and generate new tasks.
-        </p>
-      </div>
+      {!editingKey && (
+        <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p className="text-sm text-blue-900 dark:text-blue-300">
+            💡 Click any answer to edit it. Use "Full Re-take" to start over with a fresh intake form.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
