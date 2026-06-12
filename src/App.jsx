@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useUser } from './lib/AuthContext'
-import { EstateProvider } from './lib/EstateContext'
+import { EstateProvider, useEstate } from './lib/EstateContext'
 import { DarkModeProvider } from './lib/DarkModeContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
