@@ -8,7 +8,7 @@ import DocumentExtractionUpload from '../components/DocumentExtractionUpload'
 export default function QuickEstateSetup() {
   const navigate = useNavigate()
   const user = useUser()
-  const { currentEstate, reload } = useEstate()
+  const { reload } = useEstate()
   const [form, setForm] = useState({
     deceased_name: '',
     deceased_dod: '',
@@ -18,17 +18,6 @@ export default function QuickEstateSetup() {
   const [showExtraction, setShowExtraction] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  // Pre-fill form if editing existing estate
-  useEffect(() => {
-    if (currentEstate) {
-      setForm({
-        deceased_name: currentEstate.deceased_name || '',
-        deceased_dod: currentEstate.deceased_dod || '',
-        state_of_residence: currentEstate.state_of_residence || '',
-      })
-    }
-  }, [currentEstate])
 
   async function createEstate() {
     if (!form.deceased_name || !form.deceased_dod || !form.state_of_residence) {
@@ -40,75 +29,59 @@ export default function QuickEstateSetup() {
     setError('')
 
     try {
-      let estateId
-      if (currentEstate) {
-        // Update existing estate
-        const { error: updateError } = await supabase
-          .from('estates')
-          .update({
-            deceased_name: form.deceased_name,
-            deceased_dod: form.deceased_dod,
-            state_of_residence: form.state_of_residence,
-          })
-          .eq('id', currentEstate.id)
+      // Always create a new estate (QuickEstateSetup is for creation only)
+      const { data: estate, error: estateError } = await supabase
+        .from('estates')
+        .insert({
+          name: `${form.deceased_name} Estate`,
+          deceased_name: form.deceased_name,
+          deceased_dod: form.deceased_dod,
+          state_of_residence: form.state_of_residence,
+          administrator_name: user?.email?.split('@')[0] || 'Administrator',
+          administrator_email: user?.email,
+          status: 'active',
+          intake_complete: false,
+          intake_answers: {},
+        })
+        .select()
+        .single()
 
-        if (updateError) throw updateError
-        estateId = currentEstate.id
-      } else {
-        // Create new estate
-        const { data: estate, error: estateError } = await supabase
-          .from('estates')
-          .insert({
-            name: `${form.deceased_name} Estate`,
-            deceased_name: form.deceased_name,
-            deceased_dod: form.deceased_dod,
-            state_of_residence: form.state_of_residence,
-            administrator_name: user?.email?.split('@')[0] || 'Administrator',
-            administrator_email: user?.email,
-            status: 'active',
-            intake_complete: false,
-            intake_answers: {},
-          })
-          .select()
-          .single()
+      if (estateError) throw estateError
+      const estateId = estate.id
 
-        if (estateError) throw estateError
-        estateId = estate.id
+      // Link user as administrator
+      const { error: linkError } = await supabase
+        .from('estate_users')
+        .insert({
+          estate_id: estate.id,
+          auth_user_id: user.id,
+          name: user?.email?.split('@')[0] || 'Administrator',
+          email: user?.email,
+          role: 'administrator',
+        })
 
-        // Link user as administrator
-        const { error: linkError } = await supabase
-          .from('estate_users')
-          .insert({
-            estate_id: estate.id,
-            auth_user_id: user.id,
-            name: user?.email?.split('@')[0] || 'Administrator',
-            email: user?.email,
-            role: 'administrator',
-          })
+      if (linkError) throw linkError
 
-        if (linkError) throw linkError
+      // Create default sections
+      const sections = [
+        { label: 'Phase 1 — Immediate', color: 'red', sort_order: 1 },
+        { label: 'Phase 2 — First Week', color: 'orange', sort_order: 2 },
+        { label: 'Phase 3 — Government Notifications', color: 'orange', sort_order: 3 },
+        { label: 'Phase 4 — Financial Accounts', color: 'blue', sort_order: 4 },
+        { label: 'Phase 5 — Insurance', color: 'gray', sort_order: 5 },
+        { label: 'Phase 6 — Real Estate & Property', color: 'amber', sort_order: 6 },
+        { label: 'Phase 7 — Debts & Liabilities', color: 'red', sort_order: 7 },
+        { label: 'Phase 8 — Business Interests', color: 'gray', sort_order: 8 },
+        { label: 'Phase 9 — Digital Assets', color: 'blue', sort_order: 9 },
+        { label: 'Phase 10 — Taxes', color: 'gray', sort_order: 10 },
+        { label: 'Phase 11 — Commonly Missed Items', color: 'gray', sort_order: 11 },
+      ]
 
-        // Create default sections
-        const sections = [
-          { label: 'Phase 1 — Immediate', color: 'red', sort_order: 1 },
-          { label: 'Phase 2 — First Week', color: 'orange', sort_order: 2 },
-          { label: 'Phase 3 — Government Notifications', color: 'orange', sort_order: 3 },
-          { label: 'Phase 4 — Financial Accounts', color: 'blue', sort_order: 4 },
-          { label: 'Phase 5 — Insurance', color: 'gray', sort_order: 5 },
-          { label: 'Phase 6 — Real Estate & Property', color: 'amber', sort_order: 6 },
-          { label: 'Phase 7 — Debts & Liabilities', color: 'red', sort_order: 7 },
-          { label: 'Phase 8 — Business Interests', color: 'gray', sort_order: 8 },
-          { label: 'Phase 9 — Digital Assets', color: 'blue', sort_order: 9 },
-          { label: 'Phase 10 — Taxes', color: 'gray', sort_order: 10 },
-          { label: 'Phase 11 — Commonly Missed Items', color: 'gray', sort_order: 11 },
-        ]
-
-        for (const section of sections) {
-          await supabase.from('estate_sections').insert({
-            estate_id: estate.id,
-            ...section,
-          })
-        }
+      for (const section of sections) {
+        await supabase.from('estate_sections').insert({
+          estate_id: estate.id,
+          ...section,
+        })
       }
 
       await reload()
