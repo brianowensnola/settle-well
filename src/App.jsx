@@ -8,6 +8,8 @@ import Invite from './pages/Invite'
 import NewEstate from './pages/NewEstate'
 import AllEstates from './pages/AllEstates'
 import AllTasks from './pages/AllTasks'
+import IntakeReview from './pages/IntakeReview'
+import EstateChecklist from './pages/EstateChecklist'
 import Dashboard from './pages/Dashboard'
 import Tasks from './pages/Tasks'
 import TaskDetail from './pages/TaskDetail'
@@ -49,6 +51,8 @@ function AppRoutes() {
       <Route element={<RequireAuth><EstateProvider><Layout /></EstateProvider></RequireAuth>}>
         <Route path="/all-estates" element={<AllEstates />} />
         <Route path="/all-tasks" element={<AllTasks />} />
+        <Route path="/intake-review" element={<IntakeReview />} />
+        <Route path="/checklist" element={<EstateChecklist />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/tasks/:id" element={<TaskDetail />} />
