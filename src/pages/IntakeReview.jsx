@@ -84,7 +84,15 @@ export default function IntakeReview() {
           <p className="text-gray-600 dark:text-gray-400 mt-1">{currentEstate.deceased_name}</p>
         </div>
         <button
-          onClick={() => navigate('/new-estate')}
+          onClick={async () => {
+            // Clear intake answers
+            await supabase
+              .from('estates')
+              .update({ intake_answers: {} })
+              .eq('id', currentEstate.id)
+            // Navigate to intake form
+            navigate('/quick-estate')
+          }}
           className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700"
         >
           Full Re-take
