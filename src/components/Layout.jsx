@@ -14,6 +14,7 @@ const MOBILE_NAV = [
 ]
 
 const DESKTOP_NAV = [
+  { to: '/all-estates',  label: 'All Estates', multiOnly: true },
   { to: '/dashboard',   label: 'Dashboard' },
   { to: '/tasks',       label: 'Tasks' },
   { to: '/finances',    label: 'Finances' },
@@ -76,21 +77,24 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 py-3 space-y-0.5 px-2">
-          {DESKTOP_NAV.map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-                }`
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
+          {DESKTOP_NAV.map(({ to, label, multiOnly }) => {
+            if (multiOnly && estates.length <= 1) return null
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                  }`
+                }
+              >
+                {label}
+              </NavLink>
+            )
+          })}
         </nav>
 
         <div className="p-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
