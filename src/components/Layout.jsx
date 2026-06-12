@@ -19,6 +19,7 @@ const DESKTOP_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
   { to: '/intake-review', label: 'Intake Review' },
   { to: '/checklist',    label: 'Estate Checklist' },
+  { to: '/send-to-attorney', label: 'Send to Attorney' },
   { to: '/tasks',       label: 'Tasks' },
   { to: '/finances',    label: 'Finances' },
   { to: '/documents',   label: 'Documents' },
