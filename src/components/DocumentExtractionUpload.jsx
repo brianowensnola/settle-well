@@ -35,7 +35,9 @@ export default function DocumentExtractionUpload({ estateId, onExtractionComplet
 
       // Upload each file to storage
       for (const file of files) {
-        const fileName = `${Date.now()}-${file.name}`
+        // Sanitize filename for storage (remove special chars)
+        const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const fileName = `${Date.now()}-${sanitized}`
         const filePath = `estate-${estateId}/${fileName}`
 
         const { error: uploadError } = await supabase.storage
