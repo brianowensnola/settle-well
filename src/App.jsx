@@ -27,6 +27,7 @@ import DailyNotes from './pages/DailyNotes'
 import MailIntake from './pages/MailIntake'
 import Credentials from './pages/Credentials'
 import Settings from './pages/Settings'
+import ConfirmEmail from './pages/ConfirmEmail'
 
 function RequireAuth({ children }) {
   const user = useUser()
@@ -56,6 +57,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/auth/confirm" element={<ConfirmEmail />} />
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/invite" element={user ? <Navigate to="/dashboard" replace /> : <Invite />} />
       <Route path="/new-estate" element={user ? <NewEstate /> : <Navigate to="/login" replace />} />
