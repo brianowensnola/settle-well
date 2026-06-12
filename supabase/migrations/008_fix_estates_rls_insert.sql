@@ -1,18 +1,16 @@
--- Allow authenticated users to insert new estates (they will be linked as admin in estate_users)
-drop policy if exists "Users can create estates" on estates;
-
-create policy "Users can create estates"
+-- Allow authenticated users to INSERT new estates
+-- (they will be linked as admin in estate_users immediately after via the app)
+create policy "users_create_estates"
   on estates for insert
   with check (auth.role() = 'authenticated');
 
--- Also allow users to view estates they own
-drop policy if exists "Users can view their estates" on estates;
+-- Allow authenticated users to UPDATE their own estates (as admins)
+create policy "estate_admin_update"
+  on estates for update
+  using (get_estate_role(id) = 'administrator'::text)
+  with check (get_estate_role(id) = 'administrator'::text);
 
-create policy "Users can view their estates"
-  on estates for select
-  using (
-    id in (
-      select estate_id from estate_users
-      where auth_user_id = auth.uid()
-    )
-  );
+-- Allow authenticated users to DELETE their own estates (as admins)
+create policy "estate_admin_delete"
+  on estates for delete
+  using (get_estate_role(id) = 'administrator'::text);
