@@ -88,34 +88,34 @@ export default function Contacts() {
             <div>
               <label className="text-xs text-gray-500 block mb-1">Name *</label>
               <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Company</label>
               <input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Role</label>
               <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
                 {Object.entries(CONTACT_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Phone</label>
               <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Email</label>
               <input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
           </div>
           <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
             placeholder="Notes..." rows={2}
-            className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
           <div className="flex gap-2">
             <button onClick={save} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">Save</button>
             <button onClick={() => setAdding(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>

@@ -76,12 +76,12 @@ export default function Documents() {
             <div>
               <label className="text-xs text-gray-500 block mb-1">Document name</label>
               <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Type</label>
               <select value={form.doc_type} onChange={e => setForm(p => ({ ...p, doc_type: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none">
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
                 {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
@@ -100,12 +100,12 @@ export default function Documents() {
             <div>
               <label className="text-xs text-gray-500 block mb-1">Requested from</label>
               <input value={form.requested_from} onChange={e => setForm(p => ({ ...p, requested_from: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
           )}
           <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
             placeholder="Notes..." rows={2}
-            className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
           <div className="flex gap-2">
             <button onClick={addDoc} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">Save</button>
             <button onClick={() => setAdding(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>

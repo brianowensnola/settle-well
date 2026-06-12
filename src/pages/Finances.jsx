@@ -145,7 +145,7 @@ export default function Finances() {
                               value={editData.notes ?? ''}
                               onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
                               rows={3}
-                              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+                              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
                               placeholder="Notes..."
                             />
                             <div className="flex gap-2">

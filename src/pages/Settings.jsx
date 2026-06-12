@@ -100,7 +100,7 @@ export default function Settings() {
         <div>
           <label className="text-xs text-gray-500 block mb-1">Status</label>
           <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
-            className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none">
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
             <option value="active">Active</option>
             <option value="closed">Closed</option>
           </select>

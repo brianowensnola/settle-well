@@ -130,7 +130,7 @@ export default function Credentials() {
                 value={form.site}
                 onChange={e => setForm(p => ({ ...p, site: e.target.value }))}
                 placeholder="e.g., Gmail, Wells Fargo, PayPal"
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
               />
             </div>
             <div>
@@ -138,7 +138,7 @@ export default function Credentials() {
               <select
                 value={form.account_type}
                 onChange={e => setForm(p => ({ ...p, account_type: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
               >
                 {Object.entries(ACCOUNT_TYPES).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -154,7 +154,7 @@ export default function Credentials() {
                 value={form.username}
                 onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
                 placeholder="username or email"
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
               />
             </div>
             <div>
@@ -164,7 +164,7 @@ export default function Credentials() {
                 value={form.password}
                 onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
                 placeholder="password"
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
               />
             </div>
           </div>
@@ -175,7 +175,7 @@ export default function Credentials() {
               value={form.category}
               onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
               placeholder="e.g., Deceased's Accounts, Business"
-              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
             />
           </div>
 
@@ -186,7 +186,7 @@ export default function Credentials() {
               onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
               placeholder="Account number, recovery email, etc."
               rows={2}
-              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
             />
           </div>
 
