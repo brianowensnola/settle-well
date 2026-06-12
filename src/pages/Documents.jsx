@@ -8,6 +8,7 @@ export default function Documents() {
   const [docs, setDocs] = useState([])
   const [tab, setTab] = useState('have')
   const [adding, setAdding] = useState(false)
+  const [addingRequested, setAddingRequested] = useState(false)
   const [form, setForm] = useState({ name: '', doc_type: 'legal', have: false, requested: false, requested_from: '', notes: '' })
   const [uploading, setUploading] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -52,7 +53,8 @@ export default function Documents() {
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
   const haveDocs = docs.filter(d => d.have)
-  const needDocs = docs.filter(d => !d.have)
+  const needDocs = docs.filter(d => !d.have && !d.requested)
+  const requestedDocs = docs.filter(d => d.requested)
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -61,11 +63,15 @@ export default function Documents() {
         <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add document</button>
       </div>
 
-      <div className="flex gap-2 mb-5">
-        {['have', 'need'].map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === t ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'}`}>
-            {t === 'have' ? `Have (${haveDocs.length})` : `Need (${needDocs.length})`}
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {[
+          { key: 'have', label: `Have (${haveDocs.length})` },
+          { key: 'requested', label: `Requested by Attorney (${requestedDocs.length})` },
+          { key: 'need', label: `Need (${needDocs.length})` },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === t.key ? 'bg-gray-900 text-white dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+            {t.label}
           </button>
         ))}
       </div>
@@ -114,11 +120,15 @@ export default function Documents() {
       )}
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-        {(tab === 'have' ? haveDocs : needDocs).length === 0 && (
-          <div className="p-6 text-sm text-gray-400">No documents in this category.</div>
-        )}
-        <div className="divide-y divide-gray-100">
-          {(tab === 'have' ? haveDocs : needDocs).map(doc => (
+        {(() => {
+          const tabDocs = tab === 'have' ? haveDocs : tab === 'requested' ? requestedDocs : needDocs
+          return (
+            <>
+              {tabDocs.length === 0 && (
+                <div className="p-6 text-sm text-gray-400">No documents in this category.</div>
+              )}
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {tabDocs.map(doc => (
             <div key={doc.id} className="px-4 py-3 flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -142,7 +152,10 @@ export default function Documents() {
               </div>
             </div>
           ))}
-        </div>
+              </div>
+            </>
+          )
+        })()}
       </div>
     </div>
   )
