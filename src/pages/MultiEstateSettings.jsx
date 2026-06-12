@@ -7,10 +7,11 @@ export default function MultiEstateSettings() {
   const navigate = useNavigate()
   const { estates, reload } = useEstate()
   const [deleting, setDeleting] = useState(null)
-  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
-  async function deleteEstate(estateId, estateName) {
-    if (deleteConfirm !== estateName) {
+  async function handleDelete(estateId, estateName) {
+    if (deleteConfirmText !== estateName) {
       alert('Please type the estate name to confirm deletion')
       return
     }
@@ -34,7 +35,8 @@ export default function MultiEstateSettings() {
 
       if (error) throw error
 
-      setDeleteConfirm(null)
+      setConfirmingDelete(null)
+      setDeleteConfirmText('')
       await reload()
       alert('Estate deleted successfully')
     } catch (err) {
@@ -81,7 +83,7 @@ export default function MultiEstateSettings() {
               </div>
 
               {/* Delete section */}
-              {deleteConfirm === estate.id ? (
+              {confirmingDelete === estate.id ? (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mt-4">
                   <p className="text-sm font-medium text-red-900 dark:text-red-300 mb-3">
                     ⚠️ This action cannot be undone. Type the estate name to confirm:
@@ -91,21 +93,25 @@ export default function MultiEstateSettings() {
                   </div>
                   <input
                     type="text"
-                    value={typeof deleteConfirm === 'string' && deleteConfirm !== estate.id ? deleteConfirm : ''}
-                    onChange={e => setDeleteConfirm(e.target.value)}
+                    value={deleteConfirmText}
+                    onChange={e => setDeleteConfirmText(e.target.value)}
                     placeholder={`Type "${estate.deceased_name}" to confirm`}
+                    autoFocus
                     className="w-full border border-red-300 dark:border-red-700 bg-white dark:bg-red-900/30 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none"
                   />
                   <div className="flex gap-2">
                     <button
-                      onClick={() => deleteEstate(estate.id, estate.deceased_name)}
-                      disabled={deleting === estate.id || deleteConfirm !== estate.deceased_name}
+                      onClick={() => handleDelete(estate.id, estate.deceased_name)}
+                      disabled={deleting === estate.id || deleteConfirmText !== estate.deceased_name}
                       className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50"
                     >
                       {deleting === estate.id ? 'Deleting...' : 'Delete Estate'}
                     </button>
                     <button
-                      onClick={() => setDeleteConfirm(null)}
+                      onClick={() => {
+                        setConfirmingDelete(null)
+                        setDeleteConfirmText('')
+                      }}
                       className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200"
                     >
                       Cancel
@@ -114,7 +120,7 @@ export default function MultiEstateSettings() {
                 </div>
               ) : (
                 <button
-                  onClick={() => setDeleteConfirm(estate.id)}
+                  onClick={() => setConfirmingDelete(estate.id)}
                   className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 font-medium"
                 >
                   Delete this estate...
