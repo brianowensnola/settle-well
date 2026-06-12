@@ -31,6 +31,22 @@ export default function Contacts() {
     setForm({ name: '', company: '', role: 'other', phone: '', email: '', notes: '' })
   }
 
+  async function seedContacts() {
+    const keyContacts = [
+      { name: 'Paul Mullin', company: 'Cotts Law Firm', role: 'attorney', phone: '', email: '', notes: 'Estate planning & probate attorney' },
+      { name: 'Cotts Law Firm', company: '', role: 'attorney', phone: '', email: '', notes: 'Legal counsel for estate matters' },
+      { name: 'Guardian Funeral Home', company: '', role: 'funeral_home', phone: '', email: '', notes: 'Funeral arrangements & cremation' },
+      { name: 'PNC Bank', company: '', role: 'bank', phone: '', email: '', notes: 'Estate accounts & financial assets' },
+      { name: 'Truist', company: '', role: 'bank', phone: '', email: '', notes: 'Banking & investment accounts' },
+      { name: 'Goodleap', company: '', role: 'lender', phone: '', email: '', notes: 'HELOC & lending services' },
+    ]
+
+    for (const contact of keyContacts) {
+      await supabase.from('estate_contacts').insert({ ...contact, estate_id: currentEstate.id })
+    }
+    await load()
+  }
+
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
   const q = search.toLowerCase()
@@ -49,7 +65,14 @@ export default function Contacts() {
     <div className="p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-xl font-semibold text-gray-900">Contacts</h1>
-        <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add contact</button>
+        <div className="flex gap-2">
+          {contacts.length === 0 && (
+            <button onClick={seedContacts} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+              Seed Key Contacts
+            </button>
+          )}
+          <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add contact</button>
+        </div>
       </div>
 
       <input
