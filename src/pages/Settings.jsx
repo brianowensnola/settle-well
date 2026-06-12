@@ -34,7 +34,12 @@ export default function Settings() {
 
   async function save(e) {
     e.preventDefault()
-    await supabase.from('estates').update({ ...form, updated_at: new Date().toISOString() }).eq('id', currentEstate.id)
+    const { error } = await supabase.from('estates').update({ ...form, updated_at: new Date().toISOString() }).eq('id', currentEstate.id)
+    if (error) {
+      alert(`Error saving: ${error.message}`)
+      console.error('Save error:', error)
+      return
+    }
     setSaved(true)
     reload()
     setTimeout(() => setSaved(false), 3000)
