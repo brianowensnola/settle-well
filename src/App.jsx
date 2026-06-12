@@ -10,6 +10,7 @@ import AllEstates from './pages/AllEstates'
 import AllTasks from './pages/AllTasks'
 import IntakeReview from './pages/IntakeReview'
 import EstateChecklist from './pages/EstateChecklist'
+import QuickEstateSetup from './pages/QuickEstateSetup'
 import Dashboard from './pages/Dashboard'
 import Tasks from './pages/Tasks'
 import TaskDetail from './pages/TaskDetail'
@@ -46,6 +47,7 @@ function AppRoutes() {
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/invite" element={user ? <Navigate to="/dashboard" replace /> : <Invite />} />
       <Route path="/new-estate" element={user ? <NewEstate /> : <Navigate to="/login" replace />} />
+      <Route path="/quick-estate" element={user ? <QuickEstateSetup /> : <Navigate to="/login" replace />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/all-estates" element={user ? <AllEstates /> : <Navigate to="/login" replace />} />
       <Route element={<RequireAuth><EstateProvider><Layout /></EstateProvider></RequireAuth>}>

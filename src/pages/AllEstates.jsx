@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
@@ -15,6 +15,7 @@ function fmt(n) {
 }
 
 export default function AllEstates() {
+  const navigate = useNavigate()
   const { estates, switchEstate } = useEstate()
   const [estateStats, setEstateStats] = useState({})
   const [loading, setLoading] = useState(true)
@@ -64,9 +65,17 @@ export default function AllEstates() {
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto w-full">
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white mb-2">All Estates Overview</h1>
-        <p className="text-gray-600 dark:text-gray-400">Managing {estates.length} estate{estates.length !== 1 ? 's' : ''} simultaneously</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white mb-2">All Estates Overview</h1>
+          <p className="text-gray-600 dark:text-gray-400">Managing {estates.length} estate{estates.length !== 1 ? 's' : ''} simultaneously</p>
+        </div>
+        <button
+          onClick={() => navigate('/quick-estate')}
+          className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700 whitespace-nowrap"
+        >
+          + Add Estate
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
