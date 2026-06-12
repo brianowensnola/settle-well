@@ -4,14 +4,7 @@ import { useEstate } from '../lib/EstateContext'
 
 export default function Settings() {
   const { currentEstate, reload } = useEstate()
-  const [form, setForm] = useState(currentEstate ? {
-    name: currentEstate.name,
-    administrator_name: currentEstate.administrator_name ?? '',
-    administrator_email: currentEstate.administrator_email ?? '',
-    administrator_phone: currentEstate.administrator_phone ?? '',
-    state_of_residence: currentEstate.state_of_residence ?? '',
-    status: currentEstate.status,
-  } : {})
+  const [form, setForm] = useState({})
   const [saved, setSaved] = useState(false)
   const [users, setUsers] = useState([])
   const [inviteEmail, setInviteEmail] = useState('')
@@ -20,6 +13,14 @@ export default function Settings() {
 
   useEffect(() => {
     if (!currentEstate) return
+    setForm({
+      name: currentEstate.name,
+      administrator_name: currentEstate.administrator_name ?? '',
+      administrator_email: currentEstate.administrator_email ?? '',
+      administrator_phone: currentEstate.administrator_phone ?? '',
+      state_of_residence: currentEstate.state_of_residence ?? '',
+      status: currentEstate.status,
+    })
     loadUsers()
   }, [currentEstate])
 
