@@ -170,10 +170,12 @@ export default function QuickEstateSetup() {
 
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
-              Date of Death *
+              Date of Death * (YYYY-MM-DD)
             </label>
             <input
-              type="date"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g., 2026-06-04"
               value={form.deceased_dod}
               onChange={e => setForm(p => ({ ...p, deceased_dod: e.target.value }))}
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
