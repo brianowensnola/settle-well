@@ -86,11 +86,14 @@ export default function MultiEstateSettings() {
                   <p className="text-sm font-medium text-red-900 dark:text-red-300 mb-3">
                     ⚠️ This action cannot be undone. Type the estate name to confirm:
                   </p>
+                  <div className="mb-3 p-3 bg-white dark:bg-red-900/20 rounded border border-red-200 dark:border-red-700">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{estate.deceased_name}</p>
+                  </div>
                   <input
                     type="text"
-                    value={deleteConfirm === estate.id ? deleteConfirm : ''}
+                    value={typeof deleteConfirm === 'string' && deleteConfirm !== estate.id ? deleteConfirm : ''}
                     onChange={e => setDeleteConfirm(e.target.value)}
-                    placeholder={estate.deceased_name}
+                    placeholder={`Type "${estate.deceased_name}" to confirm`}
                     className="w-full border border-red-300 dark:border-red-700 bg-white dark:bg-red-900/30 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none"
                   />
                   <div className="flex gap-2">
