@@ -62,9 +62,9 @@ export default function Contacts() {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-semibold text-gray-900">Contacts</h1>
+        <h1 className="text-lg md:text-xl font-semibold text-gray-900">Contacts</h1>
         <div className="flex gap-2">
           {contacts.length === 0 && (
             <button onClick={seedContacts} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">

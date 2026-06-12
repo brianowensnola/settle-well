@@ -103,7 +103,7 @@ export default function Credentials() {
   })
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 className="text-xl font-semibold text-gray-900">Credentials Vault</h1>
         <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">

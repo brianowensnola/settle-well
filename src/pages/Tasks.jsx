@@ -90,15 +90,15 @@ export default function Tasks() {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <h1 className="text-xl font-semibold text-gray-900">Tasks</h1>
+    <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-5 flex-wrap gap-3">
+        <h1 className="text-lg md:text-xl font-semibold text-gray-900">Tasks</h1>
         <div className="flex gap-2 flex-wrap">
           <input
             placeholder="Search..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 w-44"
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 flex-1 sm:w-44"
           />
           {['open', 'waiting', 'done', 'all'].map(f => (
             <button

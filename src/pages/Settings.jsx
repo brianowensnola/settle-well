@@ -80,7 +80,7 @@ export default function Settings() {
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate.</div>
 
   return (
-    <div className="p-6 max-w-xl">
+    <div className="p-4 md:p-6 max-w-xl mx-auto w-full">
       <h1 className="text-xl font-semibold text-gray-900 mb-5">Settings</h1>
 
       <form onSubmit={save} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">

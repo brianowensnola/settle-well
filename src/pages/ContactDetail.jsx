@@ -48,7 +48,7 @@ export default function ContactDetail() {
   if (!contact) return <div className="p-8 text-gray-400">Contact not found.</div>
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto w-full">
       <Link to="/contacts" className="text-sm text-gray-400 hover:text-gray-600 mb-4 block">← Back to contacts</Link>
 
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
