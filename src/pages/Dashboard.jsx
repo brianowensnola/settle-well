@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
@@ -15,6 +15,7 @@ function fmt(n) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { currentEstate } = useEstate()
   const [tasks, setTasks] = useState([])
   const [logs, setLogs] = useState([])
@@ -67,12 +68,20 @@ export default function Dashboard() {
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto w-full">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 flex-wrap">
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">{currentEstate.deceased_name}</h1>
-          <span className="text-xs sm:text-sm text-gray-400">Died {dod} · {days} days ago · {currentEstate.state_of_residence}</span>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">{currentEstate.deceased_name}</h1>
+            <span className="text-xs sm:text-sm text-gray-400">Died {dod} · {days} days ago · {currentEstate.state_of_residence}</span>
+          </div>
+          <div className="text-xs sm:text-sm text-gray-500 mt-0.5">Executor: {currentEstate.administrator_name}</div>
         </div>
-        <div className="text-xs sm:text-sm text-gray-500 mt-0.5">Executor: {currentEstate.administrator_name}</div>
+        <button
+          onClick={() => navigate('/quick-estate')}
+          className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700 dark:hover:bg-gray-600 whitespace-nowrap"
+        >
+          + Add Estate
+        </button>
       </div>
 
       {/* Progress */}
