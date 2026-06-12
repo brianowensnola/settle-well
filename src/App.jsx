@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Invite from './pages/Invite'
 import NewEstate from './pages/NewEstate'
 import AllEstates from './pages/AllEstates'
+import AllTasks from './pages/AllTasks'
 import Dashboard from './pages/Dashboard'
 import Tasks from './pages/Tasks'
 import TaskDetail from './pages/TaskDetail'
@@ -46,6 +47,8 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/all-estates" element={user ? <AllEstates /> : <Navigate to="/login" replace />} />
       <Route element={<RequireAuth><EstateProvider><Layout /></EstateProvider></RequireAuth>}>
+        <Route path="/all-estates" element={<AllEstates />} />
+        <Route path="/all-tasks" element={<AllTasks />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/tasks/:id" element={<TaskDetail />} />
