@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 
@@ -7,6 +8,7 @@ function fmt(n) {
 }
 
 export default function Transactions() {
+  const navigate = useNavigate()
   const { currentEstate } = useEstate()
   const [txns, setTxns] = useState([])
   const [adding, setAdding] = useState(false)
@@ -47,7 +49,12 @@ export default function Transactions() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Transaction Ledger</h1>
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/finances')} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+            ← Back
+          </button>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Transaction Ledger</h1>
+        </div>
         <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add transaction</button>
       </div>
 

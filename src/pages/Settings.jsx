@@ -8,6 +8,7 @@ export default function Settings() {
     name: currentEstate.name,
     administrator_name: currentEstate.administrator_name ?? '',
     administrator_email: currentEstate.administrator_email ?? '',
+    administrator_phone: currentEstate.administrator_phone ?? '',
     state_of_residence: currentEstate.state_of_residence ?? '',
     status: currentEstate.status,
   } : {})
@@ -89,6 +90,7 @@ export default function Settings() {
           ['name', 'Estate Name'],
           ['administrator_name', 'Executor Name'],
           ['administrator_email', 'Executor Email'],
+          ['administrator_phone', 'Executor Phone'],
           ['state_of_residence', 'State'],
         ].map(([k, l]) => (
           <div key={k}>
