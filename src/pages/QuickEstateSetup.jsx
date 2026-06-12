@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useUser } from '../lib/AuthContext'
 import { useEstate } from '../lib/EstateContext'
+import DocumentExtractionUpload from '../components/DocumentExtractionUpload'
 
 export default function QuickEstateSetup() {
   const navigate = useNavigate()
@@ -13,6 +14,10 @@ export default function QuickEstateSetup() {
     deceased_dod: '',
     state_of_residence: '',
   })
+  const [createdEstate, setCreatedEstate] = useState(null)
+  const [showExtraction, setShowExtraction] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   // Pre-fill form if editing existing estate
   useEffect(() => {
@@ -24,8 +29,6 @@ export default function QuickEstateSetup() {
       })
     }
   }, [currentEstate])
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
 
   async function createEstate() {
     if (!form.deceased_name || !form.deceased_dod || !form.state_of_residence) {
@@ -37,6 +40,7 @@ export default function QuickEstateSetup() {
     setError('')
 
     try {
+      let estateId
       if (currentEstate) {
         // Update existing estate
         const { error: updateError } = await supabase
@@ -49,6 +53,7 @@ export default function QuickEstateSetup() {
           .eq('id', currentEstate.id)
 
         if (updateError) throw updateError
+        estateId = currentEstate.id
       } else {
         // Create new estate
         const { data: estate, error: estateError } = await supabase
@@ -68,6 +73,7 @@ export default function QuickEstateSetup() {
           .single()
 
         if (estateError) throw estateError
+        estateId = estate.id
 
         // Link user as administrator
         const { error: linkError } = await supabase
@@ -81,32 +87,33 @@ export default function QuickEstateSetup() {
           })
 
         if (linkError) throw linkError
-      }
 
-      // Create default sections
-      const sections = [
-        { label: 'Phase 1 — Immediate', color: 'red', sort_order: 1 },
-        { label: 'Phase 2 — First Week', color: 'orange', sort_order: 2 },
-        { label: 'Phase 3 — Government Notifications', color: 'orange', sort_order: 3 },
-        { label: 'Phase 4 — Financial Accounts', color: 'blue', sort_order: 4 },
-        { label: 'Phase 5 — Insurance', color: 'gray', sort_order: 5 },
-        { label: 'Phase 6 — Real Estate & Property', color: 'amber', sort_order: 6 },
-        { label: 'Phase 7 — Debts & Liabilities', color: 'red', sort_order: 7 },
-        { label: 'Phase 8 — Business Interests', color: 'gray', sort_order: 8 },
-        { label: 'Phase 9 — Digital Assets', color: 'blue', sort_order: 9 },
-        { label: 'Phase 10 — Taxes', color: 'gray', sort_order: 10 },
-        { label: 'Phase 11 — Commonly Missed Items', color: 'gray', sort_order: 11 },
-      ]
+        // Create default sections
+        const sections = [
+          { label: 'Phase 1 — Immediate', color: 'red', sort_order: 1 },
+          { label: 'Phase 2 — First Week', color: 'orange', sort_order: 2 },
+          { label: 'Phase 3 — Government Notifications', color: 'orange', sort_order: 3 },
+          { label: 'Phase 4 — Financial Accounts', color: 'blue', sort_order: 4 },
+          { label: 'Phase 5 — Insurance', color: 'gray', sort_order: 5 },
+          { label: 'Phase 6 — Real Estate & Property', color: 'amber', sort_order: 6 },
+          { label: 'Phase 7 — Debts & Liabilities', color: 'red', sort_order: 7 },
+          { label: 'Phase 8 — Business Interests', color: 'gray', sort_order: 8 },
+          { label: 'Phase 9 — Digital Assets', color: 'blue', sort_order: 9 },
+          { label: 'Phase 10 — Taxes', color: 'gray', sort_order: 10 },
+          { label: 'Phase 11 — Commonly Missed Items', color: 'gray', sort_order: 11 },
+        ]
 
-      for (const section of sections) {
-        await supabase.from('estate_sections').insert({
-          estate_id: estate.id,
-          ...section,
-        })
+        for (const section of sections) {
+          await supabase.from('estate_sections').insert({
+            estate_id: estate.id,
+            ...section,
+          })
+        }
       }
 
       await reload()
-      navigate('/all-estates')
+      setCreatedEstate(estateId)
+      setShowExtraction(true)
     } catch (err) {
       console.error('Error creating estate:', err)
       setError(err.message || 'Error creating estate')
@@ -115,6 +122,47 @@ export default function QuickEstateSetup() {
     }
   }
 
+  // Extraction complete - redirect to intake
+  async function handleExtractionComplete(extractedAnswers) {
+    if (extractedAnswers && Object.keys(extractedAnswers).length > 0) {
+      // Save extracted answers to estate
+      await supabase
+        .from('estates')
+        .update({ intake_answers: extractedAnswers })
+        .eq('id', createdEstate)
+    }
+    navigate('/intake-review')
+  }
+
+  function handleSkipExtraction() {
+    navigate('/intake-review')
+  }
+
+  // Extraction flow
+  if (showExtraction && createdEstate) {
+    return (
+      <div className="min-h-screen p-4 bg-white dark:bg-gray-950">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-semibold text-gray-900 dark:text-white">
+              {form.deceased_name} Estate
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {form.deceased_dod} • {form.state_of_residence}
+            </p>
+          </div>
+
+          <DocumentExtractionUpload
+            estateId={createdEstate}
+            onExtractionComplete={handleExtractionComplete}
+            onSkip={handleSkipExtraction}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Initial setup form
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-white dark:bg-gray-950">
       <div className="w-full max-w-md">
@@ -187,7 +235,7 @@ export default function QuickEstateSetup() {
 
         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <p className="text-xs text-blue-900 dark:text-blue-300">
-            💡 <strong>Tip:</strong> You can fill out the full intake form later from the Intake Review page to add more details.
+            💡 <strong>Tip:</strong> Next, you'll have the option to upload documents. The AI will extract key information to speed up your intake form.
           </p>
         </div>
       </div>

@@ -74,6 +74,7 @@ export default function Layout() {
               <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
               {renderNavLink('/all-estates', 'All Estates')}
               {renderNavLink('/all-tasks', 'All Tasks')}
+              {renderNavLink('/multi-settings', 'Settings')}
             </>
           )}
 
