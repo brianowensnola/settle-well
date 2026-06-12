@@ -49,10 +49,9 @@ function AppRoutes() {
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/invite" element={user ? <Navigate to="/dashboard" replace /> : <Invite />} />
       <Route path="/new-estate" element={user ? <NewEstate /> : <Navigate to="/login" replace />} />
-      <Route path="/quick-estate" element={user ? <QuickEstateSetup /> : <Navigate to="/login" replace />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/all-estates" element={user ? <AllEstates /> : <Navigate to="/login" replace />} />
       <Route element={<RequireAuth><EstateProvider><Layout /></EstateProvider></RequireAuth>}>
+        <Route path="/quick-estate" element={<QuickEstateSetup />} />
         <Route path="/all-estates" element={<AllEstates />} />
         <Route path="/all-tasks" element={<AllTasks />} />
         <Route path="/intake-review" element={<IntakeReview />} />
