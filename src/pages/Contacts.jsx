@@ -9,7 +9,7 @@ export default function Contacts() {
   const [contacts, setContacts] = useState([])
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], emails: [''], notes: '' })
+  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], notes: '' })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,16 +26,23 @@ export default function Contacts() {
   async function save() {
     if (!form.name) return
     const phones = form.phones.filter(p => p.trim())
+    const phone_labels = form.phone_labels.slice(0, phones.length)
     const emails = form.emails.filter(e => e.trim())
+    const email_labels = form.email_labels.slice(0, emails.length)
     const { data } = await supabase.from('estate_contacts').insert({
-      ...form,
+      name: form.name,
+      company: form.company,
+      role: form.role,
       phones,
+      phone_labels,
       emails,
+      email_labels,
+      notes: form.notes,
       estate_id: currentEstate.id
     }).select().single()
     if (data) setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
     setAdding(false)
-    setForm({ name: '', company: '', role: 'other', phones: [''], emails: [''], notes: '' })
+    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], notes: '' })
   }
 
   async function seedContacts() {
@@ -117,6 +124,18 @@ export default function Contacts() {
             <div className="space-y-2">
               {form.phones.map((phone, idx) => (
                 <div key={idx} className="flex gap-2">
+                  <select value={form.phone_labels[idx] || 'Cell'} onChange={e => {
+                    const updated = [...form.phone_labels]
+                    updated[idx] = e.target.value
+                    setForm(p => ({ ...p, phone_labels: updated }))
+                  }}
+                    className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-2 text-sm focus:outline-none">
+                    <option>Cell</option>
+                    <option>Work</option>
+                    <option>Home</option>
+                    <option>Assistant</option>
+                    <option>Other</option>
+                  </select>
                   <input value={phone} onChange={e => {
                     const updated = [...form.phones]
                     updated[idx] = e.target.value
@@ -125,12 +144,12 @@ export default function Contacts() {
                     placeholder="Phone number"
                     className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
                   {form.phones.length > 1 && (
-                    <button onClick={() => setForm(p => ({ ...p, phones: p.phones.filter((_, i) => i !== idx) }))}
+                    <button onClick={() => setForm(p => ({ ...p, phones: p.phones.filter((_, i) => i !== idx), phone_labels: p.phone_labels.filter((_, i) => i !== idx) }))}
                       className="px-2 py-2 text-gray-400 hover:text-red-500">×</button>
                   )}
                 </div>
               ))}
-              <button onClick={() => setForm(p => ({ ...p, phones: [...p.phones, ''] }))}
+              <button onClick={() => setForm(p => ({ ...p, phones: [...p.phones, ''], phone_labels: [...p.phone_labels, 'Cell'] }))}
                 className="text-xs text-blue-600 hover:text-blue-700">+ Add phone</button>
             </div>
           </div>
@@ -141,6 +160,17 @@ export default function Contacts() {
             <div className="space-y-2">
               {form.emails.map((email, idx) => (
                 <div key={idx} className="flex gap-2">
+                  <select value={form.email_labels[idx] || 'Primary'} onChange={e => {
+                    const updated = [...form.email_labels]
+                    updated[idx] = e.target.value
+                    setForm(p => ({ ...p, email_labels: updated }))
+                  }}
+                    className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-2 text-sm focus:outline-none">
+                    <option>Primary</option>
+                    <option>Work</option>
+                    <option>Assistant</option>
+                    <option>Other</option>
+                  </select>
                   <input value={email} onChange={e => {
                     const updated = [...form.emails]
                     updated[idx] = e.target.value
@@ -149,12 +179,12 @@ export default function Contacts() {
                     placeholder="Email address"
                     className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
                   {form.emails.length > 1 && (
-                    <button onClick={() => setForm(p => ({ ...p, emails: p.emails.filter((_, i) => i !== idx) }))}
+                    <button onClick={() => setForm(p => ({ ...p, emails: p.emails.filter((_, i) => i !== idx), email_labels: p.email_labels.filter((_, i) => i !== idx) }))}
                       className="px-2 py-2 text-gray-400 hover:text-red-500">×</button>
                   )}
                 </div>
               ))}
-              <button onClick={() => setForm(p => ({ ...p, emails: [...p.emails, ''] }))}
+              <button onClick={() => setForm(p => ({ ...p, emails: [...p.emails, ''], email_labels: [...p.email_labels, 'Primary'] }))}
                 className="text-xs text-blue-600 hover:text-blue-700">+ Add email</button>
             </div>
           </div>
@@ -186,8 +216,8 @@ export default function Contacts() {
                       {c.company && <div className="text-xs text-gray-500 dark:text-gray-400">{c.company}</div>}
                     </div>
                     <div className="text-right text-xs text-gray-400 space-y-0.5">
-                      {c.phones?.length > 0 && c.phones.map((p, i) => <div key={i}>{p}</div>)}
-                      {c.emails?.length > 0 && c.emails.map((e, i) => <div key={i}>{e}</div>)}
+                      {c.phones?.length > 0 && c.phones.map((p, i) => <div key={i}>{c.phone_labels?.[i] || 'Phone'}: {p}</div>)}
+                      {c.emails?.length > 0 && c.emails.map((e, i) => <div key={i}>{c.email_labels?.[i] || 'Email'}: {e}</div>)}
                     </div>
                   </Link>
                 ))}

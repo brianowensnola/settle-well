@@ -75,6 +75,18 @@ export default function ContactDetail() {
               <div className="space-y-2">
                 {(editData.phones ?? []).map((phone, idx) => (
                   <div key={idx} className="flex gap-2">
+                    <select value={editData.phone_labels?.[idx] || 'Cell'} onChange={e => {
+                      const updated = [...(editData.phone_labels ?? [])]
+                      updated[idx] = e.target.value
+                      setEditData(p => ({ ...p, phone_labels: updated }))
+                    }}
+                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-2 text-sm focus:outline-none">
+                      <option>Cell</option>
+                      <option>Work</option>
+                      <option>Home</option>
+                      <option>Assistant</option>
+                      <option>Other</option>
+                    </select>
                     <input value={phone} onChange={e => {
                       const updated = [...(editData.phones ?? [])]
                       updated[idx] = e.target.value
@@ -82,12 +94,12 @@ export default function ContactDetail() {
                     }}
                       className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
                     {(editData.phones ?? []).length > 0 && (
-                      <button onClick={() => setEditData(p => ({ ...p, phones: (p.phones ?? []).filter((_, i) => i !== idx) }))}
+                      <button onClick={() => setEditData(p => ({ ...p, phones: (p.phones ?? []).filter((_, i) => i !== idx), phone_labels: (p.phone_labels ?? []).filter((_, i) => i !== idx) }))}
                         className="px-2 py-2 text-gray-400 hover:text-red-500">×</button>
                     )}
                   </div>
                 ))}
-                <button onClick={() => setEditData(p => ({ ...p, phones: [...(p.phones ?? []), ''] }))}
+                <button onClick={() => setEditData(p => ({ ...p, phones: [...(p.phones ?? []), ''], phone_labels: [...(p.phone_labels ?? []), 'Cell'] }))}
                   className="text-xs text-blue-600 hover:text-blue-700">+ Add phone</button>
               </div>
             </div>
@@ -98,6 +110,17 @@ export default function ContactDetail() {
               <div className="space-y-2">
                 {(editData.emails ?? []).map((email, idx) => (
                   <div key={idx} className="flex gap-2">
+                    <select value={editData.email_labels?.[idx] || 'Primary'} onChange={e => {
+                      const updated = [...(editData.email_labels ?? [])]
+                      updated[idx] = e.target.value
+                      setEditData(p => ({ ...p, email_labels: updated }))
+                    }}
+                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-2 text-sm focus:outline-none">
+                      <option>Primary</option>
+                      <option>Work</option>
+                      <option>Assistant</option>
+                      <option>Other</option>
+                    </select>
                     <input value={email} onChange={e => {
                       const updated = [...(editData.emails ?? [])]
                       updated[idx] = e.target.value
@@ -105,12 +128,12 @@ export default function ContactDetail() {
                     }}
                       className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
                     {(editData.emails ?? []).length > 0 && (
-                      <button onClick={() => setEditData(p => ({ ...p, emails: (p.emails ?? []).filter((_, i) => i !== idx) }))}
+                      <button onClick={() => setEditData(p => ({ ...p, emails: (p.emails ?? []).filter((_, i) => i !== idx), email_labels: (p.email_labels ?? []).filter((_, i) => i !== idx) }))}
                         className="px-2 py-2 text-gray-400 hover:text-red-500">×</button>
                     )}
                   </div>
                 ))}
-                <button onClick={() => setEditData(p => ({ ...p, emails: [...(p.emails ?? []), ''] }))}
+                <button onClick={() => setEditData(p => ({ ...p, emails: [...(p.emails ?? []), ''], email_labels: [...(p.email_labels ?? []), 'Primary'] }))}
                   className="text-xs text-blue-600 hover:text-blue-700">+ Add email</button>
               </div>
             </div>
@@ -135,8 +158,8 @@ export default function ContactDetail() {
                 className="text-xs text-blue-600 hover:underline">Edit</button>
             </div>
             <div className="space-y-1 text-sm">
-              {contact.phones?.length > 0 && contact.phones.map((p, i) => <div key={i}><span className="text-gray-400">Phone: </span>{p}</div>)}
-              {contact.emails?.length > 0 && contact.emails.map((e, i) => <div key={i}><span className="text-gray-400">Email: </span>{e}</div>)}
+              {contact.phones?.length > 0 && contact.phones.map((p, i) => <div key={i}><span className="text-gray-400">{contact.phone_labels?.[i] || 'Phone'}: </span>{p}</div>)}
+              {contact.emails?.length > 0 && contact.emails.map((e, i) => <div key={i}><span className="text-gray-400">{contact.email_labels?.[i] || 'Email'}: </span>{e}</div>)}
               {contact.notes && <div className="text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">{contact.notes}</div>}
             </div>
           </div>

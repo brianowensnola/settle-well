@@ -9,6 +9,7 @@ const MOBILE_NAV = [
   { to: '/dashboard',   label: '📊', icon: 'Dashboard' },
   { to: '/tasks',       label: '✓', icon: 'Tasks' },
   { to: '/finances',    label: '💰', icon: 'Finances' },
+  { to: '/notes',       label: '📝', icon: 'Notes' },
   { to: '/documents',   label: '📄', icon: 'Docs' },
   { to: '/contacts',    label: '👥', icon: 'Contacts' },
 ]
@@ -23,6 +24,7 @@ const DESKTOP_NAV = [
   { to: '/send-documents', label: 'Send Documents' },
   { to: '/tasks',       label: 'Tasks' },
   { to: '/finances',    label: 'Finances' },
+  { to: '/notes',       label: 'Daily Notes' },
   { to: '/documents',   label: 'Documents' },
   { to: '/documents/upload', label: 'Upload Files' },
   { to: '/credentials', label: 'Credentials' },
