@@ -3,7 +3,15 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 
-const NAV = [
+const MOBILE_NAV = [
+  { to: '/dashboard',   label: '📊', icon: 'Dashboard' },
+  { to: '/tasks',       label: '✓', icon: 'Tasks' },
+  { to: '/finances',    label: '💰', icon: 'Finances' },
+  { to: '/documents',   label: '📄', icon: 'Docs' },
+  { to: '/contacts',    label: '👥', icon: 'Contacts' },
+]
+
+const DESKTOP_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
   { to: '/tasks',       label: 'Tasks' },
   { to: '/finances',    label: 'Finances' },
@@ -26,9 +34,9 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#fafaf8' }}>
-      {/* Sidebar */}
-      <aside className="w-52 shrink-0 flex flex-col border-r border-gray-200 bg-white">
+    <div className="flex flex-col-reverse md:flex-row min-h-screen" style={{ background: '#fafaf8' }}>
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-52 shrink-0 flex-col border-r border-gray-200 bg-white">
         <div className="px-4 py-5 border-b border-gray-100">
           <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Estate Admin</div>
           {currentEstate && (
@@ -37,7 +45,7 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 py-3 space-y-0.5 px-2">
-          {NAV.map(({ to, label }) => (
+          {DESKTOP_NAV.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -65,8 +73,27 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 min-w-0 overflow-auto">
+      {/* Mobile Bottom Nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around safe-area-inset-bottom">
+        {MOBILE_NAV.map(({ to, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `flex-1 flex flex-col items-center justify-center min-h-[56px] text-xs font-medium transition-colors ${
+                isActive
+                  ? 'text-gray-900 bg-gray-50'
+                  : 'text-gray-500'
+              }`
+            }
+          >
+            <div className="text-xl mb-0.5">{label}</div>
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* Main Content */}
+      <main className="flex-1 min-w-0 overflow-auto md:pb-0 pb-16">
         <Outlet />
       </main>
     </div>
