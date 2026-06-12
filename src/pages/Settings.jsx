@@ -34,10 +34,20 @@ export default function Settings() {
 
   async function save(e) {
     e.preventDefault()
-    const { error } = await supabase.from('estates').update({ ...form, updated_at: new Date().toISOString() }).eq('id', currentEstate.id)
+    console.log('Saving estate:', { estateId: currentEstate.id, form })
+    const { data, error, count } = await supabase
+      .from('estates')
+      .update({ ...form, updated_at: new Date().toISOString() })
+      .eq('id', currentEstate.id)
+      .select()
+    console.log('Save response:', { data, error, count })
     if (error) {
       alert(`Error saving: ${error.message}`)
       console.error('Save error:', error)
+      return
+    }
+    if (!data || data.length === 0) {
+      alert('Update failed: No rows updated. Check permissions.')
       return
     }
     setSaved(true)
