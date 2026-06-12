@@ -21,6 +21,10 @@ export default function TaskDetail() {
   const [addingSub, setAddingSub] = useState(false)
   const [uploading, setUploading] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [mailItems, setMailItems] = useState([])
+  const [contacts, setContacts] = useState([])
+  const [mailActions, setMailActions] = useState({})
+  const [processingMail, setProcessingMail] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -38,6 +42,38 @@ export default function TaskDetail() {
     setSubtasks(st.data ?? [])
     setLogs(l.data ?? [])
     setLinkedDocs(d.data ?? [])
+
+    // If this is a mail review task, load mail items and contacts
+    if (t.data?.tag === 'mail-review') {
+      const { data: mail } = await supabase
+        .from('estate_documents')
+        .select('*')
+        .eq('linked_task_id', id)
+        .eq('doc_type', 'mail')
+
+      const { data: conts } = await supabase
+        .from('estate_contacts')
+        .select('*')
+        .eq('estate_id', t.data.estate_id)
+        .order('name')
+
+      setMailItems(mail ?? [])
+      setContacts(conts ?? [])
+
+      // Initialize mail actions state
+      const actions = {}
+      mail?.forEach(item => {
+        actions[item.id] = {
+          createTask: false,
+          sendToContact: false,
+          sendToContactId: '',
+          fileInDocuments: false,
+          category: 'legal',
+        }
+      })
+      setMailActions(actions)
+    }
+
     setLoading(false)
   }
 
@@ -108,6 +144,57 @@ export default function TaskDetail() {
     setUploading(null)
   }
 
+  async function processMail() {
+    setProcessingMail(true)
+
+    try {
+      for (const mailItem of mailItems) {
+        const actions = mailActions[mailItem.id]
+
+        // Create task if checked
+        if (actions.createTask) {
+          await supabase.from('estate_tasks').insert({
+            estate_id: currentEstate.id,
+            text: `Action: ${mailItem.name} from ${mailItem.requested_from || 'Unknown'}`,
+            status: 'pending',
+            notes: mailItem.notes,
+            linked_task_id: id,
+          })
+        }
+
+        // Send to contact if checked
+        if (actions.sendToContact && actions.sendToContactId) {
+          const recipient = contacts.find(c => c.id === actions.sendToContactId)
+          await supabase.from('attorney_document_sends').insert({
+            estate_id: currentEstate.id,
+            document_ids: [mailItem.id],
+            document_count: 1,
+            document_names: mailItem.name,
+            sent_at: new Date().toISOString(),
+            recipient_id: actions.sendToContactId,
+            recipient_name: recipient?.name,
+          })
+        }
+
+        // File in documents category if checked
+        if (actions.fileInDocuments) {
+          await supabase
+            .from('estate_documents')
+            .update({ notes: `Filed under: ${actions.category}` })
+            .eq('id', mailItem.id)
+        }
+      }
+
+      alert('Mail actions processed!')
+      await load()
+    } catch (err) {
+      console.error('Error processing mail:', err)
+      alert('Error processing mail: ' + err.message)
+    } finally {
+      setProcessingMail(false)
+    }
+  }
+
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
   if (!task) return <div className="p-8 text-gray-400">Task not found.</div>
 
@@ -130,6 +217,134 @@ export default function TaskDetail() {
         </h1>
         <div className="text-xs text-gray-400">Added {task.date_added}</div>
       </div>
+
+      {/* Mail Review Section */}
+      {task?.tag === 'mail-review' && mailItems.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+            Mail Items to Review ({mailItems.length})
+          </h2>
+
+          <div className="space-y-4 mb-4">
+            {mailItems.map(mail => (
+              <div key={mail.id} className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+                <div className="mb-3">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">{mail.name}</h3>
+                  {mail.requested_from && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400">From: {mail.requested_from}</p>
+                  )}
+                  {mail.notes && (
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">{mail.notes}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {/* Create Task Checkbox */}
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={mailActions[mail.id]?.createTask || false}
+                      onChange={e =>
+                        setMailActions(prev => ({
+                          ...prev,
+                          [mail.id]: { ...prev[mail.id], createTask: e.target.checked },
+                        }))
+                      }
+                    />
+                    ☐ Create Task for follow-up
+                  </label>
+
+                  {/* Send to Contact Checkbox */}
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={mailActions[mail.id]?.sendToContact || false}
+                      onChange={e =>
+                        setMailActions(prev => ({
+                          ...prev,
+                          [mail.id]: { ...prev[mail.id], sendToContact: e.target.checked },
+                        }))
+                      }
+                    />
+                    ☐ Send to Contact
+                  </label>
+
+                  {mailActions[mail.id]?.sendToContact && (
+                    <div className="ml-6">
+                      <select
+                        value={mailActions[mail.id]?.sendToContactId || ''}
+                        onChange={e =>
+                          setMailActions(prev => ({
+                            ...prev,
+                            [mail.id]: { ...prev[mail.id], sendToContactId: e.target.value },
+                          }))
+                        }
+                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded px-2 py-1 text-xs focus:outline-none"
+                      >
+                        <option value="">Choose contact...</option>
+                        {contacts.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* File in Documents Checkbox */}
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={mailActions[mail.id]?.fileInDocuments || false}
+                      onChange={e =>
+                        setMailActions(prev => ({
+                          ...prev,
+                          [mail.id]: { ...prev[mail.id], fileInDocuments: e.target.checked },
+                        }))
+                      }
+                    />
+                    ☐ File in Documents
+                  </label>
+
+                  {mailActions[mail.id]?.fileInDocuments && (
+                    <div className="ml-6">
+                      <select
+                        value={mailActions[mail.id]?.category || 'legal'}
+                        onChange={e =>
+                          setMailActions(prev => ({
+                            ...prev,
+                            [mail.id]: { ...prev[mail.id], category: e.target.value },
+                          }))
+                        }
+                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded px-2 py-1 text-xs focus:outline-none"
+                      >
+                        <option value="legal">Legal</option>
+                        <option value="financial">Finance</option>
+                        <option value="bills">Bills</option>
+                        <option value="loans">Loans</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="business">Business</option>
+                        <option value="insurance">Insurance</option>
+                        <option value="medical">Medical</option>
+                        <option value="government">Government</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={processMail}
+            disabled={processingMail}
+            className="w-full px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
+          >
+            {processingMail ? 'Processing...' : 'Process Mail Actions'}
+          </button>
+        </div>
+      )}
 
       {/* Sub-tasks */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">

@@ -65,15 +65,42 @@ export default function MailIntake() {
         .single()
 
       if (data) {
-        if (form.requires_action) {
-          await supabase.from('estate_tasks').insert({
-            estate_id: currentEstate.id,
-            text: `Follow up: ${form.name || file.name}`,
-            status: 'pending',
-            notes: `From: ${form.from_sender || 'Unknown'} - ${form.notes}`,
-            linked_document_id: data.id,
-            tag: 'mail',
-          })
+        // Auto-create daily mail review task
+        const today = new Date().toISOString().split('T')[0]
+        const taskName = `Review mail from ${new Date(today).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+
+        // Check if task already exists for today
+        const { data: existingTask } = await supabase
+          .from('estate_tasks')
+          .select('id')
+          .eq('estate_id', currentEstate.id)
+          .eq('text', taskName)
+          .eq('status', 'pending')
+          .single()
+
+        let reviewTaskId = existingTask?.id
+
+        if (!existingTask) {
+          const { data: newTask } = await supabase
+            .from('estate_tasks')
+            .insert({
+              estate_id: currentEstate.id,
+              text: taskName,
+              status: 'pending',
+              tag: 'mail-review',
+              notes: 'Review today\'s mail and decide what actions to take',
+            })
+            .select()
+            .single()
+          reviewTaskId = newTask?.id
+        }
+
+        // Link mail document to review task
+        if (reviewTaskId) {
+          await supabase
+            .from('estate_documents')
+            .update({ linked_task_id: reviewTaskId })
+            .eq('id', data.id)
         }
 
         setIntakeItems(prev => [data, ...prev])
