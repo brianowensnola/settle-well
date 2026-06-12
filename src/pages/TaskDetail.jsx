@@ -25,6 +25,9 @@ export default function TaskDetail() {
   const [contacts, setContacts] = useState([])
   const [mailActions, setMailActions] = useState({})
   const [processingMail, setProcessingMail] = useState(false)
+  const [estateUsers, setEstateUsers] = useState([])
+  const [editingAssignment, setEditingAssignment] = useState(false)
+  const [newAssignedTo, setNewAssignedTo] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -42,6 +45,14 @@ export default function TaskDetail() {
     setSubtasks(st.data ?? [])
     setLogs(l.data ?? [])
     setLinkedDocs(d.data ?? [])
+
+    // Load estate users for assignment
+    const { data: users } = await supabase
+      .from('estate_users')
+      .select('*')
+      .eq('estate_id', t.data?.estate_id)
+    setEstateUsers(users ?? [])
+    setNewAssignedTo(t.data?.assigned_to || '')
 
     // If this is a mail review task, load mail items and contacts
     if (t.data?.tag === 'mail-review') {
@@ -195,6 +206,15 @@ export default function TaskDetail() {
     }
   }
 
+  async function updateAssignment() {
+    await supabase
+      .from('estate_tasks')
+      .update({ assigned_to: newAssignedTo })
+      .eq('id', id)
+    setTask(prev => ({ ...prev, assigned_to: newAssignedTo }))
+    setEditingAssignment(false)
+  }
+
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
   if (!task) return <div className="p-8 text-gray-400">Task not found.</div>
 
@@ -203,7 +223,7 @@ export default function TaskDetail() {
       <Link to="/tasks" className="text-sm text-gray-400 hover:text-gray-600 dark:text-gray-400 mb-4 block">← Back to tasks</Link>
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
-        <div className="flex items-start gap-3 mb-3">
+        <div className="flex items-start gap-3 mb-3 flex-wrap">
           <button
             onClick={cycleStatus}
             className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[task.status]}`}
@@ -211,11 +231,38 @@ export default function TaskDetail() {
             {task.status === 'done' ? '✓ Done' : STATUS_LABELS[task.status]}
           </button>
           {task.tag && <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full">{task.tag}</span>}
+          {task.assigned_to && (
+            <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
+              👤 {task.assigned_to}
+            </span>
+          )}
         </div>
         <h1 className={`text-lg font-medium text-gray-900 dark:text-white leading-snug mb-1 ${task.status === 'done' ? 'line-through text-gray-400' : ''}`}>
           {task.text}
         </h1>
-        <div className="text-xs text-gray-400">Added {task.date_added}</div>
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span>Added {task.date_added}</span>
+          {editingAssignment ? (
+            <div className="flex gap-1">
+              <select
+                value={newAssignedTo}
+                onChange={e => setNewAssignedTo(e.target.value)}
+                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded px-2 py-1 text-xs"
+              >
+                <option value="">Unassigned</option>
+                {estateUsers.map(u => (
+                  <option key={u.id} value={u.name}>{u.name}</option>
+                ))}
+              </select>
+              <button onClick={updateAssignment} className="text-blue-600 hover:underline">Save</button>
+              <button onClick={() => setEditingAssignment(false)} className="text-gray-400 hover:text-gray-600">Cancel</button>
+            </div>
+          ) : (
+            <button onClick={() => setEditingAssignment(true)} className="text-blue-600 hover:underline">
+              {task.assigned_to ? 'Change assigned' : 'Assign task'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Mail Review Section */}

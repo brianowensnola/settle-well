@@ -14,6 +14,7 @@ import QuickEstateSetup from './pages/QuickEstateSetup'
 import SendToAttorney from './pages/SendToAttorney'
 import SendDocumentsToAttorney from './pages/SendDocumentsToAttorney'
 import Dashboard from './pages/Dashboard'
+import HeirDashboard from './pages/HeirDashboard'
 import Tasks from './pages/Tasks'
 import TaskDetail from './pages/TaskDetail'
 import Finances from './pages/Finances'
@@ -24,7 +25,6 @@ import Contacts from './pages/Contacts'
 import ContactDetail from './pages/ContactDetail'
 import DailyNotes from './pages/DailyNotes'
 import MailIntake from './pages/MailIntake'
-import HeirView from './pages/HeirView'
 import Credentials from './pages/Credentials'
 import Settings from './pages/Settings'
 
@@ -33,6 +33,14 @@ function RequireAuth({ children }) {
   if (user === undefined) return <div className="flex items-center justify-center min-h-screen text-gray-400">Loading...</div>
   if (!user) return <Navigate to="/login" replace />
   return children
+}
+
+function DashboardRouter() {
+  const { role } = useEstate()
+  if (role === 'executor' || role === 'administrator') {
+    return <Dashboard />
+  }
+  return <HeirDashboard />
 }
 
 function AppRoutes() {
@@ -60,7 +68,7 @@ function AppRoutes() {
         <Route path="/checklist" element={<EstateChecklist />} />
         <Route path="/send-to-attorney" element={<SendToAttorney />} />
         <Route path="/send-documents" element={<SendDocumentsToAttorney />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<DashboardRouter />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/tasks/:id" element={<TaskDetail />} />
         <Route path="/finances" element={<Finances />} />
@@ -72,7 +80,6 @@ function AppRoutes() {
         <Route path="/notes" element={<DailyNotes />} />
         <Route path="/mail" element={<MailIntake />} />
         <Route path="/credentials" element={<Credentials />} />
-        <Route path="/heir" element={<HeirView />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
     </Routes>

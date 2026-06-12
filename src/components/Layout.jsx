@@ -30,7 +30,6 @@ const DESKTOP_NAV = [
   { to: '/documents/upload', label: 'Upload Files' },
   { to: '/credentials', label: 'Credentials' },
   { to: '/contacts',    label: 'Contacts' },
-  { to: '/heir',        label: 'Heir View' },
   { to: '/settings',    label: 'Settings' },
 ]
 

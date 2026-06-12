@@ -157,7 +157,7 @@ export default function Settings() {
         <div className="space-y-1 text-sm">
           {users.length === 0 && <p className="text-gray-400">No users yet.</p>}
           {users.map(user => {
-            const inviteUrl = !user.auth_user_id ? `https://bryant-estate-admin.netlify.app/invite?email=${encodeURIComponent(user.email)}` : null
+            const inviteUrl = !user.auth_user_id ? `https://settle-well.netlify.app/invite?email=${encodeURIComponent(user.email)}` : null
             return (
               <div key={user.id} className="px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-800">
                 <div className="flex items-center justify-between mb-1">
