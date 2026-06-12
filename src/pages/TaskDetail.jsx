@@ -131,7 +131,7 @@ export default function TaskDetail() {
               onChange={e => setNewSubText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') saveSubtask(); if (e.key === 'Escape') setAddingSub(false) }}
               placeholder="Sub-task..."
-              className="flex-1 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
             <button onClick={saveSubtask} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add</button>
             <button onClick={() => setAddingSub(false)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
@@ -168,7 +168,7 @@ export default function TaskDetail() {
             onChange={e => setNoteText(e.target.value)}
             placeholder="Add a note..."
             rows={3}
-            className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
           />
           <button
             onClick={saveNote}

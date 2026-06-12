@@ -114,7 +114,7 @@ export default function ContactDetail() {
           onChange={e => setLogForm(p => ({ ...p, summary: e.target.value }))}
           placeholder="What was discussed or decided..."
           rows={3}
-          className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none mb-2"
+          className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none mb-2"
         />
         <button onClick={logInteraction} disabled={!logForm.summary.trim()} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40">
           Log

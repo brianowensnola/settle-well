@@ -181,7 +181,7 @@ export default function NewEstate() {
                       handleAnswer(answers[currentQuestion.key])
                     }
                   }}
-                  className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
                 />
                 <button
                   onClick={() => handleAnswer(answers[currentQuestion.key])}
@@ -200,7 +200,7 @@ export default function NewEstate() {
                   value={answers[currentQuestion.key] || ''}
                   onChange={e => setAnswers(prev => ({ ...prev, [currentQuestion.key]: e.target.value }))}
                   autoFocus
-                  className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+                  className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
                 />
                 <button
                   onClick={() => handleAnswer(answers[currentQuestion.key])}

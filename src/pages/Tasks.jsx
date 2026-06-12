@@ -158,7 +158,7 @@ export default function Tasks() {
                         onChange={e => setNewTaskText(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') saveTask(sec.id); if (e.key === 'Escape') setAddingTask(null) }}
                         placeholder="Task description..."
-                        className="flex-1 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+                        className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
                       />
                       <button onClick={() => saveTask(sec.id)} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add</button>
                       <button onClick={() => setAddingTask(null)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
@@ -240,7 +240,7 @@ function TaskRow({ task, subtasks, logs, onCycle, addingNote, noteText, onStartN
                 onChange={e => onNoteChange(e.target.value)}
                 placeholder="Add a note..."
                 rows={2}
-                className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 resize-none"
               />
               <div className="flex gap-2">
                 <button onClick={onSaveNote} className="px-3 py-1 bg-gray-900 text-white rounded-lg text-xs">Save note</button>

@@ -116,7 +116,7 @@ export default function Credentials() {
           placeholder="Search sites, usernames, categories..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
+          className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200"
         />
       </div>
 

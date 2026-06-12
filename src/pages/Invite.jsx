@@ -96,7 +96,7 @@ export default function Invite() {
               onChange={e => setPassword(e.target.value)}
               required
               autoComplete="new-password"
-              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
               placeholder="At least 6 characters"
             />
           </div>
@@ -109,7 +109,7 @@ export default function Invite() {
               onChange={e => setConfirmPassword(e.target.value)}
               required
               autoComplete="new-password"
-              className="w-full border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
             />
           </div>
 
