@@ -18,6 +18,7 @@ const DESKTOP_NAV = [
   { to: '/all-estates',  label: 'All Estates', multiOnly: true },
   { to: '/all-tasks',    label: 'All Tasks', multiOnly: true },
   { to: '/dashboard',   label: 'Dashboard' },
+  { to: '/mail',        label: 'Mail Intake' },
   { to: '/intake-review', label: 'Intake Review' },
   { to: '/checklist',    label: 'Estate Checklist' },
   { to: '/send-to-attorney', label: 'Send to Attorney' },

@@ -23,6 +23,7 @@ import DocumentUpload from './pages/DocumentUpload'
 import Contacts from './pages/Contacts'
 import ContactDetail from './pages/ContactDetail'
 import DailyNotes from './pages/DailyNotes'
+import MailIntake from './pages/MailIntake'
 import HeirView from './pages/HeirView'
 import Credentials from './pages/Credentials'
 import Settings from './pages/Settings'
@@ -69,6 +70,7 @@ function AppRoutes() {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/contacts/:id" element={<ContactDetail />} />
         <Route path="/notes" element={<DailyNotes />} />
+        <Route path="/mail" element={<MailIntake />} />
         <Route path="/credentials" element={<Credentials />} />
         <Route path="/heir" element={<HeirView />} />
         <Route path="/settings" element={<Settings />} />

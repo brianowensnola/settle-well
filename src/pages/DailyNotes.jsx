@@ -11,6 +11,7 @@ export default function DailyNotes() {
   const [newTag, setNewTag] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   useEffect(() => {
     if (!currentEstate) return
@@ -53,9 +54,12 @@ export default function DailyNotes() {
       setContent('')
       setTags([])
       setNewTag('')
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
       await loadNotes()
     } catch (err) {
       console.error('Error saving note:', err)
+      alert('Error saving note: ' + err.message)
     } finally {
       setSaving(false)
     }
@@ -79,6 +83,12 @@ export default function DailyNotes() {
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white mb-2">Daily Notes</h1>
         <p className="text-gray-600 dark:text-gray-400">Document important events, calls, and decisions</p>
       </div>
+
+      {showSuccess && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg mb-4 text-sm font-medium">
+          ✓ Note saved for {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </div>
+      )}
 
       {/* Note Entry */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6">
