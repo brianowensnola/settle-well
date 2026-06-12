@@ -1,0 +1,71 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useUser } from './lib/AuthContext'
+import { EstateProvider } from './lib/EstateContext'
+import Layout from './components/Layout'
+import Login from './pages/Login'
+import Invite from './pages/Invite'
+import NewEstate from './pages/NewEstate'
+import Dashboard from './pages/Dashboard'
+import Tasks from './pages/Tasks'
+import TaskDetail from './pages/TaskDetail'
+import Finances from './pages/Finances'
+import Transactions from './pages/Transactions'
+import Documents from './pages/Documents'
+import DocumentUpload from './pages/DocumentUpload'
+import Contacts from './pages/Contacts'
+import ContactDetail from './pages/ContactDetail'
+import HeirView from './pages/HeirView'
+import Credentials from './pages/Credentials'
+import Settings from './pages/Settings'
+
+function RequireAuth({ children }) {
+  const user = useUser()
+  if (user === undefined) return <div className="flex items-center justify-center min-h-screen text-gray-400">Loading...</div>
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
+
+function AppRoutes() {
+  const user = useUser()
+  if (user === undefined) return (
+    <div className="flex items-center justify-center min-h-screen" style={{ background: '#fafaf8' }}>
+      <div className="text-center">
+        <div className="text-xl text-gray-600 mb-3">Estate Admin</div>
+        <div className="text-sm text-gray-400">Starting up...</div>
+      </div>
+    </div>
+  )
+
+  return (
+    <Routes>
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/invite" element={user ? <Navigate to="/dashboard" replace /> : <Invite />} />
+      <Route path="/new-estate" element={user ? <NewEstate /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route element={<RequireAuth><EstateProvider><Layout /></EstateProvider></RequireAuth>}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/tasks" element={<Tasks />} />
+        <Route path="/tasks/:id" element={<TaskDetail />} />
+        <Route path="/finances" element={<Finances />} />
+        <Route path="/transactions" element={<Transactions />} />
+        <Route path="/documents" element={<Documents />} />
+        <Route path="/documents/upload" element={<DocumentUpload />} />
+        <Route path="/contacts" element={<Contacts />} />
+        <Route path="/contacts/:id" element={<ContactDetail />} />
+        <Route path="/credentials" element={<Credentials />} />
+        <Route path="/heir" element={<HeirView />} />
+        <Route path="/settings" element={<Settings />} />
+      </Route>
+    </Routes>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  )
+}

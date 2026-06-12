@@ -1,0 +1,133 @@
+import { useState } from 'react'
+import { supabase } from '../lib/supabase'
+
+export default function Login() {
+  const [mode, setMode] = useState('login') // login | signup
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    if (mode === 'login') {
+      const { error: err } = await supabase.auth.signInWithPassword({ email, password })
+      if (err) setError(err.message)
+    } else {
+      const { data, error: err } = await supabase.auth.signUp({ email, password })
+      if (err) {
+        setError(err.message)
+      } else if (data.user) {
+        // Auto-link to any estate where this email is the administrator
+        await autoLinkToEstate(data.user)
+        setMessage('Account created. You can now sign in.')
+        setMode('login')
+      }
+    }
+    setLoading(false)
+  }
+
+  async function autoLinkToEstate(user) {
+    // 1. Check if user is the administrator for any estate
+    const { data: estates } = await supabase
+      .from('estates')
+      .select('id, administrator_email')
+
+    if (estates) {
+      for (const estate of estates) {
+        if (estate.administrator_email?.toLowerCase() === user.email?.toLowerCase()) {
+          const { data: existing } = await supabase
+            .from('estate_users')
+            .select('id')
+            .eq('estate_id', estate.id)
+            .eq('auth_user_id', user.id)
+            .single()
+
+          if (!existing) {
+            await supabase.from('estate_users').insert({
+              estate_id: estate.id,
+              auth_user_id: user.id,
+              name: 'Brian Owens',
+              email: user.email,
+              role: 'administrator',
+            })
+          }
+        }
+      }
+    }
+
+    // 2. Check if user was invited as heir/observer (pending estate_users record)
+    const { data: pending } = await supabase
+      .from('estate_users')
+      .select('id, estate_id, role')
+      .eq('email', user.email)
+      .is('auth_user_id', null)
+
+    if (pending && pending.length > 0) {
+      for (const record of pending) {
+        // Link this pending record to the auth user
+        await supabase.from('estate_users').update({ auth_user_id: user.id }).eq('id', record.id)
+      }
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#fafaf8' }}>
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold text-gray-900">Estate Admin</h1>
+          <p className="text-sm text-gray-500 mt-1">{mode === 'login' ? 'Sign in to continue' : 'Create your account'}</p>
+        </div>
+        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</div>
+          )}
+          {message && (
+            <div className="text-sm text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">{message}</div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          >
+            {loading ? '...' : mode === 'login' ? 'Sign in' : 'Create account'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setError(''); setMessage('') }}
+            className="w-full text-xs text-gray-400 hover:text-gray-600 pt-1"
+          >
+            {mode === 'login' ? 'First time? Create an account' : 'Already have an account? Sign in'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
