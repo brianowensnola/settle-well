@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useUser } from './lib/AuthContext'
 import { EstateProvider, useEstate } from './lib/EstateContext'
 import { DarkModeProvider } from './lib/DarkModeContext'
+import { isFullAccess } from './lib/roles'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Invite from './pages/Invite'
@@ -38,7 +39,7 @@ function RequireAuth({ children }) {
 
 function DashboardRouter() {
   const { role } = useEstate()
-  if (role === 'executor' || role === 'administrator') {
+  if (isFullAccess(role)) {
     return <Dashboard />
   }
   return <HeirDashboard />

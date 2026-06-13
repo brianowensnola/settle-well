@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
+import { INVITE_ROLES, roleLabel } from '../lib/roles'
 
 export default function Settings() {
   const { currentEstate, reload } = useEstate()
@@ -139,13 +140,13 @@ export default function Settings() {
 
         {/* Invite form */}
         <form onSubmit={inviteUser} className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 space-y-2">
-          <label className="text-xs text-gray-500 block">Invite heir or observer by email</label>
+          <label className="text-xs text-gray-500 block">Invite someone by email</label>
           <div className="flex gap-2">
             <input
               type="email"
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
-              placeholder="heir@example.com"
+              placeholder="person@example.com"
               className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none"
             />
             <select
@@ -153,8 +154,7 @@ export default function Settings() {
               onChange={e => setInviteRole(e.target.value)}
               className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none"
             >
-              <option value="heir">Heir</option>
-              <option value="observer">Observer</option>
+              {INVITE_ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
             </select>
             <button
               type="submit"
@@ -170,13 +170,17 @@ export default function Settings() {
         <div className="space-y-1 text-sm">
           {users.length === 0 && <p className="text-gray-400">No users yet.</p>}
           {users.map(user => {
-            const inviteUrl = !user.auth_user_id ? `https://settle-well.netlify.app/invite?email=${encodeURIComponent(user.email)}` : null
+            const inviteUrl = (!user.auth_user_id && user.email) ? `https://settle-well.netlify.app/invite?email=${encodeURIComponent(user.email)}` : null
             return (
               <div key={user.id} className="px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-800">
                 <div className="flex items-center justify-between mb-1">
                   <div>
-                    <div className="font-medium text-gray-800 dark:text-white">{user.email}</div>
-                    <div className="text-xs text-gray-400">{user.role} {user.auth_user_id ? '(confirmed)' : '(pending)'}</div>
+                    <div className="font-medium text-gray-800 dark:text-white">{user.name || user.email || '(no name)'}</div>
+                    <div className="text-xs text-gray-400">
+                      {roleLabel(user.role)}
+                      {user.email ? ` · ${user.email}` : ' · no email yet'}
+                      {' '}{user.auth_user_id ? '(confirmed)' : '(pending)'}
+                    </div>
                   </div>
                   <button
                     onClick={() => removeUser(user.id)}

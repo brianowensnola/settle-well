@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
+import { isFullAccess } from '../lib/roles'
 
 const CATEGORIES = [
   { key: 'account',              label: 'Accounts' },
@@ -62,7 +63,8 @@ function amountDisplay(row) {
 }
 
 export default function Finances() {
-  const { currentEstate } = useEstate()
+  const { currentEstate, role } = useEstate()
+  const canSeePrivate = isFullAccess(role)
   const [financials, setFinancials] = useState([])
   const [expanded, setExpanded] = useState({})
   const [editing, setEditing] = useState(null)
@@ -133,7 +135,7 @@ export default function Finances() {
 
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
-  const byCategory = Object.fromEntries(CATEGORIES.map(c => [c.key, financials.filter(f => f.category === c.key)]))
+  const byCategory = Object.fromEntries(CATEGORIES.map(c => [c.key, financials.filter(f => f.category === c.key && (canSeePrivate || !f.is_private))]))
 
   const accounts = byCategory.account
   const obligations = byCategory.obligation

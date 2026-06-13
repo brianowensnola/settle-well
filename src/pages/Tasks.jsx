@@ -4,12 +4,14 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { SECTION_COLORS, STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
 import { useUser } from '../lib/AuthContext'
+import { isFullAccess } from '../lib/roles'
 
 const STATUS_CYCLE = ['pending', 'in_progress', 'waiting', 'done']
 
 export default function Tasks() {
-  const { currentEstate } = useEstate()
+  const { currentEstate, role } = useEstate()
   const user = useUser()
+  const canSeePrivate = isFullAccess(role)
   const [sections, setSections] = useState([])
   const [tasks, setTasks] = useState([])
   const [logs, setLogs] = useState([])
@@ -81,6 +83,7 @@ export default function Tasks() {
 
   function matches(t) {
     if (t.parent_task_id) return false
+    if (t.is_private && !canSeePrivate) return false
     if (filter === 'open' && t.status === 'done') return false
     if (filter === 'done' && t.status !== 'done') return false
     if (filter === 'waiting' && t.status !== 'waiting') return false
