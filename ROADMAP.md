@@ -144,10 +144,14 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   `LegalDisclaimer` component on the AI Assistant page and the note→task
   follow-up panel — i.e. wherever the app offers AI/procedural guidance), not as
   constant noise.
-- ☐ **Family-level mail intake with AI routing.** One mail/file upload entry
-  point under the Multi-Estate section (not per-estate). Each uploaded item is
-  read by AI and filed under the correct estate automatically. Removes the
-  redundancy of separate mail uploads per estate.
+- ☑ **Family-level mail intake with AI routing.** ONE inbox under the
+  Multi-Estate section (per-estate Mail Intake retired). Upload mail → AI reads
+  each item (vision) and suggests which estate it belongs to with a confidence →
+  executor confirms/overrides the estate + name → "Approve & file" creates the
+  document on that estate and links it to that estate's mail-review task. Backed
+  by a `family_mail` inbox table (RLS via `is_family_admin()`) + a synchronous
+  `mail-router` function. Files stay in a shared bucket path (reads are
+  bucket-wide) so no storage move is needed. (migration 024)
 - ☐ **De-duplicate cross-estate tasks.** Shared-household tasks (check the mail,
   the residence, shared utilities) shouldn't repeat across related estates.
 - ☐ **Full demographics for everyone with access.** Executor, heir, observer,

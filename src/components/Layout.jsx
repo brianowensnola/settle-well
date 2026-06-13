@@ -19,7 +19,6 @@ const SINGLE_ESTATE_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
   { to: '/assistant',   label: 'AI Assistant' },
   { to: '/tasks',       label: 'Tasks' },
-  { to: '/mail',        label: 'Mail Intake' },
   { to: '/intake-review', label: 'Intake Review' },
   { to: '/send-to-attorney', label: 'Send to Attorney' },
   { to: '/send-documents', label: 'Send Documents' },
@@ -76,6 +75,7 @@ export default function Layout() {
           <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
           {renderNavLink('/all-estates', 'All Estates')}
           {renderNavLink('/all-tasks', 'All Tasks')}
+          {renderNavLink('/mail', 'Mail Intake')}
           {renderNavLink('/multi-settings', 'Settings')}
 
           {/* Estates Section */}
