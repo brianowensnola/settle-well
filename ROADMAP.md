@@ -55,6 +55,10 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   "why this matters / what to check" detail. Seed conditionally off intake
   answers + extracted data so the list is exhaustive *for this estate*.
   (Requires a `detail` column on `estate_tasks`.)
+  - Content notes: Digital Assets must distinguish **memorialize/close** an
+    account from **set up a legacy contact / create a memorial page** (different
+    actions). Real Property must include granular upkeep prompts (lawn mowing,
+    each recurring bill: utilities/HOA/security/pool/pest — keep/transfer/cancel).
 - ☐ **Restore Dan's real estate data.** Real contacts (Paul Mullin + phone,
   Cotts Law, Guardian Funeral, PNC, Truist, Goodleap) and the specific
   outstanding tasks, so Monday is real work, not a demo. (Backup captured.)
