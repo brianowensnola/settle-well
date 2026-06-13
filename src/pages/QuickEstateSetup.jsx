@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { useUser } from '../lib/AuthContext'
 import { useEstate } from '../lib/EstateContext'
 import DocumentExtractionUpload from '../components/DocumentExtractionUpload'
-import { buildChecklistRows } from '../lib/checklistTemplate'
 import { buildTaskRows } from '../lib/tasksTemplate'
 
 export default function QuickEstateSetup() {
@@ -92,12 +91,6 @@ export default function QuickEstateSetup() {
       if (taskRows.length > 0) {
         await supabase.from('estate_tasks').insert(taskRows)
       }
-
-      // Seed the standard estate-administration checklist so every new
-      // estate starts with the universal to-do list already populated.
-      await supabase
-        .from('estate_checklist_items')
-        .insert(buildChecklistRows(estate.id))
 
       await reload()
       setCreatedEstate(estateId)

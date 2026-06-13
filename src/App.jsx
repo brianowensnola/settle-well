@@ -10,7 +10,6 @@ import AllEstates from './pages/AllEstates'
 import AllTasks from './pages/AllTasks'
 import MultiEstateSettings from './pages/MultiEstateSettings'
 import IntakeReview from './pages/IntakeReview'
-import EstateChecklist from './pages/EstateChecklist'
 import QuickEstateSetup from './pages/QuickEstateSetup'
 import SendToAttorney from './pages/SendToAttorney'
 import SendDocumentsToAttorney from './pages/SendDocumentsToAttorney'
@@ -69,7 +68,6 @@ function AppRoutes() {
         <Route path="/all-tasks" element={<AllTasks />} />
         <Route path="/multi-settings" element={<MultiEstateSettings />} />
         <Route path="/intake-review" element={<IntakeReview />} />
-        <Route path="/checklist" element={<EstateChecklist />} />
         <Route path="/send-to-attorney" element={<SendToAttorney />} />
         <Route path="/send-documents" element={<SendDocumentsToAttorney />} />
         <Route path="/dashboard" element={<DashboardRouter />} />

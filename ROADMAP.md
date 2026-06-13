@@ -34,6 +34,14 @@ anticipatory, educational.
   It must say so clearly at appropriate, relevant moments (not as constant noise).
 - **Human-in-the-loop.** AI suggests and flags; the executor confirms.
 
+### What "multi-estate" means (scope)
+Multi-estate = **one family unit with several related decedents** whose probates
+are intertwined (e.g. mom *and* dad passed; here Dan *and* his wife Traci). It is
+NOT a tool for managing unrelated estates (your mom + a friend down the street).
+An unrelated estate = a **separate account/login** (to be designed at the end).
+Because related estates share a household, cross-estate work (checking the mail,
+the residence, shared bills) should not be entered redundantly per estate.
+
 ---
 
 ## Backlog
@@ -72,6 +80,12 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   the relevant tasks — so assets and the work on them stay connected.
 - ☐ **"Not legal advice" disclaimers** surfaced at appropriate, relevant points
   (e.g. when generating legal/probate tasks), without being constant noise.
+- ☐ **Family-level mail intake with AI routing.** One mail/file upload entry
+  point under the Multi-Estate section (not per-estate). Each uploaded item is
+  read by AI and filed under the correct estate automatically. Removes the
+  redundancy of separate mail uploads per estate.
+- ☐ **De-duplicate cross-estate tasks.** Shared-household tasks (check the mail,
+  the residence, shared utilities) shouldn't repeat across related estates.
 
 ### P2 — Bigger / ongoing (likely past Monday)
 - ☐ **Always-on background AI agent.** Watches *all* inputs continuously,
