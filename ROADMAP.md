@@ -81,9 +81,11 @@ Status key: ☐ todo · ◐ in progress · ☑ done
 - ☐ **Note → task generation.** When the user writes a note (e.g. "meeting with
   probate attorney June 17"), AI proposes a task/subtask so an action mentioned
   in passing doesn't get lost.
-- ☐ **Running asset / inventory list tied to tasks.** A live registry of estate
-  assets (real property, vehicles, accounts, valuables, business) that links to
-  the relevant tasks — so assets and the work on them stay connected.
+- ☑ **Running asset / inventory list tied to tasks.** Assets live in the
+  Finances "Assets" section. Adding one auto-creates a linked "decide keep/
+  sell/transfer" disposition task in the matching phase; each asset shows its
+  linked tasks. Dan's 10 real assets (house, 5 vehicles, boat, UTVs, business,
+  jewelry, firearms) seeded and linked to their existing tasks.
 - ☐ **"Not legal advice" disclaimers** surfaced at appropriate, relevant points
   (e.g. when generating legal/probate tasks), without being constant noise.
 - ☐ **Family-level mail intake with AI routing.** One mail/file upload entry
