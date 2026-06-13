@@ -28,6 +28,7 @@ import DailyNotes from './pages/DailyNotes'
 import MailIntake from './pages/MailIntake'
 import Credentials from './pages/Credentials'
 import Settings from './pages/Settings'
+import Assistant from './pages/Assistant'
 import ConfirmEmail from './pages/ConfirmEmail'
 
 function RequireAuth({ children }) {
@@ -72,6 +73,7 @@ function AppRoutes() {
         <Route path="/send-to-attorney" element={<SendToAttorney />} />
         <Route path="/send-documents" element={<SendDocumentsToAttorney />} />
         <Route path="/dashboard" element={<DashboardRouter />} />
+        <Route path="/assistant" element={<Assistant />} />
         <Route path="/tasks" element={<Tasks />} />
         <Route path="/tasks/:id" element={<TaskDetail />} />
         <Route path="/finances" element={<Finances />} />

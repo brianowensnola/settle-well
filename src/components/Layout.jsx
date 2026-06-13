@@ -16,6 +16,7 @@ const MOBILE_NAV = [
 
 const SINGLE_ESTATE_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
+  { to: '/assistant',   label: 'AI Assistant' },
   { to: '/tasks',       label: 'Tasks' },
   { to: '/mail',        label: 'Mail Intake' },
   { to: '/intake-review', label: 'Intake Review' },
