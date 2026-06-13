@@ -5,6 +5,7 @@ import { useUser } from '../lib/AuthContext'
 import { useEstate } from '../lib/EstateContext'
 import DocumentExtractionUpload from '../components/DocumentExtractionUpload'
 import { buildChecklistRows } from '../lib/checklistTemplate'
+import { buildTaskRows } from '../lib/tasksTemplate'
 
 export default function QuickEstateSetup() {
   const navigate = useNavigate()
@@ -78,11 +79,18 @@ export default function QuickEstateSetup() {
         { label: 'Phase 11 — Commonly Missed Items', color: 'gray', sort_order: 11 },
       ]
 
-      for (const section of sections) {
-        await supabase.from('estate_sections').insert({
-          estate_id: estate.id,
-          ...section,
-        })
+      // Insert sections and capture their IDs so we can attach starter tasks
+      const { data: insertedSections } = await supabase
+        .from('estate_sections')
+        .insert(sections.map(s => ({ estate_id: estate.id, ...s })))
+        .select()
+
+      // Seed standard starter tasks into each phase section
+      const sectionIdByLabel = {}
+      for (const s of insertedSections ?? []) sectionIdByLabel[s.label] = s.id
+      const taskRows = buildTaskRows(estate.id, sectionIdByLabel)
+      if (taskRows.length > 0) {
+        await supabase.from('estate_tasks').insert(taskRows)
       }
 
       // Seed the standard estate-administration checklist so every new
