@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
+import { isFullAccess } from '../lib/roles'
 
 export default function DailyNotes() {
-  const { currentEstate } = useEstate()
+  const { currentEstate, role } = useEstate()
   const user = useUser()
+  const canSeePrivate = isFullAccess(role)
   const [notes, setNotes] = useState([])
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [content, setContent] = useState('')
   const [tags, setTags] = useState([])
   const [newTag, setNewTag] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false) // current editing lane (executor only)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -21,13 +24,23 @@ export default function DailyNotes() {
   }, [currentEstate])
 
   async function loadNotes() {
-    const { data } = await supabase
+    let query = supabase
       .from('estate_daily_notes')
       .select('*')
       .eq('estate_id', currentEstate.id)
       .order('note_date', { ascending: false })
+    // Non-executors only ever see shared notes
+    if (!canSeePrivate) query = query.eq('is_private', false)
+    const { data } = await query
     setNotes(data ?? [])
     setLoading(false)
+  }
+
+  // Load the content/tags for a given date + visibility lane into the editor
+  function loadLane(date, priv, list = notes) {
+    const existing = list.find(n => n.note_date === date && n.is_private === priv)
+    setContent(existing?.content || '')
+    setTags(existing?.tags || [])
   }
 
   async function saveNote() {
@@ -35,7 +48,8 @@ export default function DailyNotes() {
     setSaving(true)
 
     try {
-      const existing = notes.find(n => n.note_date === selectedDate)
+      const wantPrivate = canSeePrivate && isPrivate
+      const existing = notes.find(n => n.note_date === selectedDate && n.is_private === wantPrivate)
 
       if (existing) {
         await supabase
@@ -50,6 +64,7 @@ export default function DailyNotes() {
             note_date: selectedDate,
             content,
             tags,
+            is_private: wantPrivate,
             created_by: user?.id,
           })
       }
@@ -77,7 +92,7 @@ export default function DailyNotes() {
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
-  const todayNote = notes.find(n => n.note_date === selectedDate)
+  const todayNote = notes.find(n => n.note_date === selectedDate && n.is_private === (canSeePrivate && isPrivate))
   const dateDisplay = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
@@ -95,6 +110,25 @@ export default function DailyNotes() {
 
       {/* Note Entry */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6">
+        {/* Visibility lane (executor only) */}
+        {canSeePrivate && (
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Visibility</label>
+            <div className="flex gap-2">
+              {[{ p: false, label: 'Shared', hint: 'Everyone on the estate' }, { p: true, label: '🔒 Executor only', hint: 'Only you' }].map(opt => (
+                <button
+                  key={String(opt.p)}
+                  onClick={() => { setIsPrivate(opt.p); loadLane(selectedDate, opt.p) }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium ${isPrivate === opt.p ? (opt.p ? 'bg-gray-800 text-white' : 'bg-blue-600 text-white') : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'}`}
+                  title={opt.hint}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mb-4">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Date</label>
           <input
@@ -102,9 +136,7 @@ export default function DailyNotes() {
             value={selectedDate}
             onChange={e => {
               setSelectedDate(e.target.value)
-              const existing = notes.find(n => n.note_date === e.target.value)
-              setContent(existing?.content || '')
-              setTags(existing?.tags || [])
+              loadLane(e.target.value, canSeePrivate && isPrivate)
             }}
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
           />
@@ -170,8 +202,11 @@ export default function DailyNotes() {
             <div key={note.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
                     {new Date(note.note_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    {note.is_private && (
+                      <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-gray-800 text-white">🔒 Executor only</span>
+                    )}
                   </p>
                   {note.tags?.length > 0 && (
                     <div className="flex gap-1 mt-1 flex-wrap">
