@@ -11,6 +11,8 @@ export default function Documents() {
   const [addingRequested, setAddingRequested] = useState(false)
   const [form, setForm] = useState({ name: '', doc_type: 'legal', have: false, requested: false, requested_from: '', notes: '' })
   const [uploading, setUploading] = useState(null)
+  const [renaming, setRenaming] = useState(null)   // doc id being renamed
+  const [renameVal, setRenameVal] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -42,6 +44,19 @@ export default function Documents() {
       setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, file_path: path, have: true } : d))
     }
     setUploading(null)
+  }
+
+  function startRename(doc) {
+    setRenaming(doc.id)
+    setRenameVal(doc.name)
+  }
+
+  async function saveRename(doc) {
+    const name = renameVal.trim()
+    if (!name || name === doc.name) { setRenaming(null); return }
+    await supabase.from('estate_documents').update({ name }).eq('id', doc.id)
+    setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, name } : d))
+    setRenaming(null)
   }
 
   async function getUrl(doc) {
@@ -131,14 +146,28 @@ export default function Documents() {
                 {tabDocs.map(doc => (
             <div key={doc.id} className="px-4 py-3 flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-gray-800 dark:text-white">{doc.name}</span>
-                  <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">{DOC_TYPES[doc.doc_type] ?? doc.doc_type}</span>
-                  {doc.requested && <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Requested from {doc.requested_from}</span>}
-                </div>
+                {renaming === doc.id ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input value={renameVal} autoFocus
+                      onChange={e => setRenameVal(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveRename(doc); if (e.key === 'Escape') setRenaming(null) }}
+                      className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+                    <button onClick={() => saveRename(doc)} className="text-xs px-2 py-1 bg-gray-900 text-white rounded-lg">Save</button>
+                    <button onClick={() => setRenaming(null)} className="text-xs px-2 py-1 text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-gray-800 dark:text-white">{doc.name}</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">{DOC_TYPES[doc.doc_type] ?? doc.doc_type}</span>
+                    {doc.requested && <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Requested from {doc.requested_from}</span>}
+                  </div>
+                )}
                 {doc.notes && <div className="text-xs text-gray-500 mt-0.5">{doc.notes}</div>}
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {renaming !== doc.id && (
+                  <button onClick={() => startRename(doc)} className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:underline">Rename</button>
+                )}
                 {doc.have && doc.file_path && (
                   <button onClick={() => getUrl(doc)} className="text-xs text-blue-600 hover:underline">View</button>
                 )}
