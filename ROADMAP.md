@@ -23,12 +23,16 @@ anticipatory, educational.
 - **Forward-thinking & exhaustive.** Surface what the user doesn't know to ask.
 - **Dynamic.** Tailored to *this* estate (property tasks only if there's
   property) and it *grows itself* as new information arrives.
-- **AI safety net.** A background AI reviews everything entered — documents,
-  notes, intake answers, financials — cross-checks against general estate /
-  state-probate guidance, and generates tasks so nothing slips through. The
-  next user *will* miss something; the AI should catch it.
-- **Human-in-the-loop.** AI suggests and flags; the executor confirms. (Also the
-  legally responsible posture — the app assists, it is not legal advice.)
+- **AI safety net, running live in the background.** While the user works in the
+  app, AI reviews everything entered — documents, notes, intake answers,
+  financials — and generates tasks so nothing slips through. The next user
+  *will* miss something; the AI should catch it (e.g. a note mentioning an
+  attorney meeting should spawn a task even if the user didn't make one).
+- **State-scoped.** Intake captures where the deceased lived; probate guidance
+  and generated tasks are scoped to **that one state's** rules.
+- **Not a substitute for an attorney.** The app assists; it is not legal advice.
+  It must say so clearly at appropriate, relevant moments (not as constant noise).
+- **Human-in-the-loop.** AI suggests and flags; the executor confirms.
 
 ---
 
@@ -49,6 +53,10 @@ Status key: ☐ todo · ◐ in progress · ☑ done
 - ☐ **Documents ↔ tasks.** Uploaded documents auto-attach to the relevant task,
   and recognized completed items (death certificates, obituary) auto-note or
   check off the matching task instead of leaving it open.
+- ☐ **Verify & split data before migrating.** Dan's original record mixes items
+  that actually belong to Traci's estate (e.g. Guardian Funeral Home = Traci;
+  PNC mortgage = Dan). Create Traci's estate, sort each backup item to the
+  correct estate WITH Brian's verification, then migrate. Don't restore blindly.
 
 ### P1 — The "invaluable to the next person" differentiators
 - ☐ **AI Forensic Financial Audit.** Upload financial statements → Claude
@@ -59,6 +67,11 @@ Status key: ☐ todo · ◐ in progress · ☑ done
 - ☐ **Note → task generation.** When the user writes a note (e.g. "meeting with
   probate attorney June 17"), AI proposes a task/subtask so an action mentioned
   in passing doesn't get lost.
+- ☐ **Running asset / inventory list tied to tasks.** A live registry of estate
+  assets (real property, vehicles, accounts, valuables, business) that links to
+  the relevant tasks — so assets and the work on them stay connected.
+- ☐ **"Not legal advice" disclaimers** surfaced at appropriate, relevant points
+  (e.g. when generating legal/probate tasks), without being constant noise.
 
 ### P2 — Bigger / ongoing (likely past Monday)
 - ☐ **Always-on background AI agent.** Watches *all* inputs continuously,
@@ -69,6 +82,8 @@ Status key: ☐ todo · ◐ in progress · ☑ done
 ### Polish / minor
 - ☐ Executor Name on Dan's estate shows `brian.owens_nola` (email prefix) —
   set to "Brian Owens".
+- ☐ Restore preferred formatting / color scheme from before recent changes
+  (Brian liked the earlier look better — needs specifics on which screens).
 
 ---
 
