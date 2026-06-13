@@ -64,10 +64,13 @@ Status key: ☐ todo · ◐ in progress · ☑ done
 - ☐ **Documents ↔ tasks.** Uploaded documents auto-attach to the relevant task,
   and recognized completed items (death certificates, obituary) auto-note or
   check off the matching task instead of leaving it open.
-- ☐ **Verify & split data before migrating.** Dan's original record mixes items
-  that actually belong to Traci's estate (e.g. Guardian Funeral Home = Traci;
-  PNC mortgage = Dan). Create Traci's estate, sort each backup item to the
-  correct estate WITH Brian's verification, then migrate. Don't restore blindly.
+- ☑ **Verify & split data, then migrate.** Split confirmed by Brian and
+  restored: Dan got his contacts + 68 specific tasks (10 forensic flagged
+  private, 9 assigned to Kaynin); Traci got Guardian Funeral + her 2 items;
+  Mullin on both. Full backup saved locally (BACKUP_deleted_estate_FULL.json,
+  gitignored). Traci's finances intentionally left for the forensic test.
+- ☑ **Tasks: at-a-glance assignee + group/sort by person.** Assignee chip on
+  every task; "Group by: Phase | Person" toggle on the one Tasks page.
 
 ### P1 — The "invaluable to the next person" differentiators
 - ☐ **AI Forensic Financial Audit.** Upload financial statements → Claude
