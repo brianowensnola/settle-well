@@ -69,14 +69,10 @@ export default function Layout() {
 
         <nav className="flex-1 py-3 space-y-0.5 px-2 overflow-y-auto">
           {/* Multi-Estate Section */}
-          {estates.length > 1 && (
-            <>
-              <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
-              {renderNavLink('/all-estates', 'All Estates')}
-              {renderNavLink('/all-tasks', 'All Tasks')}
-              {renderNavLink('/multi-settings', 'Settings')}
-            </>
-          )}
+          <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
+          {renderNavLink('/all-estates', 'All Estates')}
+          {renderNavLink('/all-tasks', 'All Tasks')}
+          {renderNavLink('/multi-settings', 'Settings')}
 
           {/* Estates Section */}
           <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">Estates</div>
