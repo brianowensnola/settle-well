@@ -26,7 +26,25 @@ const STATUS_BADGE = {
   in_progress:      'bg-blue-100 text-blue-700',
   waiting:          'bg-amber-100 text-amber-700',
   likely_lapsed:    'bg-gray-100 dark:bg-gray-800 text-gray-500',
+  // asset dispositions
+  undecided:        'bg-gray-100 dark:bg-gray-800 text-gray-500',
+  keep:             'bg-blue-100 text-blue-700',
+  sell:             'bg-amber-100 text-amber-700',
+  transfer:         'bg-blue-100 text-blue-700',
+  sold:             'bg-green-100 text-green-700',
+  distributed:      'bg-green-100 text-green-700',
 }
+
+// Asset type → which task phase its auto-created disposition task lands in
+const ASSET_TYPES = [
+  { key: 'real_estate', label: 'Real estate',                 phase: 'Phase 6 — Real Estate & Property' },
+  { key: 'vehicle',     label: 'Vehicle',                     phase: 'Phase 6 — Real Estate & Property' },
+  { key: 'personal',    label: 'Personal property / valuables', phase: 'Phase 6 — Real Estate & Property' },
+  { key: 'business',    label: 'Business interest',           phase: 'Phase 8 — Business Interests' },
+  { key: 'financial',   label: 'Financial account',           phase: 'Phase 4 — Financial Accounts' },
+  { key: 'other',       label: 'Other',                       phase: 'Phase 11 — Commonly Missed Items' },
+]
+const DISPOSITIONS = ['undecided', 'keep', 'sell', 'transfer', 'sold', 'distributed']
 
 function fmt(n) {
   if (n == null) return '—'
@@ -49,6 +67,9 @@ export default function Finances() {
   const [expanded, setExpanded] = useState({})
   const [editing, setEditing] = useState(null)
   const [editData, setEditData] = useState({})
+  const [adding, setAdding] = useState(false)
+  const [assetForm, setAssetForm] = useState({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '' })
+  const [linkedTasks, setLinkedTasks] = useState({}) // financial_id -> [tasks]
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -59,7 +80,49 @@ export default function Finances() {
   async function load() {
     const { data } = await supabase.from('estate_financials').select('*').eq('estate_id', currentEstate.id).order('sort_order')
     setFinancials(data ?? [])
+    // Tasks linked to an asset, so each asset can show its related tasks
+    const { data: tdata } = await supabase
+      .from('estate_tasks')
+      .select('id, text, status, linked_financial_id')
+      .eq('estate_id', currentEstate.id)
+      .not('linked_financial_id', 'is', null)
+    const map = {}
+    for (const t of tdata ?? []) (map[t.linked_financial_id] ||= []).push(t)
+    setLinkedTasks(map)
     setLoading(false)
+  }
+
+  async function addAsset() {
+    if (!assetForm.name.trim()) return
+    const { data: asset } = await supabase.from('estate_financials').insert({
+      estate_id: currentEstate.id,
+      category: 'asset',
+      name: assetForm.name.trim(),
+      amount: assetForm.value ? Number(assetForm.value) : null,
+      status: assetForm.status,
+      notes: assetForm.notes,
+      is_private: false,
+    }).select().single()
+    if (asset) {
+      setFinancials(prev => [...prev, asset])
+      // Auto-create a linked disposition task in the matching phase
+      const typeDef = ASSET_TYPES.find(t => t.key === assetForm.type) ?? ASSET_TYPES[0]
+      const { data: sec } = await supabase.from('estate_sections')
+        .select('id').eq('estate_id', currentEstate.id).eq('label', typeDef.phase).maybeSingle()
+      if (sec) {
+        const { data: task } = await supabase.from('estate_tasks').insert({
+          estate_id: currentEstate.id,
+          section_id: sec.id,
+          text: `Decide: keep, sell, or transfer — ${asset.name}`,
+          tag: 'Asset disposition',
+          status: 'pending',
+          linked_financial_id: asset.id,
+        }).select('id, text, status, linked_financial_id').single()
+        if (task) setLinkedTasks(prev => ({ ...prev, [asset.id]: [task] }))
+      }
+    }
+    setAdding(false)
+    setAssetForm({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '' })
   }
 
   async function saveEdit() {
@@ -109,10 +172,45 @@ export default function Finances() {
           const items = byCategory[cat.key] ?? []
           return (
             <div key={cat.key} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 dark:bg-gray-800">
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{cat.label}</span>
-                <span className="text-xs text-gray-400 ml-2">({items.length})</span>
+              <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 dark:bg-gray-800 flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{cat.label}</span>
+                  <span className="text-xs text-gray-400 ml-2">({items.length})</span>
+                </div>
+                {cat.key === 'asset' && !adding && (
+                  <button onClick={() => setAdding(true)} className="text-xs px-2.5 py-1 bg-gray-900 dark:bg-gray-700 text-white rounded-lg">+ Add asset</button>
+                )}
               </div>
+
+              {cat.key === 'asset' && adding && (
+                <div className="px-4 py-3 border-b border-gray-100 bg-blue-50 dark:bg-blue-900/20 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={assetForm.name} onChange={e => setAssetForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder="Asset name (e.g. 2019 Infiniti QX60)" autoFocus
+                      className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    <select value={assetForm.type} onChange={e => setAssetForm(p => ({ ...p, type: e.target.value }))}
+                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+                      {ASSET_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+                    </select>
+                    <select value={assetForm.status} onChange={e => setAssetForm(p => ({ ...p, status: e.target.value }))}
+                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none capitalize">
+                      {DISPOSITIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <input type="number" value={assetForm.value} onChange={e => setAssetForm(p => ({ ...p, value: e.target.value }))}
+                      placeholder="Est. value (optional)"
+                      className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    <textarea value={assetForm.notes} onChange={e => setAssetForm(p => ({ ...p, notes: e.target.value }))}
+                      placeholder="Notes (optional)" rows={2}
+                      className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+                  </div>
+                  <p className="text-xs text-gray-500">A linked "Decide: keep, sell, or transfer" task will be created automatically.</p>
+                  <div className="flex gap-2">
+                    <button onClick={addAsset} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add asset</button>
+                    <button onClick={() => setAdding(false)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+                  </div>
+                </div>
+              )}
+
               {items.length === 0 && (
                 <div className="px-4 py-3 text-sm text-gray-400">None recorded.</div>
               )}
@@ -139,6 +237,16 @@ export default function Finances() {
                         {row.lender && <div><span className="text-gray-400">Lender: </span>{row.lender}</div>}
                         {row.collateral && <div><span className="text-gray-400">Collateral: </span>{row.collateral}</div>}
                         {row.notes && <div className="text-gray-600 dark:text-gray-400">{row.notes}</div>}
+                        {(linkedTasks[row.id]?.length > 0) && (
+                          <div className="pt-1">
+                            <div className="text-gray-400 text-xs mb-1">Linked tasks:</div>
+                            {linkedTasks[row.id].map(t => (
+                              <Link key={t.id} to={`/tasks/${t.id}`} className="block text-xs text-blue-600 hover:underline">
+                                • {t.text} {t.status === 'done' ? '✓' : ''}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
                         {editing === row.id ? (
                           <div className="space-y-2 pt-2">
                             <textarea
