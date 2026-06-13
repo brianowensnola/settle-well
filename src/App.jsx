@@ -16,6 +16,7 @@ import SendToAttorney from './pages/SendToAttorney'
 import SendDocumentsToAttorney from './pages/SendDocumentsToAttorney'
 import Dashboard from './pages/Dashboard'
 import HeirDashboard from './pages/HeirDashboard'
+import ObserverDashboard from './pages/ObserverDashboard'
 import Tasks from './pages/Tasks'
 import TaskDetail from './pages/TaskDetail'
 import Finances from './pages/Finances'
@@ -41,9 +42,8 @@ function RequireAuth({ children }) {
 
 function DashboardRouter() {
   const { role } = useEstate()
-  if (isFullAccess(role)) {
-    return <Dashboard />
-  }
+  if (isFullAccess(role)) return <Dashboard />
+  if (role === 'observer') return <ObserverDashboard />
   return <HeirDashboard />
 }
 

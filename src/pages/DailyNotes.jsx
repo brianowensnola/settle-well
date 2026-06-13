@@ -4,6 +4,7 @@ import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 import { isFullAccess } from '../lib/roles'
 import { suggestTasksFromNote, createTaskFromNote } from '../lib/aiAdvisor'
+import LegalDisclaimer from '../components/LegalDisclaimer'
 
 export default function DailyNotes() {
   const { currentEstate, role } = useEstate()
@@ -154,6 +155,7 @@ export default function DailyNotes() {
               </div>
             ))}
           </div>
+          <LegalDisclaimer className="mt-3" />
         </div>
       )}
 

@@ -139,8 +139,10 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   suggestion inserts straight into the right Finances category (forensic-derived
   ones are private). New "Financial entries → Finances" group in the AI
   Assistant. (migration 022)
-- ☐ **"Not legal advice" disclaimers** surfaced at appropriate, relevant points
-  (e.g. when generating legal/probate tasks), without being constant noise.
+- ☑ **"Not legal advice" disclaimers** surfaced at the relevant points (a shared
+  `LegalDisclaimer` component on the AI Assistant page and the note→task
+  follow-up panel — i.e. wherever the app offers AI/procedural guidance), not as
+  constant noise.
 - ☐ **Family-level mail intake with AI routing.** One mail/file upload entry
   point under the Multi-Estate section (not per-estate). Each uploaded item is
   read by AI and filed under the correct estate automatically. Removes the
@@ -156,8 +158,10 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   **Observer** (read-only). Private/forensic items hidden from non-Executor
   roles in Tasks + Finances. ☑ Nav + pages now gated per role (Credentials,
   Settings, Finances, AI Assistant, Intake, Send-to-attorney are Executor-only;
-  enforced in the sidebar AND on the page render). STILL TODO: a distinct
-  Observer read-only view (currently uses the Heir dashboard).
+  enforced in the sidebar AND on the page render). ☑ Distinct **Observer**
+  read-only dashboard (status, progress, court documents, activity log — no
+  beneficiary-level financial accounting); heirs keep the full Transparency
+  Report. DashboardRouter routes by role.
 
 ### P2 — Bigger / ongoing (likely past Monday)
 - ☐ **Always-on background AI agent.** Watches *all* inputs continuously,

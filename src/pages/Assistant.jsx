@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { runAdvisor, loadSuggestions, acceptSuggestion, dismissSuggestion } from '../lib/aiAdvisor'
+import LegalDisclaimer from '../components/LegalDisclaimer'
 
 const FIN_CATEGORY_LABEL = {
   account: 'Account', obligation: 'Monthly Obligation', liability: 'Liability',
@@ -167,6 +168,8 @@ export default function Assistant() {
           </div>
         </div>
       )}
+
+      <LegalDisclaimer className="mt-8 border-t border-gray-100 dark:border-gray-800 pt-4" />
     </div>
   )
 }
