@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 
@@ -42,7 +41,6 @@ const INTAKE_QUESTIONS = [
 
 export default function IntakeReview() {
   const { currentEstate, reload } = useEstate()
-  const navigate = useNavigate()
   const [answers, setAnswers] = useState({})
   const [editingKey, setEditingKey] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -85,13 +83,13 @@ export default function IntakeReview() {
         </div>
         <button
           onClick={async () => {
-            // Clear intake answers
+            if (!confirm('Clear all intake answers and start over?')) return
             await supabase
               .from('estates')
               .update({ intake_answers: {} })
               .eq('id', currentEstate.id)
-            // Navigate to intake form
-            navigate('/quick-estate')
+            setAnswers({})
+            await reload()
           }}
           className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700"
         >
