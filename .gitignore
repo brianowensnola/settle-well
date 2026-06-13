@@ -6,3 +6,6 @@ dist/
 .DS_Store
 .netlify
 Dark mode enabled
+
+# Estate data backups — sensitive (financials, forensic findings). Local only.
+BACKUP_*.json
