@@ -86,6 +86,18 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   both lanes per day); non-executors only see/write Shared. Enforced via RLS
   (`get_estate_role`), not just UI.
 
+### Done — Heir fiduciary transparency
+- ☑ **Heir Transparency Report meets fiduciary duty.** Heirs/observers get estate
+  stage (executor-set), accounting totals (accounts, received, spent, assets,
+  liabilities, monthly obligations), asset summary (name + status), court
+  documents, and activity log — via a secure RPC that never exposes account
+  numbers/notes/private rows. Heir = max transparency (dashboard + non-private
+  board + docs/contacts); Observer = dashboard only (Level 4). Based on
+  Estate_App_Heir_Access_Recommendations.pdf.
+- ☐ **Immutable activity/audit log** (the doc's "most valuable feature"): the
+  heir activity log currently shows task notes; a true append-only audit trail
+  of every action/date/user is still a future build.
+
 ### P1 — The "invaluable to the next person" differentiators
 - ☑ **AI Assistant (one engine, two modes)** — new executor-only AI Assistant page:
   - **"What am I missing?" review** — scans intake/tasks/notes/documents/assets,
