@@ -43,6 +43,7 @@ export default function IntakeReview() {
   const { currentEstate, reload } = useEstate()
   const [answers, setAnswers] = useState({})
   const [editingKey, setEditingKey] = useState(null)
+  const [retakeMode, setRetakeMode] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -56,6 +57,17 @@ export default function IntakeReview() {
     setLoading(false)
   }
 
+  // In retake mode, move to the next question; otherwise close the editor
+  function advanceFrom(key) {
+    const idx = INTAKE_QUESTIONS.findIndex(q => q.key === key)
+    if (retakeMode && idx >= 0 && idx < INTAKE_QUESTIONS.length - 1) {
+      setEditingKey(INTAKE_QUESTIONS[idx + 1].key)
+    } else {
+      setRetakeMode(false)
+      setEditingKey(null)
+    }
+  }
+
   async function updateAnswer(key, value) {
     setSaving(true)
     const updated = { ...answers, [key]: value }
@@ -64,7 +76,7 @@ export default function IntakeReview() {
       updated_at: new Date().toISOString()
     }).eq('id', currentEstate.id)
     setAnswers(updated)
-    setEditingKey(null)
+    advanceFrom(key)
     await reload()
     setSaving(false)
   }
@@ -82,14 +94,11 @@ export default function IntakeReview() {
           <p className="text-gray-600 dark:text-gray-400 mt-1">{currentEstate.deceased_name}</p>
         </div>
         <button
-          onClick={async () => {
-            if (!confirm('Clear all intake answers and start over?')) return
-            await supabase
-              .from('estates')
-              .update({ intake_answers: {} })
-              .eq('id', currentEstate.id)
-            setAnswers({})
-            await reload()
+          onClick={() => {
+            // Walk through every question with existing answers (including
+            // AI-extracted ones) pre-filled — nothing is cleared
+            setRetakeMode(true)
+            setEditingKey(INTAKE_QUESTIONS[0].key)
           }}
           className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700"
         >
@@ -99,6 +108,28 @@ export default function IntakeReview() {
 
       {editingKey && question ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          {retakeMode && (
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Question {INTAKE_QUESTIONS.findIndex(q => q.key === editingKey) + 1} of {INTAKE_QUESTIONS.length}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => advanceFrom(editingKey)}
+                  disabled={saving}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                >
+                  Keep answer & next →
+                </button>
+                <button
+                  onClick={() => { setRetakeMode(false); setEditingKey(null) }}
+                  className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+                >
+                  Exit
+                </button>
+              </div>
+            </div>
+          )}
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{question.q}</h2>
 
           {question.type === 'yes-no' && (
@@ -115,6 +146,25 @@ export default function IntakeReview() {
                   } disabled:opacity-50`}
                 >
                   {opt === 'yes' ? '✓ Yes' : '✗ No'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {question.type === 'select' && (
+            <div className="space-y-2">
+              {(question.options ?? []).map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => updateAnswer(editingKey, opt)}
+                  disabled={saving}
+                  className={`w-full px-4 py-2 rounded-lg text-sm font-medium capitalize ${
+                    answers[editingKey] === opt
+                      ? 'bg-gray-900 dark:bg-gray-700 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
+                  } disabled:opacity-50`}
+                >
+                  {opt}
                 </button>
               ))}
             </div>
@@ -138,7 +188,7 @@ export default function IntakeReview() {
                   Save
                 </button>
                 <button
-                  onClick={() => setEditingKey(null)}
+                  onClick={() => { setRetakeMode(false); setEditingKey(null) }}
                   className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-200"
                 >
                   Cancel
