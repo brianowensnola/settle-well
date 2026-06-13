@@ -133,21 +133,27 @@ export const handler = async (event) => {
         const fileName = filePath.split("/").pop();
         const fileExt = fileName.split(".").pop().toLowerCase();
 
-        // Determine media type
-        let mediaType = "application/octet-stream";
-        if (fileExt === "pdf") mediaType = "application/pdf";
-        else if (["jpg", "jpeg"].includes(fileExt)) mediaType = "image/jpeg";
-        else if (fileExt === "png") mediaType = "image/png";
-
-        documentContents.push({
-          type: "document",
-          source: {
-            type: "base64",
-            media_type: mediaType,
-            data: base64,
-          },
-          document_title: fileName,
-        });
+        // Images need "image" blocks; PDFs need "document" blocks
+        if (["jpg", "jpeg", "png"].includes(fileExt)) {
+          documentContents.push({
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: fileExt === "png" ? "image/png" : "image/jpeg",
+              data: base64,
+            },
+          });
+        } else {
+          documentContents.push({
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: base64,
+            },
+            title: fileName,
+          });
+        }
       } catch (err) {
         console.error(`Error processing file ${filePath}:`, err);
         // Continue with other files
@@ -160,7 +166,7 @@ export const handler = async (event) => {
 
     // Call Claude API for extraction
     const response = await client.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       messages: [
         {
