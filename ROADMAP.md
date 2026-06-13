@@ -49,16 +49,15 @@ the residence, shared bills) should not be entered redundantly per estate.
 Status key: ☐ todo · ◐ in progress · ☑ done
 
 ### P0 — Monday-critical (must be solid to "hit the door running")
-- ☐ **Consolidate to ONE list.** Retire the Estate Checklist; Tasks is the
-  single system. Remove the duplication that currently causes confusion.
-- ☐ **Rich, dynamic, educational task template.** Each task carries a short
-  "why this matters / what to check" detail. Seed conditionally off intake
-  answers + extracted data so the list is exhaustive *for this estate*.
-  (Requires a `detail` column on `estate_tasks`.)
-  - Content notes: Digital Assets must distinguish **memorialize/close** an
-    account from **set up a legacy contact / create a memorial page** (different
-    actions). Real Property must include granular upkeep prompts (lawn mowing,
-    each recurring bill: utilities/HOA/security/pool/pest — keep/transfer/cancel).
+- ☑ **Consolidate to ONE list.** Estate Checklist retired; Tasks is the single
+  system.
+- ☑ **Rich, educational task template.** 63 tasks across 11 phases, each with a
+  "why this matters / what to check" detail (incl. distinct social-media
+  memorialize vs legacy-contact, granular property upkeep/recurring bills, and a
+  forensic-finance review task). Seeded on new estates + back-filled into Dan &
+  Traci. NOTE: *dynamic* tailoring (show/hide by the estate's actual assets) and
+  AI-driven additions are folded into the AI work below — current set is
+  exhaustive-by-default.
 - ☐ **Restore Dan's real estate data.** Real contacts (Paul Mullin + phone,
   Cotts Law, Guardian Funeral, PNC, Truist, Goodleap) and the specific
   outstanding tasks, so Monday is real work, not a demo. (Backup captured.)
