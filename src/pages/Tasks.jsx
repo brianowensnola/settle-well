@@ -16,6 +16,7 @@ export default function Tasks() {
   const [collapsed, setCollapsed] = useState({})
   const [filter, setFilter] = useState('open')
   const [assigneeFilter, setAssigneeFilter] = useState('all')
+  const [groupBy, setGroupBy] = useState('phase') // 'phase' | 'assignee'
   const [search, setSearch] = useState('')
   const [addingNote, setAddingNote] = useState(null) // task id
   const [noteText, setNoteText] = useState('')
@@ -78,20 +79,32 @@ export default function Tasks() {
 
   const q = search.toLowerCase()
 
+  function matches(t) {
+    if (t.parent_task_id) return false
+    if (filter === 'open' && t.status === 'done') return false
+    if (filter === 'done' && t.status !== 'done') return false
+    if (filter === 'waiting' && t.status !== 'waiting') return false
+    if (assigneeFilter !== 'all' && (t.assigned_to || 'Unassigned') !== assigneeFilter) return false
+    if (q && !t.text.toLowerCase().includes(q) && !(t.tag ?? '').toLowerCase().includes(q)) return false
+    return true
+  }
+
   function visibleTasks(sectionId) {
-    return tasks.filter(t => {
-      if (t.section_id !== sectionId) return false
-      if (t.parent_task_id) return false
-      if (filter === 'open' && t.status === 'done') return false
-      if (filter === 'done' && t.status !== 'done') return false
-      if (filter === 'waiting' && t.status !== 'waiting') return false
-      if (assigneeFilter !== 'all' && (t.assigned_to || 'Unassigned') !== assigneeFilter) return false
-      if (q && !t.text.toLowerCase().includes(q) && !(t.tag ?? '').toLowerCase().includes(q)) return false
-      return true
-    })
+    return tasks.filter(t => t.section_id === sectionId && matches(t))
   }
 
   const assignees = ['all', ...new Set(tasks.map(t => t.assigned_to || 'Unassigned'))]
+  const sectionLabel = id => sections.find(s => s.id === id)?.label ?? ''
+
+  // Group filtered top-level tasks by assignee (for the by-person view)
+  const byAssignee = {}
+  for (const t of tasks.filter(matches)) {
+    const a = t.assigned_to || 'Unassigned'
+    ;(byAssignee[a] ||= []).push(t)
+  }
+  const assigneeGroups = Object.keys(byAssignee).sort((a, b) =>
+    a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b)
+  )
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
@@ -131,8 +144,23 @@ export default function Tasks() {
             </button>
           ))}
         </div>
+
+        {/* Group by */}
+        <div className="flex items-center gap-2 mt-3">
+          <span className="text-xs text-gray-500 dark:text-gray-400">Group by:</span>
+          {['phase', 'assignee'].map(g => (
+            <button
+              key={g}
+              onClick={() => setGroupBy(g)}
+              className={`px-3 py-1 rounded-lg text-sm font-medium ${groupBy === g ? 'bg-gray-900 dark:bg-gray-700 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200'}`}
+            >
+              {g === 'phase' ? 'Phase' : 'Person'}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {groupBy === 'phase' && (
       <div className="space-y-4">
         {sections.map(sec => {
           const c = SECTION_COLORS[sec.color] ?? SECTION_COLORS.gray
@@ -198,11 +226,46 @@ export default function Tasks() {
           )
         })}
       </div>
+      )}
+
+      {groupBy === 'assignee' && (
+      <div className="space-y-4">
+        {assigneeGroups.map(person => (
+          <div key={person} className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                {person === 'Unassigned' ? '👤 Unassigned' : `👤 ${person}`}
+              </span>
+              <span className="text-xs text-gray-500">{byAssignee[person].length}</span>
+            </div>
+            <div className="bg-white dark:bg-gray-900">
+              {byAssignee[person].map(task => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  contextLabel={sectionLabel(task.section_id)}
+                  subtasks={tasks.filter(t => t.parent_task_id === task.id)}
+                  logs={logs.filter(l => l.task_id === task.id)}
+                  onCycle={() => cycleStatus(task)}
+                  addingNote={addingNote}
+                  noteText={noteText}
+                  onStartNote={() => { setAddingNote(task.id); setNoteText(''); setTimeout(() => noteRef.current?.focus(), 50) }}
+                  onNoteChange={setNoteText}
+                  onSaveNote={() => saveNote(task.id)}
+                  onCancelNote={() => setAddingNote(null)}
+                  noteRef={noteRef}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      )}
     </div>
   )
 }
 
-function TaskRow({ task, subtasks, logs, onCycle, addingNote, noteText, onStartNote, onNoteChange, onSaveNote, onCancelNote, noteRef }) {
+function TaskRow({ task, subtasks, logs, onCycle, addingNote, noteText, onStartNote, onNoteChange, onSaveNote, onCancelNote, noteRef, contextLabel }) {
   const isDone = task.status === 'done'
 
   return (
@@ -225,6 +288,12 @@ function TaskRow({ task, subtasks, logs, onCycle, addingNote, noteText, onStartN
             </Link>
             {task.tag && (
               <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">{task.tag}</span>
+            )}
+            {task.assigned_to && (
+              <span className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded">👤 {task.assigned_to}</span>
+            )}
+            {contextLabel && (
+              <span className="text-xs px-1.5 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded">{contextLabel}</span>
             )}
           </div>
 
