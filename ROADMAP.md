@@ -98,9 +98,12 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   etc. — capture name, phone, email, address, relationship — and make it easy to
   view/edit in Settings (currently only email + role are shown). Email should be
   optional (a person may be added before their email is known).
-- ☐ **Define & confirm role-based views.** Review and confirm exactly what each
-  role sees and can do — heir vs observer vs executor — so each person gets the
-  right view (not the full admin surface).
+- ◐ **Define & confirm role-based views.** Roles consolidated: **Executor**
+  (full) → **Heir** → **Collaborator** (works all non-private tasks) →
+  **Observer** (read-only). Private/forensic items now hidden from non-Executor
+  roles in Tasks + Finances. STILL TODO: gate the nav/pages per role (e.g.
+  hide Settings/Credentials from Collaborator) and build a distinct Observer
+  view (currently falls through to the Heir dashboard).
 
 ### P2 — Bigger / ongoing (likely past Monday)
 - ☐ **Always-on background AI agent.** Watches *all* inputs continuously,
