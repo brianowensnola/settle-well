@@ -47,6 +47,18 @@ const ASSET_TYPES = [
 ]
 const DISPOSITIONS = ['undecided', 'keep', 'sell', 'transfer', 'sold', 'distributed']
 
+// Status choices and amount label per (non-asset) category
+const STATUS_OPTIONS = {
+  account:            ['active', 'transferred', 'closed', 'unknown'],
+  obligation:         ['active', 'cancel', 'cancel_on_vacate', 'cancelled', 'unknown'],
+  liability:          ['active', 'paid_out', 'disputed', 'unknown'],
+  insurance_resolved: ['resolved', 'paid_out', 'lapsed', 'unknown'],
+  insurance_pending:  ['pending', 'paid_out', 'lapsed', 'resolved', 'unknown'],
+}
+const statusOptionsFor = c => STATUS_OPTIONS[c] ?? ['active', 'pending', 'unknown', 'resolved', 'closed']
+const amountLabelFor = c =>
+  c === 'account' ? 'Balance' : c === 'obligation' ? 'Monthly amount' : c === 'liability' ? 'Amount owed' : 'Amount'
+
 function fmt(n) {
   if (n == null) return '—'
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
@@ -69,8 +81,9 @@ export default function Finances() {
   const [expanded, setExpanded] = useState({})
   const [editing, setEditing] = useState(null)
   const [editData, setEditData] = useState({})
-  const [adding, setAdding] = useState(false)
+  const [addingCategory, setAddingCategory] = useState(null) // which category's add form is open
   const [assetForm, setAssetForm] = useState({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '' })
+  const [finForm, setFinForm] = useState({ name: '', amount: '', lender: '', status: '', is_private: false, notes: '' })
   const [linkedTasks, setLinkedTasks] = useState({}) // financial_id -> [tasks]
   const [loading, setLoading] = useState(true)
 
@@ -123,8 +136,26 @@ export default function Finances() {
         if (task) setLinkedTasks(prev => ({ ...prev, [asset.id]: [task] }))
       }
     }
-    setAdding(false)
+    setAddingCategory(null)
     setAssetForm({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '' })
+  }
+
+  // Add an account / obligation / liability / insurance entry
+  async function addFinancial(category) {
+    if (!finForm.name.trim()) return
+    const { data } = await supabase.from('estate_financials').insert({
+      estate_id: currentEstate.id,
+      category,
+      name: finForm.name.trim(),
+      amount: finForm.amount ? Number(finForm.amount) : null,
+      lender: finForm.lender || null,
+      status: finForm.status || 'unknown',
+      notes: finForm.notes || null,
+      is_private: finForm.is_private,
+    }).select().single()
+    if (data) setFinancials(prev => [...prev, data])
+    setAddingCategory(null)
+    setFinForm({ name: '', amount: '', lender: '', status: '', is_private: false, notes: '' })
   }
 
   async function saveEdit() {
@@ -143,7 +174,7 @@ export default function Finances() {
   const assets = byCategory.asset
 
   const totalBalance = accounts.reduce((s, a) => s + (a.amount ?? 0), 0)
-  const monthlyBurn = obligations.filter(o => ['active', 'unknown'].includes(o.status)).reduce((s, o) => s + (o.amount_max ?? o.amount_min ?? 0), 0)
+  const monthlyBurn = obligations.filter(o => ['active', 'unknown'].includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0)
   const totalLiabilities = liabilities.reduce((s, l) => s + (l.amount ?? 0), 0)
   const totalAssets = assets.reduce((s, a) => s + (a.amount ?? 0), 0)
 
@@ -179,12 +210,13 @@ export default function Finances() {
                   <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{cat.label}</span>
                   <span className="text-xs text-gray-400 ml-2">({items.length})</span>
                 </div>
-                {cat.key === 'asset' && !adding && (
-                  <button onClick={() => setAdding(true)} className="text-xs px-2.5 py-1 bg-gray-900 dark:bg-gray-700 text-white rounded-lg">+ Add asset</button>
+                {addingCategory !== cat.key && (
+                  <button onClick={() => setAddingCategory(cat.key)} className="text-xs px-2.5 py-1 bg-gray-900 dark:bg-gray-700 text-white rounded-lg">+ Add</button>
                 )}
               </div>
 
-              {cat.key === 'asset' && adding && (
+              {/* Asset add form (rich — type + disposition + auto-task) */}
+              {cat.key === 'asset' && addingCategory === 'asset' && (
                 <div className="px-4 py-3 border-b border-gray-100 bg-blue-50 dark:bg-blue-900/20 space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <input value={assetForm.name} onChange={e => setAssetForm(p => ({ ...p, name: e.target.value }))}
@@ -208,7 +240,42 @@ export default function Finances() {
                   <p className="text-xs text-gray-500">A linked "Decide: keep, sell, or transfer" task will be created automatically.</p>
                   <div className="flex gap-2">
                     <button onClick={addAsset} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add asset</button>
-                    <button onClick={() => setAdding(false)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+                    <button onClick={() => setAddingCategory(null)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Generic add form for accounts / obligations / liabilities / insurance */}
+              {cat.key !== 'asset' && addingCategory === cat.key && (
+                <div className="px-4 py-3 border-b border-gray-100 bg-blue-50 dark:bg-blue-900/20 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={finForm.name} onChange={e => setFinForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder="Name (e.g. Wells Fargo checking, PNC mortgage)" autoFocus
+                      className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    <input type="number" value={finForm.amount} onChange={e => setFinForm(p => ({ ...p, amount: e.target.value }))}
+                      placeholder={`${amountLabelFor(cat.key)} (optional)`}
+                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    <select value={finForm.status} onChange={e => setFinForm(p => ({ ...p, status: e.target.value }))}
+                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none capitalize">
+                      <option value="">Status…</option>
+                      {statusOptionsFor(cat.key).map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
+                    </select>
+                    {(cat.key === 'liability' || cat.key === 'obligation') && (
+                      <input value={finForm.lender} onChange={e => setFinForm(p => ({ ...p, lender: e.target.value }))}
+                        placeholder="Lender / payee (optional)"
+                        className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    )}
+                    <textarea value={finForm.notes} onChange={e => setFinForm(p => ({ ...p, notes: e.target.value }))}
+                      placeholder="Notes (optional)" rows={2}
+                      className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-500">
+                    <input type="checkbox" checked={finForm.is_private} onChange={e => setFinForm(p => ({ ...p, is_private: e.target.checked }))} />
+                    Private — hide from heirs' transparency report
+                  </label>
+                  <div className="flex gap-2">
+                    <button onClick={() => addFinancial(cat.key)} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add</button>
+                    <button onClick={() => setAddingCategory(null)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
                   </div>
                 </div>
               )}
@@ -251,13 +318,31 @@ export default function Finances() {
                         )}
                         {editing === row.id ? (
                           <div className="space-y-2 pt-2">
-                            <textarea
-                              value={editData.notes ?? ''}
-                              onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
-                              rows={3}
-                              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
-                              placeholder="Notes..."
-                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <input value={editData.name ?? ''} onChange={e => setEditData(p => ({ ...p, name: e.target.value }))}
+                                placeholder="Name"
+                                className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                              <input type="number" value={editData.amount ?? ''} onChange={e => setEditData(p => ({ ...p, amount: e.target.value === '' ? null : Number(e.target.value) }))}
+                                placeholder={amountLabelFor(cat.key)}
+                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                              <select value={editData.status ?? ''} onChange={e => setEditData(p => ({ ...p, status: e.target.value }))}
+                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none capitalize">
+                                <option value="">Status…</option>
+                                {(cat.key === 'asset' ? DISPOSITIONS : statusOptionsFor(cat.key)).map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
+                              </select>
+                              {(cat.key === 'liability' || cat.key === 'obligation') && (
+                                <input value={editData.lender ?? ''} onChange={e => setEditData(p => ({ ...p, lender: e.target.value }))}
+                                  placeholder="Lender / payee"
+                                  className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                              )}
+                              <textarea value={editData.notes ?? ''} onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
+                                rows={3} placeholder="Notes…"
+                                className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+                            </div>
+                            <label className="flex items-center gap-2 text-xs text-gray-500">
+                              <input type="checkbox" checked={!!editData.is_private} onChange={e => setEditData(p => ({ ...p, is_private: e.target.checked }))} />
+                              Private — hide from heirs' transparency report
+                            </label>
                             <div className="flex gap-2">
                               <button onClick={saveEdit} className="px-3 py-1 bg-gray-900 text-white rounded-lg text-xs">Save</button>
                               <button onClick={() => setEditing(null)} className="px-3 py-1 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
@@ -265,10 +350,10 @@ export default function Finances() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => { setEditing(row.id); setEditData({ notes: row.notes ?? '' }) }}
+                            onClick={() => { setEditing(row.id); setEditData({ name: row.name ?? '', amount: row.amount ?? null, lender: row.lender ?? '', status: row.status ?? '', notes: row.notes ?? '', is_private: !!row.is_private }) }}
                             className="text-xs text-blue-600 hover:underline pt-1"
                           >
-                            Edit notes
+                            Edit
                           </button>
                         )}
                       </div>
