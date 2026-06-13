@@ -228,6 +228,11 @@ function TaskRow({ task, subtasks, logs, onCycle, addingNote, noteText, onStartN
             )}
           </div>
 
+          {/* Guidance — why this matters / what to check */}
+          {task.detail && !isDone && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug mt-0.5">{task.detail}</p>
+          )}
+
           {/* Sub-tasks */}
           {subtasks.length > 0 && (
             <div className="mt-1.5 pl-3 border-l-2 border-gray-100 space-y-1">
