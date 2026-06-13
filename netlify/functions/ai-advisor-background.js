@@ -71,39 +71,50 @@ Propose 5-15 of the most valuable, non-duplicative suggestions. If something in 
   }));
 }
 
-// Forensic audit — analyze financial statements for findings → private task suggestions
-async function runForensic(estate, filePaths) {
-  const estateId = estate.id;
-  const content = [];
-  for (const filePath of filePaths) {
-    const { data, error } = await supabase.storage.from("estate-documents").download(filePath);
-    if (error) continue;
-    const base64 = Buffer.from(await data.arrayBuffer()).toString("base64");
-    const ext = filePath.split(".").pop().toLowerCase();
-    if (["jpg", "jpeg", "png"].includes(ext)) {
-      content.push({ type: "image", source: { type: "base64", media_type: ext === "png" ? "image/png" : "image/jpeg", data: base64 } });
-    } else {
-      content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } });
-    }
-  }
-  if (content.length === 0) return [];
-
-  const prompt = `You are a forensic financial analyst reviewing a deceased person's financial statements for an estate. Identify items the executor should investigate: recurring payments/subscriptions, unknown or unexpected payees, transfers to individuals, large or unusual withdrawals, and any sign of accounts, debts, income, or obligations that may not be otherwise known. Be specific (names, amounts, dates when visible). This is investigative assistance, not an accusation or legal conclusion.
+const FORENSIC_PROMPT = `You are a forensic financial analyst reviewing a deceased person's financial statement for an estate. Identify items the executor should investigate: recurring payments/subscriptions, unknown or unexpected payees, transfers to individuals, large or unusual withdrawals, and any sign of accounts, debts, income, or obligations that may not be otherwise known. Be specific (names, amounts, dates when visible). This is investigative assistance, not an accusation or legal conclusion.
 
 Return ONLY JSON:
 {"findings":[{"title":"short actionable task, e.g. 'Investigate recurring $287 payment to ...'","detail":"what you saw and why it warrants a look"}]}`;
 
-  const resp = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    messages: [{ role: "user", content: [...content, { type: "text", text: prompt }] }],
-  });
-  const text = resp.content[0].type === "text" ? resp.content[0].text : "";
-  const parsed = jsonFrom(text);
-  return (parsed.findings || []).map(f => ({
-    estate_id: estateId, kind: "forensic", title: f.title, detail: f.detail || null,
-    suggested_phase: "Phase 11 — Commonly Missed Items", is_private: true, status: "pending",
-  }));
+// Forensic audit — analyze each financial statement separately (one Claude call
+// per file). A combined multi-PDF request hits page/processing limits, so we
+// loop. Failures are surfaced as visible suggestions rather than silently lost.
+async function runForensic(estate, filePaths) {
+  const estateId = estate.id;
+  const rows = [];
+  for (const filePath of filePaths) {
+    try {
+      const { data, error } = await supabase.storage.from("estate-documents").download(filePath);
+      if (error) throw error;
+      const base64 = Buffer.from(await data.arrayBuffer()).toString("base64");
+      const ext = filePath.split(".").pop().toLowerCase();
+      const block = ["jpg", "jpeg", "png"].includes(ext)
+        ? { type: "image", source: { type: "base64", media_type: ext === "png" ? "image/png" : "image/jpeg", data: base64 } }
+        : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
+
+      const resp = await client.messages.create({
+        model: "claude-sonnet-4-6", max_tokens: 4096,
+        messages: [{ role: "user", content: [block, { type: "text", text: FORENSIC_PROMPT }] }],
+      });
+      const text = resp.content[0].type === "text" ? resp.content[0].text : "";
+      const parsed = jsonFrom(text);
+      for (const f of (parsed.findings || [])) {
+        rows.push({
+          estate_id: estateId, kind: "forensic", title: f.title, detail: f.detail || null,
+          suggested_phase: "Phase 11 — Commonly Missed Items", is_private: true, status: "pending",
+        });
+      }
+    } catch (e) {
+      console.error("forensic file error", filePath, e?.message);
+      rows.push({
+        estate_id: estateId, kind: "forensic",
+        title: "Couldn't analyze one statement — see detail",
+        detail: `Error analyzing a statement: ${(e?.message || "unknown").slice(0, 400)}`,
+        suggested_phase: "Phase 11 — Commonly Missed Items", is_private: true, status: "pending",
+      });
+    }
+  }
+  return rows;
 }
 
 // Read each uploaded document (vision) to identify what it is, then match it
