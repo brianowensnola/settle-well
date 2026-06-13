@@ -86,12 +86,19 @@ Be specific (names, amounts, dates). This is investigative assistance, not an ac
 Return ONLY valid, COMPLETE JSON (do not truncate):
 {"findings":[{"title":"short actionable task","detail":"what you saw and why it warrants a look"}]}`;
 
-// Forensic audit — analyze each financial statement separately (one Claude call
-// per file). A combined multi-PDF request hits page/processing limits, so we
-// loop. Failures are surfaced as visible suggestions rather than silently lost.
+const FORENSIC_ROW = (estateId, title, detail) => ({
+  estate_id: estateId, kind: "forensic", title, detail: detail || null,
+  suggested_phase: "Phase 11 — Commonly Missed Items", is_private: true, status: "pending",
+});
+
+// Forensic audit — analyze each statement separately (one Claude call per file,
+// since a combined multi-PDF request hits page/processing limits), then run a
+// consolidation pass that merges duplicates and recurring items across all the
+// monthly statements into one deduplicated, prioritized set.
 async function runForensic(estate, filePaths) {
   const estateId = estate.id;
-  const rows = [];
+  const raw = [];        // { title, detail } collected across all statements
+  const errorRows = [];
   for (const filePath of filePaths) {
     try {
       const { data, error } = await supabase.storage.from("estate-documents").download(filePath);
@@ -108,23 +115,38 @@ async function runForensic(estate, filePaths) {
       });
       const text = resp.content[0].type === "text" ? resp.content[0].text : "";
       const parsed = jsonFrom(text);
-      for (const f of (parsed.findings || [])) {
-        rows.push({
-          estate_id: estateId, kind: "forensic", title: f.title, detail: f.detail || null,
-          suggested_phase: "Phase 11 — Commonly Missed Items", is_private: true, status: "pending",
-        });
-      }
+      for (const f of (parsed.findings || [])) raw.push({ title: f.title, detail: f.detail || "" });
     } catch (e) {
       console.error("forensic file error", filePath, e?.message);
-      rows.push({
-        estate_id: estateId, kind: "forensic",
-        title: "Couldn't analyze one statement — see detail",
-        detail: `Error analyzing a statement: ${(e?.message || "unknown").slice(0, 400)}`,
-        suggested_phase: "Phase 11 — Commonly Missed Items", is_private: true, status: "pending",
-      });
+      errorRows.push(FORENSIC_ROW(estateId, "Couldn't analyze one statement — see detail",
+        `Error analyzing a statement: ${(e?.message || "unknown").slice(0, 400)}`));
     }
   }
-  return rows;
+
+  if (raw.length === 0) return errorRows;
+
+  // Consolidation pass: merge duplicates / recurring items across statements.
+  let finalFindings = raw;
+  try {
+    const consPrompt = `These are raw forensic findings pulled from MULTIPLE monthly statements of the same estate, so many are duplicates or the same recurring item repeated across months. Merge duplicates and recurring items into ONE finding each (e.g. combine every "Goodleap $287.78" hit into a single "Recurring $287.78/mo to Goodleap"). Drop trivial/routine items. Keep specifics (names, amounts, dates/ranges). Return the most important, DEDUPLICATED set ordered by importance — aim for 12-20, never more than 25.
+
+RAW FINDINGS:
+${raw.map((f, i) => `${i + 1}. ${f.title} — ${f.detail}`).join("\n")}
+
+Return ONLY valid, COMPLETE JSON: {"findings":[{"title":"","detail":""}]}`;
+    const resp = await client.messages.create({
+      model: "claude-sonnet-4-6", max_tokens: 4096,
+      messages: [{ role: "user", content: consPrompt }],
+    });
+    const text = resp.content[0].type === "text" ? resp.content[0].text : "";
+    const parsed = jsonFrom(text);
+    if (parsed.findings && parsed.findings.length) finalFindings = parsed.findings;
+  } catch (e) {
+    console.error("forensic consolidation error", e?.message);
+    // fall back to the raw findings if consolidation fails
+  }
+
+  return [...finalFindings.map(f => FORENSIC_ROW(estateId, f.title, f.detail)), ...errorRows];
 }
 
 // Read each uploaded document (vision) to identify what it is, then match it
