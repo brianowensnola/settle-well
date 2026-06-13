@@ -58,9 +58,10 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   Traci. NOTE: *dynamic* tailoring (show/hide by the estate's actual assets) and
   AI-driven additions are folded into the AI work below — current set is
   exhaustive-by-default.
-- ☐ **Restore Dan's real estate data.** Real contacts (Paul Mullin + phone,
+- ☑ **Restore Dan's real estate data.** Real contacts (Paul Mullin + phone,
   Cotts Law, Guardian Funeral, PNC, Truist, Goodleap) and the specific
-  outstanding tasks, so Monday is real work, not a demo. (Backup captured.)
+  outstanding tasks are in place — Monday is real work, not a demo. (Backup
+  captured.) Confirmed done with Brian 2026-06-13.
 - ☑ **Documents ↔ tasks.** AI Assistant "Match documents" mode matches uploaded
   documents to the tasks they satisfy (death cert → order death certs, obituary,
   recorded deed → transfer) and proposes linking + checking the task off;
