@@ -106,9 +106,12 @@ Status key: ☐ todo · ◐ in progress · ☑ done
     unknown transfers, hidden accounts) as **private** suggestions.
   - Both produce **reviewable suggestions** → executor Accepts (→ task in the
     right phase) or Dismisses. Human-in-the-loop.
-- ◐ **Note → task generation.** Partially covered: the "What am I missing?" review
-  flags note-implied actions with no task. TODO if wanted: automatic suggestion
-  the moment a note is saved.
+- ☑ **Note → task generation.** Saving a daily note now scans it (synchronous
+  `note-to-tasks` function) and offers any follow-up actions it implies as
+  inline "Add task" suggestions (suggest-and-confirm). Added tasks inherit the
+  note's privacy and are tagged "AI · from note". Works for executor and
+  collaborator (collaborator notes/tasks are non-private). The "What am I
+  missing?" review still catches note-implied gaps after the fact.
 - ☐ **Tune / upgrade the advisor.** Currently Sonnet; consider Opus for deeper
   review, and an automatic (vs on-demand) trigger once the on-demand proves out.
 - ☑ **Running asset / inventory list tied to tasks.** Assets live in the
@@ -155,8 +158,10 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   human verification and clear "not legal advice" disclaimers.
 
 ### Polish / minor
-- ☐ Executor Name on Dan's estate shows `brian.owens_nola` (email prefix) —
-  set to "Brian Owens".
+- ☑ Executor Name fixed to "Brian Owens" on both estates (Traci's still showed
+  the `brian.owens_nola` email prefix).
+- ☑ Rename a document's display name inline in Documents (storage path
+  untouched, so View links and AI doc→task links still work).
 - ☐ Restore preferred formatting / color scheme from before recent changes
   (Brian liked the earlier look better — needs specifics on which screens).
 

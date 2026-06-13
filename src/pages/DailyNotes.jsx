@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 import { isFullAccess } from '../lib/roles'
+import { suggestTasksFromNote, createTaskFromNote } from '../lib/aiAdvisor'
 
 export default function DailyNotes() {
   const { currentEstate, role } = useEstate()
@@ -17,6 +18,9 @@ export default function DailyNotes() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [noteTasks, setNoteTasks] = useState([])      // AI follow-ups from the note just saved
+  const [scanning, setScanning] = useState(false)
+  const [savedPrivate, setSavedPrivate] = useState(false) // privacy of the note that produced noteTasks
 
   useEffect(() => {
     if (!currentEstate) return
@@ -69,18 +73,35 @@ export default function DailyNotes() {
           })
       }
 
+      const savedContent = content
       setContent('')
       setTags([])
       setNewTag('')
       setShowSuccess(true)
       setTimeout(() => setShowSuccess(false), 3000)
       await loadNotes()
+
+      // Suggest-and-confirm: scan the saved note for any follow-up actions.
+      setNoteTasks([])
+      setSavedPrivate(wantPrivate)
+      setScanning(true)
+      const found = await suggestTasksFromNote(currentEstate.id, savedContent)
+      setNoteTasks(found)
+      setScanning(false)
     } catch (err) {
       console.error('Error saving note:', err)
       alert('Error saving note: ' + err.message)
     } finally {
       setSaving(false)
     }
+  }
+
+  async function addNoteTask(t, idx) {
+    await createTaskFromNote(currentEstate.id, t, savedPrivate)
+    setNoteTasks(prev => prev.filter((_, i) => i !== idx))
+  }
+  function dismissNoteTask(idx) {
+    setNoteTasks(prev => prev.filter((_, i) => i !== idx))
   }
 
   async function deleteNote(id) {
@@ -105,6 +126,34 @@ export default function DailyNotes() {
       {showSuccess && (
         <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg mb-4 text-sm font-medium">
           ✓ Note saved for {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </div>
+      )}
+
+      {scanning && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg mb-4 text-sm">
+          Checking the note for follow-ups…
+        </div>
+      )}
+
+      {noteTasks.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+          <div className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Follow-ups found in this note</div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Add the ones you want as tasks{savedPrivate ? ' (these will be executor-only, matching the note)' : ''}.</p>
+          <div className="space-y-2">
+            {noteTasks.map((t, idx) => (
+              <div key={idx} className="flex items-start justify-between gap-3 border border-gray-100 dark:border-gray-800 rounded-lg p-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">{t.text}</div>
+                  {t.detail && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.detail}</div>}
+                  {t.phase && <div className="text-xs text-gray-400 mt-1">{t.phase}{savedPrivate ? ' · 🔒 private' : ''}</div>}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => addNoteTask(t, idx)} className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700">Add task</button>
+                  <button onClick={() => dismissNoteTask(idx)} className="text-xs px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200">Dismiss</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

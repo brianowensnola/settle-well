@@ -25,6 +25,45 @@ export async function runAdvisor(estateId, mode = 'review', filePaths = []) {
   return [] // timed out, or the run found nothing to suggest
 }
 
+// Read one freshly-saved note and return any follow-up tasks it implies.
+// Synchronous (short text), so we just await the response. Never throws — a
+// note save must not fail because the suggestion step did.
+export async function suggestTasksFromNote(estateId, content) {
+  try {
+    const resp = await fetch('/.netlify/functions/note-to-tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estateId, content }),
+    })
+    if (!resp.ok) return []
+    const { tasks } = await resp.json()
+    return tasks ?? []
+  } catch {
+    return []
+  }
+}
+
+// Create a task from a note suggestion (resolving its phase to a section).
+export async function createTaskFromNote(estateId, t, isPrivate = false) {
+  let section_id = null
+  if (t.phase) {
+    const { data: sec } = await supabase
+      .from('estate_sections').select('id')
+      .eq('estate_id', estateId).eq('label', t.phase).maybeSingle()
+    section_id = sec?.id ?? null
+  }
+  const { data: task } = await supabase.from('estate_tasks').insert({
+    estate_id: estateId,
+    section_id,
+    text: t.text,
+    detail: t.detail || null,
+    tag: 'AI · from note',
+    status: 'pending',
+    is_private: isPrivate,
+  }).select().single()
+  return task
+}
+
 export async function loadSuggestions(estateId) {
   const { data } = await supabase
     .from('estate_ai_suggestions')
