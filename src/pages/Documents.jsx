@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
+import { isFullAccess } from '../lib/roles'
 import { DOC_TYPES } from '../lib/constants'
 
 export default function Documents() {
-  const { currentEstate } = useEstate()
+  const { currentEstate, role } = useEstate()
+  const canDelete = isFullAccess(role)
   const [docs, setDocs] = useState([])
   const [tab, setTab] = useState('have')
   const [adding, setAdding] = useState(false)
@@ -63,6 +65,13 @@ export default function Documents() {
     if (!doc.file_path) return
     const { data } = await supabase.storage.from('estate-documents').createSignedUrl(doc.file_path, 3600)
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  async function deleteDoc(doc) {
+    if (!confirm(`Delete "${doc.name}"? This removes it from this estate's document list. This can't be undone.`)) return
+    const { error } = await supabase.from('estate_documents').delete().eq('id', doc.id)
+    if (error) { alert(`Couldn't delete: ${error.message}`); return }
+    setDocs(prev => prev.filter(d => d.id !== doc.id))
   }
 
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
@@ -177,6 +186,9 @@ export default function Documents() {
                     <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.docx"
                       onChange={e => uploadFile(doc, e.target.files[0])} />
                   </label>
+                )}
+                {canDelete && renaming !== doc.id && (
+                  <button onClick={() => deleteDoc(doc)} className="text-xs text-red-500 hover:text-red-700 hover:underline">Delete</button>
                 )}
               </div>
             </div>
