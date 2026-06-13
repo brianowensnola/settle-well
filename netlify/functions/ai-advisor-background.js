@@ -106,52 +106,62 @@ Return ONLY JSON:
   }));
 }
 
-// Match uploaded documents to the tasks they satisfy, and recommend an action
+// Read each uploaded document (vision) to identify what it is, then match it
+// to the task it satisfies. File names are often meaningless (IMG_1234.jpeg),
+// so we look at the actual content, not the name.
 async function runDocuments(estate) {
   const estateId = estate.id;
   const [docsRes, tasksRes, secRes] = await Promise.all([
-    supabase.from("estate_documents").select("id, name, doc_type, have, linked_task_id").eq("estate_id", estateId).eq("have", true),
+    supabase.from("estate_documents").select("id, name, doc_type, file_path, have, linked_task_id").eq("estate_id", estateId).eq("have", true),
     supabase.from("estate_tasks").select("id, text, status, section_id").eq("estate_id", estateId),
     supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
   ]);
-  const docs = (docsRes.data ?? []).filter(d => !d.linked_task_id);
+  const docs = (docsRes.data ?? []).filter(d => !d.linked_task_id && d.file_path);
   const tasks = tasksRes.data ?? [];
   if (docs.length === 0 || tasks.length === 0) return [];
   const secLabel = Object.fromEntries((secRes.data ?? []).map(s => [s.id, s.label]));
-  const docById = Object.fromEntries(docs.map(d => [d.id, d]));
-  const taskById = Object.fromEntries(tasks.map(t => [t.id, t]));
+  const taskList = tasks.map(t => `${t.id} — ${t.text} (${t.status})`).join("\n");
 
-  const prompt = `You help an estate executor connect uploaded documents to the tasks they satisfy.
-For each DOCUMENT, decide if it clearly relates to one of the TASKS. If so, recommend an action:
-- "mark_done": the document shows the task is complete (e.g. a death certificate for an "order death certificates" task; a recorded deed for a transfer; an obituary for an obituary task).
-- "mark_in_progress": it shows the task is underway.
-- "link_only": attach it without changing status.
-Only include confident matches; omit documents that don't clearly match a task.
+  const rows = [];
+  for (const doc of docs.slice(0, 30)) {
+    try {
+      const { data, error } = await supabase.storage.from("estate-documents").download(doc.file_path);
+      if (error) continue;
+      const base64 = Buffer.from(await data.arrayBuffer()).toString("base64");
+      const ext = doc.file_path.split(".").pop().toLowerCase();
+      const block = ["jpg", "jpeg", "png"].includes(ext)
+        ? { type: "image", source: { type: "base64", media_type: ext === "png" ? "image/png" : "image/jpeg", data: base64 } }
+        : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
-DOCUMENTS (id — name [type]):
-${docs.map(d => `${d.id} — ${d.name} [${d.doc_type}]`).join("\n")}
+      const prompt = `Look at this estate document and identify what it is (e.g. death certificate, obituary, last will & testament, vehicle title, deed, bank/financial statement, insurance policy, government ID, tax form, power of attorney). Then decide which TASK below, if any, it satisfies or directly relates to.
 
 TASKS (id — text (status)):
-${tasks.map(t => `${t.id} — ${t.text} (${t.status})`).join("\n")}
+${taskList}
 
-Return ONLY JSON:
-{"matches":[{"document_id":"...","task_id":"...","action":"mark_done|mark_in_progress|link_only","reason":"one sentence"}]}`;
+Recommend an action: "mark_done" if the document shows the task is complete (e.g. a death certificate completing an order-death-certificates task, an obituary completing an obituary task, a recorded deed completing a transfer); "mark_in_progress" if it's underway; "link_only" to attach without changing status. If no task clearly relates, set task_id to null.
 
-  const resp = await client.messages.create({ model: "claude-sonnet-4-6", max_tokens: 3000, messages: [{ role: "user", content: prompt }] });
-  const text = resp.content[0].type === "text" ? resp.content[0].text : "";
-  const parsed = jsonFrom(text);
-  const rows = [];
-  for (const m of (parsed.matches || [])) {
-    const doc = docById[m.document_id], task = taskById[m.task_id];
-    if (!doc || !task) continue;
-    const label = m.action === "mark_done" ? "mark done" : m.action === "mark_in_progress" ? "mark in progress" : "link";
-    rows.push({
-      estate_id: estateId, kind: "documents",
-      title: `Link "${doc.name}" → "${task.text}" (${label})`,
-      detail: m.reason || null, suggested_phase: secLabel[task.section_id] || null,
-      is_private: false, status: "pending",
-      link_document_id: doc.id, link_task_id: task.id, action: m.action || "link_only",
-    });
+Return ONLY JSON: {"doc_type":"short label of what this is","task_id":"<task id or null>","action":"mark_done|mark_in_progress|link_only","reason":"one sentence"}`;
+
+      const resp = await client.messages.create({
+        model: "claude-sonnet-4-6", max_tokens: 600,
+        messages: [{ role: "user", content: [block, { type: "text", text: prompt }] }],
+      });
+      const text = resp.content[0].type === "text" ? resp.content[0].text : "";
+      const m = jsonFrom(text);
+      const task = tasks.find(t => t.id === m.task_id);
+      if (!task) continue;
+      const label = m.action === "mark_done" ? "mark done" : m.action === "mark_in_progress" ? "mark in progress" : "link";
+      const what = m.doc_type ? `${m.doc_type} (${doc.name})` : doc.name;
+      rows.push({
+        estate_id: estateId, kind: "documents",
+        title: `Link ${what} → "${task.text}" (${label})`,
+        detail: m.reason || null, suggested_phase: secLabel[task.section_id] || null,
+        is_private: false, status: "pending",
+        link_document_id: doc.id, link_task_id: task.id, action: m.action || "link_only",
+      });
+    } catch (e) {
+      console.error("doc match error", doc.id, e?.message);
+    }
   }
   return rows;
 }
