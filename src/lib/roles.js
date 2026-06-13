@@ -32,6 +32,7 @@ export const isFullAccess = role => role === 'administrator' || role === 'execut
 export const PAGE_ROLES = {
   '/dashboard':        ['administrator', 'collaborator', 'heir', 'observer'],
   '/assistant':        ['administrator'],
+  '/activity':         ['administrator', 'collaborator'],
   '/tasks':            ['administrator', 'collaborator', 'heir'],
   '/mail':             ['administrator', 'collaborator'],
   '/intake-review':    ['administrator'],

@@ -94,9 +94,17 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   numbers/notes/private rows. Heir = max transparency (dashboard + non-private
   board + docs/contacts); Observer = dashboard only (Level 4). Based on
   Estate_App_Heir_Access_Recommendations.pdf.
-- ☐ **Immutable activity/audit log** (the doc's "most valuable feature"): the
-  heir activity log currently shows task notes; a true append-only audit trail
-  of every action/date/user is still a future build.
+- ☑ **Immutable activity/audit log** (the doc's "most valuable feature").
+  Database triggers on tasks, financials, documents, notes, users, and estate
+  stage write to `estate_activity_log` — capturing actor (from auth.uid()),
+  action, what changed, and time. The table has a SELECT policy only (no
+  insert/update/delete policies), so the SECURITY DEFINER triggers are the only
+  writers and history can't be edited or deleted from the app — append-only by
+  construction. Privacy-safe: entries inherit their subject's privacy, financial
+  entries are private unless a non-private asset, and no dollar amounts or note
+  content are ever stored in the log. New executor **Activity Log** page (with
+  entity filters); the heir Transparency Report now renders the real log
+  (non-private rows only) via a shared ActivityFeed. (migration 023)
 
 ### P1 — The "invaluable to the next person" differentiators
 - ☑ **AI Assistant (one engine, two modes)** — new executor-only AI Assistant page:

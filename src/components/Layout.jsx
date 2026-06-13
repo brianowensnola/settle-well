@@ -25,6 +25,7 @@ const SINGLE_ESTATE_NAV = [
   { to: '/send-documents', label: 'Send Documents' },
   { to: '/finances',    label: 'Finances' },
   { to: '/notes',       label: 'Daily Notes' },
+  { to: '/activity',    label: 'Activity Log' },
   { to: '/documents',   label: 'Documents' },
   { to: '/documents/upload', label: 'Upload Files' },
   { to: '/credentials', label: 'Credentials' },

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { statusStageLabel } from '../lib/constants'
+import ActivityFeed from '../components/ActivityFeed'
 
 const fmt = n => '$' + (n ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
 
@@ -21,7 +22,7 @@ export default function HeirDashboard() {
   async function loadData() {
     const [tasksRes, logsRes, sumRes, docsRes] = await Promise.all([
       supabase.from('estate_tasks').select('*').eq('estate_id', currentEstate.id),
-      supabase.from('estate_task_logs').select('*').eq('estate_id', currentEstate.id).order('created_at', { ascending: false }).limit(50),
+      supabase.from('estate_activity_log').select('*').eq('estate_id', currentEstate.id).order('created_at', { ascending: false }).limit(50),
       supabase.rpc('estate_transparency', { p_estate_id: currentEstate.id }),
       supabase.from('estate_documents').select('*').eq('estate_id', currentEstate.id).in('doc_type', ['legal', 'property']),
     ])
@@ -135,23 +136,7 @@ export default function HeirDashboard() {
       {/* Activity Log */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Activity Log</h2>
-        <div className="space-y-3">
-          {logs.length === 0 ? (
-            <p className="text-sm text-gray-400">No activity yet.</p>
-          ) : (
-            logs.map(log => (
-              <div key={log.id} className="text-sm border-l-2 border-gray-200 dark:border-gray-800 pl-3 py-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium text-gray-900 dark:text-white">{log.note}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(log.created_at).toLocaleDateString()} {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-500 dark:text-gray-400">by {log.created_by}</span>
-              </div>
-            ))
-          )}
-        </div>
+        <ActivityFeed logs={logs} />
       </div>
 
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
