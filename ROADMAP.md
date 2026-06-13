@@ -86,6 +86,13 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   redundancy of separate mail uploads per estate.
 - ☐ **De-duplicate cross-estate tasks.** Shared-household tasks (check the mail,
   the residence, shared utilities) shouldn't repeat across related estates.
+- ☐ **Full demographics for everyone with access.** Executor, heir, observer,
+  etc. — capture name, phone, email, address, relationship — and make it easy to
+  view/edit in Settings (currently only email + role are shown). Email should be
+  optional (a person may be added before their email is known).
+- ☐ **Define & confirm role-based views.** Review and confirm exactly what each
+  role sees and can do — heir vs observer vs executor — so each person gets the
+  right view (not the full admin surface).
 
 ### P2 — Bigger / ongoing (likely past Monday)
 - ☐ **Always-on background AI agent.** Watches *all* inputs continuously,
