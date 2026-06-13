@@ -5,6 +5,12 @@ import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { runAdvisor, loadSuggestions, acceptSuggestion, dismissSuggestion } from '../lib/aiAdvisor'
 
+const FIN_CATEGORY_LABEL = {
+  account: 'Account', obligation: 'Monthly Obligation', liability: 'Liability',
+  asset: 'Asset', insurance_resolved: 'Insurance — Resolved', insurance_pending: 'Insurance — Pending',
+}
+const fmtMoney = n => n == null ? null : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+
 export default function Assistant() {
   const { currentEstate, role } = useEstate()
   const [suggestions, setSuggestions] = useState([])
@@ -76,6 +82,7 @@ export default function Assistant() {
   const reviewSugs = suggestions.filter(s => s.kind === 'review')
   const forensicSugs = suggestions.filter(s => s.kind === 'forensic')
   const docSugs = suggestions.filter(s => s.kind === 'documents')
+  const finSugs = suggestions.filter(s => s.kind === 'financial')
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -97,7 +104,7 @@ export default function Assistant() {
       {/* Match documents to tasks */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
         <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Match documents to tasks</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks at your uploaded documents and the tasks they satisfy — e.g. a death certificate or obituary — and proposes linking them and checking the task off.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks at your uploaded documents and the tasks they satisfy — e.g. a death certificate or obituary — and proposes linking them and checking the task off. Bank statements, loan papers, and insurance policies also propose a Finances entry.</p>
         <button onClick={matchDocuments} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
           {running ? 'Working…' : 'Match documents'}
         </button>
@@ -106,7 +113,7 @@ export default function Assistant() {
       {/* Forensic audit */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-6">
         <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Forensic financial audit</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Upload bank/financial statements. Findings (recurring payees, unknown transfers, hidden accounts) become private suggestions.</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Upload bank/financial statements. Concrete records (accounts, loans, recurring obligations, insurance) become private Finances entries; anything that needs investigating (unknown transfers, large deposits) becomes a private task.</p>
         <label className="block border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 mb-2">
           <span className="text-sm text-gray-600 dark:text-gray-400">{files.length > 0 ? `${files.length} file(s) selected` : 'Click to add financial statements (PDF/images)'}</span>
           <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setFiles(Array.from(e.target.files || []))} />
@@ -123,7 +130,7 @@ export default function Assistant() {
         <div className="text-gray-400 text-sm">No pending suggestions. Run a review or forensic audit above.</div>
       ) : (
         <div className="space-y-5">
-          {[['Suggested tasks', reviewSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
+          {[['Financial entries → Finances', finSugs], ['Suggested tasks', reviewSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
             <div key={label}>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</h3>
               <div className="space-y-2">
@@ -133,7 +140,16 @@ export default function Assistant() {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900 dark:text-white">{s.title}</div>
                         {s.detail && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{s.detail}</div>}
-                        {s.suggested_phase && <div className="text-xs text-gray-400 mt-1">{s.suggested_phase}{s.is_private ? ' · 🔒 private' : ''}</div>}
+                        {s.kind === 'financial' ? (
+                          <div className="text-xs text-gray-400 mt-1">
+                            {FIN_CATEGORY_LABEL[s.fin_category] ?? s.fin_category}
+                            {fmtMoney(s.fin_amount) ? ` · ${fmtMoney(s.fin_amount)}` : ''}
+                            {s.fin_lender ? ` · ${s.fin_lender}` : ''}
+                            {s.is_private ? ' · 🔒 private' : ''}
+                          </div>
+                        ) : (
+                          s.suggested_phase && <div className="text-xs text-gray-400 mt-1">{s.suggested_phase}{s.is_private ? ' · 🔒 private' : ''}</div>
+                        )}
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <button onClick={() => accept(s)} className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700">Accept</button>
@@ -145,7 +161,10 @@ export default function Assistant() {
               </div>
             </div>
           ))}
-          <Link to="/tasks" className="text-sm text-blue-600 hover:underline">View task board →</Link>
+          <div className="flex gap-4">
+            <Link to="/tasks" className="text-sm text-blue-600 hover:underline">View task board →</Link>
+            <Link to="/finances" className="text-sm text-blue-600 hover:underline">View finances →</Link>
+          </div>
         </div>
       )}
     </div>

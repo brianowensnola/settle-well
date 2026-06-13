@@ -91,6 +91,19 @@ const FORENSIC_ROW = (estateId, title, detail) => ({
   suggested_phase: "Phase 11 — Commonly Missed Items", is_private: true, status: "pending",
 });
 
+// Finances categories an accepted 'financial' suggestion can land in.
+const FIN_CATEGORIES = ["account", "obligation", "liability", "asset", "insurance_resolved", "insurance_pending"];
+const FINANCIAL_ROW = (estateId, e, isPrivate) => ({
+  estate_id: estateId, kind: "financial",
+  title: (e.name || "Unnamed entry").slice(0, 200),
+  detail: e.detail || null,
+  is_private: !!isPrivate, status: "pending",
+  fin_category: FIN_CATEGORIES.includes(e.category) ? e.category : "account",
+  fin_amount: (e.amount === 0 || e.amount) ? Number(e.amount) : null,
+  fin_lender: e.lender || null,
+  fin_status: e.status || null,
+});
+
 // Forensic audit — analyze each statement separately (one Claude call per file,
 // since a combined multi-PDF request hits page/processing limits), then run a
 // consolidation pass that merges duplicates and recurring items across all the
@@ -125,28 +138,52 @@ async function runForensic(estate, filePaths) {
 
   if (raw.length === 0) return errorRows;
 
-  // Consolidation pass: merge duplicates / recurring items across statements.
+  // Consolidation pass: merge duplicates / recurring items across statements,
+  // and split the results into concrete FINANCIAL RECORDS (accounts, loans,
+  // recurring obligations, insurance — accepted straight into Finances) vs
+  // INVESTIGATIVE FINDINGS (things that need a look — accepted as tasks).
+  let entries = [];
   let finalFindings = raw;
   try {
-    const consPrompt = `These are raw forensic findings pulled from MULTIPLE monthly statements of the same estate, so many are duplicates or the same recurring item repeated across months. Merge duplicates and recurring items into ONE finding each (e.g. combine every "Goodleap $287.78" hit into a single "Recurring $287.78/mo to Goodleap"). Drop trivial/routine items. Keep specifics (names, amounts, dates/ranges). Return the most important, DEDUPLICATED set ordered by importance — aim for 12-20, never more than 25.
+    const consPrompt = `These are raw forensic findings pulled from MULTIPLE monthly statements of the same estate, so many are duplicates or the same recurring item repeated across months. First merge duplicates and recurring items into ONE item each (e.g. combine every "Goodleap $287.78" hit into a single recurring item). Drop trivial/routine items. Keep specifics (names, amounts, dates/ranges).
+
+Then split everything into two buckets:
+
+1. "entries" — concrete FINANCIAL RECORDS the executor should add to the estate's finances ledger: bank/brokerage accounts, loans/debts, recurring monthly obligations (subscriptions, utilities, loan payments), and insurance policies. For each, give:
+   - category: one of account | obligation | liability | asset | insurance_resolved | insurance_pending
+     (account = a deposit/checking/savings/brokerage account; obligation = a recurring monthly payment; liability = a loan/debt/balance owed; asset = a titled/ownable thing of value; insurance_pending = a policy not yet claimed/paid; insurance_resolved = already paid out/closed)
+   - name: short label (e.g. "Goodleap solar loan", "PNC checking ...1234", "Truist mortgage")
+   - amount: a single number (monthly amount for obligations, balance for accounts, amount owed for liabilities) or null if unknown
+   - lender: the lender/payee/institution if applicable, else null
+   - status: a short status if evident (e.g. active, unknown) or null
+   - detail: one sentence of supporting context (what you saw)
+
+2. "findings" — things that warrant INVESTIGATION rather than a ledger entry: unknown/unexpected transfers (especially to individuals), large atypical deposits/withdrawals, or signs of accounts you cannot pin down. Each: {title, detail}.
+
+A single item belongs in exactly ONE bucket. Order each bucket by importance. Aim for at most 25 items total.
 
 RAW FINDINGS:
 ${raw.map((f, i) => `${i + 1}. ${f.title} — ${f.detail}`).join("\n")}
 
-Return ONLY valid, COMPLETE JSON: {"findings":[{"title":"","detail":""}]}`;
+Return ONLY valid, COMPLETE JSON: {"entries":[{"category":"","name":"","amount":null,"lender":null,"status":null,"detail":""}],"findings":[{"title":"","detail":""}]}`;
     const resp = await client.messages.create({
       model: "claude-sonnet-4-6", max_tokens: 4096,
       messages: [{ role: "user", content: consPrompt }],
     });
     const text = resp.content[0].type === "text" ? resp.content[0].text : "";
     const parsed = jsonFrom(text);
-    if (parsed.findings && parsed.findings.length) finalFindings = parsed.findings;
+    if (Array.isArray(parsed.entries)) entries = parsed.entries;
+    if (Array.isArray(parsed.findings)) finalFindings = parsed.findings;
   } catch (e) {
     console.error("forensic consolidation error", e?.message);
-    // fall back to the raw findings if consolidation fails
+    // fall back to the raw findings (as investigative tasks) if consolidation fails
   }
 
-  return [...finalFindings.map(f => FORENSIC_ROW(estateId, f.title, f.detail)), ...errorRows];
+  return [
+    ...entries.map(e => FINANCIAL_ROW(estateId, e, true)), // forensic-derived → private
+    ...finalFindings.map(f => FORENSIC_ROW(estateId, f.title, f.detail)),
+    ...errorRows,
+  ];
 }
 
 // Read each uploaded document (vision) to identify what it is, then match it
@@ -176,21 +213,33 @@ async function runDocuments(estate) {
         ? { type: "image", source: { type: "base64", media_type: ext === "png" ? "image/png" : "image/jpeg", data: base64 } }
         : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
-      const prompt = `Look at this estate document and identify what it is (e.g. death certificate, obituary, last will & testament, vehicle title, deed, bank/financial statement, insurance policy, government ID, tax form, power of attorney). Then decide which TASK below, if any, it satisfies or directly relates to.
+      const prompt = `Look at this estate document and identify what it is (e.g. death certificate, obituary, last will & testament, vehicle title, deed, bank/financial statement, insurance policy, government ID, tax form, power of attorney). Then do two things:
+
+1. Decide which TASK below, if any, it satisfies or directly relates to.
+2. If this document is a BANK/FINANCIAL STATEMENT, LOAN/MORTGAGE document, or INSURANCE POLICY, extract the financial record it represents so it can be added to the estate's finances ledger.
 
 TASKS (id — text (status)):
 ${taskList}
 
-Recommend an action: "mark_done" if the document shows the task is complete (e.g. a death certificate completing an order-death-certificates task, an obituary completing an obituary task, a recorded deed completing a transfer); "mark_in_progress" if it's underway; "link_only" to attach without changing status. If no task clearly relates, set task_id to null.
+For the task: recommend "mark_done" if the document shows the task is complete (e.g. a death certificate completing an order-death-certificates task, an obituary completing an obituary task, a recorded deed completing a transfer); "mark_in_progress" if it's underway; "link_only" to attach without changing status. If no task clearly relates, set task_id to null.
 
-Return ONLY JSON: {"doc_type":"short label of what this is","task_id":"<task id or null>","action":"mark_done|mark_in_progress|link_only","reason":"one sentence"}`;
+For the financial record (only if applicable): category is one of account | obligation | liability | asset | insurance_resolved | insurance_pending (account = checking/savings/brokerage; obligation = recurring monthly payment; liability = loan/debt/balance owed; insurance_pending = policy not yet claimed). Give name (short label incl. institution and last 4 if shown), amount (balance for accounts, amount owed for loans, monthly for obligations; null if unknown), lender (institution/payee or null), and a one-sentence detail. If this document is NOT financial, set financial to null.
+
+Return ONLY JSON: {"doc_type":"short label of what this is","task_id":"<task id or null>","action":"mark_done|mark_in_progress|link_only","reason":"one sentence","financial":{"category":"","name":"","amount":null,"lender":null,"detail":""}}`;
 
       const resp = await client.messages.create({
-        model: "claude-sonnet-4-6", max_tokens: 600,
+        model: "claude-sonnet-4-6", max_tokens: 700,
         messages: [{ role: "user", content: [block, { type: "text", text: prompt }] }],
       });
       const text = resp.content[0].type === "text" ? resp.content[0].text : "";
       const m = jsonFrom(text);
+
+      // A financial document yields a financial-entry suggestion (not private —
+      // it's a document the executor uploaded themselves).
+      if (m.financial && m.financial.name && FIN_CATEGORIES.includes(m.financial.category)) {
+        rows.push(FINANCIAL_ROW(estateId, { ...m.financial, status: m.financial.status || "active" }, false));
+      }
+
       const task = tasks.find(t => t.id === m.task_id);
       if (!task) continue;
       const label = m.action === "mark_done" ? "mark done" : m.action === "mark_in_progress" ? "mark in progress" : "link";

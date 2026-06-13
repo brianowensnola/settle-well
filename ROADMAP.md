@@ -116,6 +116,18 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   sell/transfer" disposition task in the matching phase; each asset shows its
   linked tasks. Dan's 10 real assets (house, 5 vehicles, boat, UTVs, business,
   jewelry, firearms) seeded and linked to their existing tasks.
+- ☑ **Manual entry forms for every Finances category.** Accounts, Monthly
+  Obligations, Liabilities, Assets, and Insurance all have a "+ Add" button and
+  form (previously only Assets did). Category-aware labels/status options,
+  lender field for debts, private toggle, and a full inline edit form.
+- ☑ **AI-populated finances (#2).** The forensic audit now splits its results
+  into concrete financial **records** (accounts, loans, recurring obligations,
+  insurance → `kind:'financial'` suggestions) vs investigative **findings**
+  (→ tasks). Document matching also extracts a Finances entry from bank
+  statements, loan papers, and insurance policies. Accepting a financial
+  suggestion inserts straight into the right Finances category (forensic-derived
+  ones are private). New "Financial entries → Finances" group in the AI
+  Assistant. (migration 022)
 - ☐ **"Not legal advice" disclaimers** surfaced at appropriate, relevant points
   (e.g. when generating legal/probate tasks), without being constant noise.
 - ☐ **Family-level mail intake with AI routing.** One mail/file upload entry

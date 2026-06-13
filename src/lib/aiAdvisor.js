@@ -40,8 +40,26 @@ export async function dismissSuggestion(id) {
 }
 
 // Accept a suggestion. Document-link suggestions attach the doc to its task
-// (and optionally update status); review/forensic suggestions create a task.
+// (and optionally update status); financial suggestions create a Finances entry;
+// review/forensic suggestions create a task.
 export async function acceptSuggestion(s) {
+  if (s.kind === 'financial') {
+    const { data: fin } = await supabase.from('estate_financials').insert({
+      estate_id: s.estate_id,
+      category: s.fin_category || 'account',
+      name: s.title,
+      amount: s.fin_amount ?? null,
+      lender: s.fin_lender || null,
+      status: s.fin_status || 'unknown',
+      notes: s.detail || null,
+      is_private: s.is_private,
+    }).select().single()
+    await supabase.from('estate_ai_suggestions')
+      .update({ status: 'accepted', created_financial_id: fin?.id ?? null })
+      .eq('id', s.id)
+    return null
+  }
+
   if (s.kind === 'documents' && s.link_task_id) {
     // Attach the document to the task
     if (s.link_document_id) {
