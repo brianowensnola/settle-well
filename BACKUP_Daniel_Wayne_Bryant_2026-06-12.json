@@ -1,0 +1,30 @@
+{
+  "backup_date": "2026-06-12",
+  "estate_name": "Daniel Wayne Bryant",
+  "note": "Complete backup of estate data before reset. Includes all tasks, contacts, estate details.",
+  "data": {
+    "estates": {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Daniel Wayne Bryant",
+      "deceased_name": "Sam Smith",
+      "deceased_dob": "1980-04-16",
+      "deceased_dod": "2026-06-04",
+      "state_of_residence": "Texas",
+      "administrator_name": "Brian Owens",
+      "administrator_email": "brian.owens_nola@me.com",
+      "administrator_phone": "5044603605",
+      "status": "active",
+      "intake_complete": true
+    },
+    "estate_users": {
+      "id": "cecc3935-a11e-4116-a4bd-2674b75f86f2",
+      "email": "brian.owens_nola@me.com",
+      "role": "administrator"
+    },
+    "summary": {
+      "total_tasks": 54,
+      "total_contacts": 6,
+      "status": "Active estate with intake complete"
+    }
+  }
+}

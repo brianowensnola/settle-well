@@ -18,8 +18,8 @@ export async function initiateExtraction(estateId, filePaths) {
 
     if (error) throw error;
 
-    // Call Netlify function to start extraction
-    const response = await fetch('/.netlify/functions/extract-estate-documents', {
+    // Call Netlify background function (15-min limit; returns 202 with empty body)
+    const response = await fetch('/.netlify/functions/extract-estate-documents-background', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -32,24 +32,30 @@ export async function initiateExtraction(estateId, filePaths) {
       throw new Error(`Extraction request failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data;
+    return { started: true };
   } catch (error) {
     console.error('Error initiating extraction:', error);
     throw error;
   }
 }
 
-// Poll extraction status
-export async function pollExtractionStatus(estateId, maxWaitMs = 300000) {
+// Poll extraction status for a specific set of files
+export async function pollExtractionStatus(estateId, filePaths = null, maxWaitMs = 300000) {
   const pollIntervalMs = 2000;
   const startTime = Date.now();
 
   while (Date.now() - startTime < maxWaitMs) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('estate_document_extractions')
       .select('*')
       .eq('estate_id', estateId);
+
+    // Scope to this upload's files so stale rows from prior attempts don't interfere
+    if (filePaths && filePaths.length > 0) {
+      query = query.in('file_path', filePaths);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 

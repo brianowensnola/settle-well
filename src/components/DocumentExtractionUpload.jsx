@@ -3,6 +3,28 @@ import { supabase } from '../lib/supabase'
 import { initiateExtraction, pollExtractionStatus, mergeAllExtractions, getExtractionErrors } from '../lib/claudeExtraction'
 import { extractionStatusToLabel, formatConfidenceScore, getExtractionStats } from '../lib/extractionUtils'
 
+// Downscale large photos before upload. Claude rejects images over 5MB and
+// downscales to ~1568px anyway, so uploading full-size phone photos only
+// slows extraction down.
+async function compressImage(file) {
+  if (!/^image\/(jpeg|png)$/.test(file.type)) return file
+  if (file.size < 1024 * 1024) return file
+  try {
+    const bitmap = await createImageBitmap(file)
+    const maxDim = 1568
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bitmap.width * scale)
+    canvas.height = Math.round(bitmap.height * scale)
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+    if (!blob || blob.size >= file.size) return file
+    return new File([blob], file.name.replace(/\.png$/i, '.jpg'), { type: 'image/jpeg' })
+  } catch {
+    return file
+  }
+}
+
 export default function DocumentExtractionUpload({ estateId, onExtractionComplete, onSkip, canSkip = true }) {
   const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
@@ -34,7 +56,8 @@ export default function DocumentExtractionUpload({ estateId, onExtractionComplet
       const uploadedPaths = []
 
       // Upload each file to storage
-      for (const file of files) {
+      for (const rawFile of files) {
+        const file = await compressImage(rawFile)
         // Sanitize filename for storage (remove special chars)
         const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
         const fileName = `${Date.now()}-${sanitized}`
@@ -57,7 +80,7 @@ export default function DocumentExtractionUpload({ estateId, onExtractionComplet
 
       // Poll for completion
       setExtractionProgress('Processing... this may take a minute')
-      const pollResult = await pollExtractionStatus(estateId)
+      const pollResult = await pollExtractionStatus(estateId, uploadedPaths)
 
       setExtractionProgress('')
 
