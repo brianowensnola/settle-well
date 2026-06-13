@@ -9,7 +9,7 @@ export default function Contacts() {
   const [contacts, setContacts] = useState([])
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], notes: '' })
+  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', notes: '' })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -37,12 +37,13 @@ export default function Contacts() {
       phone_labels,
       emails,
       email_labels,
+      address: form.address,
       notes: form.notes,
       estate_id: currentEstate.id
     }).select().single()
     if (data) setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
     setAdding(false)
-    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], notes: '' })
+    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', notes: '' })
   }
 
   async function seedContacts() {
@@ -187,6 +188,13 @@ export default function Contacts() {
               <button onClick={() => setForm(p => ({ ...p, emails: [...p.emails, ''], email_labels: [...p.email_labels, 'Primary'] }))}
                 className="text-xs text-blue-600 hover:text-blue-700">+ Add email</button>
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Address</label>
+            <textarea value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
+              placeholder="Street, City, State ZIP" rows={2}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
           </div>
 
           <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}

@@ -1,80 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
-
-const MASTER_CHECKLIST = {
-  'Immediate (First 24-72 hours)': [
-    'Secure the property',
-    'Order death certificates (get 15+)',
-    'Notify family and close friends',
-    'Locate will and trust documents',
-    'Contact attorney/begin probate',
-  ],
-  'Government Notifications': [
-    'Notify Social Security',
-    'Notify IRS and state tax agencies',
-    'Notify DMV (vehicles)',
-    'Notify veteran benefits (if applicable)',
-    'Cancel passport',
-  ],
-  'Financial Accounts': [
-    'Locate bank accounts',
-    'Locate investment accounts',
-    'Locate retirement accounts (401k, IRA)',
-    'Notify creditors of death',
-    'File final tax return',
-    'File estate tax return (if needed)',
-  ],
-  'Insurance': [
-    'Locate life insurance policies',
-    'Locate homeowner\'s insurance',
-    'Locate auto insurance',
-    'File life insurance claims',
-    'File property insurance claims',
-  ],
-  'Property & Assets': [
-    'Secure real property',
-    'Get property appraised',
-    'Transfer vehicle titles',
-    'Inventory household contents',
-    'Locate jewelry, art, collectibles',
-  ],
-  'Safe Deposit & Storage': [
-    'Access safe deposit box',
-    'Secure any storage units',
-  ],
-  'Business & Employment': [
-    'Notify employer of death',
-    'Collect final paycheck',
-    'Handle business interests',
-    'Cancel professional licenses',
-  ],
-  'Digital Assets': [
-    'Locate cryptocurrency accounts',
-    'Secure online accounts (email, banking)',
-    'Access cloud storage & digital files',
-    'Manage social media accounts',
-  ],
-  'Debts & Liabilities': [
-    'Identify and notify creditors',
-    'Pay estate debts',
-    'Handle mortgage payoff',
-    'Resolve pending lawsuits',
-  ],
-  'Beneficiaries & Distribution': [
-    'Identify all heirs/beneficiaries',
-    'Resolve guardianship (if needed)',
-    'Arrange pet care',
-    'Distribute assets to beneficiaries',
-  ],
-  'Special Situations': [
-    'Handle unclaimed property (state databases)',
-    'Recover loyalty/rewards accounts',
-    'Collect on intellectual property',
-    'Handle organizational memberships',
-    'Collect pending refunds/income',
-  ],
-}
+import { buildChecklistRows } from '../lib/checklistTemplate'
 
 export default function EstateChecklist() {
   const { currentEstate } = useEstate()
@@ -102,21 +29,9 @@ export default function EstateChecklist() {
   }
 
   async function initializeMasterChecklist() {
-    const itemsToInsert = []
-    for (const [category, items] of Object.entries(MASTER_CHECKLIST)) {
-      for (const item of items) {
-        itemsToInsert.push({
-          estate_id: currentEstate.id,
-          category,
-          item,
-          completed: false,
-        })
-      }
-    }
-
     const { data: inserted } = await supabase
       .from('estate_checklist_items')
-      .insert(itemsToInsert)
+      .insert(buildChecklistRows(currentEstate.id))
       .select()
 
     setItems(inserted ?? [])

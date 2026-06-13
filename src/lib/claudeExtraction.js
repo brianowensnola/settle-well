@@ -80,6 +80,11 @@ export async function pollExtractionStatus(estateId, filePaths = null, maxWaitMs
   throw new Error('Extraction polling timeout');
 }
 
+// Only auto-fill answers we're reasonably sure about. Lower-confidence
+// guesses (often inferred from boilerplate) are dropped so the question
+// stays unanswered for the user to decide, rather than wrongly marked "yes".
+const CONFIDENCE_FLOOR = 0.8;
+
 // Merge all extractions into single answer set
 export function mergeAllExtractions(extractionRecords) {
   const mergedAnswers = {};
@@ -89,10 +94,12 @@ export function mergeAllExtractions(extractionRecords) {
   extractionRecords.forEach((record) => {
     if (record.extraction_status === 'completed' && record.extracted_answers) {
       Object.entries(record.extracted_answers).forEach(([key, fieldData]) => {
+        const confidence = fieldData.confidence ?? 0;
+        if (confidence < CONFIDENCE_FLOOR) return; // skip low-confidence guesses
         // Take highest confidence if multiple documents have the same field
-        if (!mergedAnswers[key] || (fieldData.confidence ?? 0) > (mergedConfidence[key] ?? 0)) {
+        if (!mergedAnswers[key] || confidence > (mergedConfidence[key] ?? 0)) {
           mergedAnswers[key] = fieldData.value;
-          mergedConfidence[key] = fieldData.confidence ?? 0;
+          mergedConfidence[key] = confidence;
           mergedSources[key] = fieldData.source;
         }
       });

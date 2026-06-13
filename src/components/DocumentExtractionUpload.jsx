@@ -54,6 +54,7 @@ export default function DocumentExtractionUpload({ estateId, onExtractionComplet
 
     try {
       const uploadedPaths = []
+      const documentRows = []
 
       // Upload each file to storage
       for (const rawFile of files) {
@@ -69,6 +70,20 @@ export default function DocumentExtractionUpload({ estateId, onExtractionComplet
 
         if (uploadError) throw uploadError
         uploadedPaths.push(filePath)
+        // Record the file in the Documents section so it's visible there
+        documentRows.push({
+          estate_id: estateId,
+          name: rawFile.name,
+          doc_type: 'other',
+          file_path: filePath,
+          have: true,
+          notes: 'Uploaded during intake',
+        })
+      }
+
+      // Make uploaded files appear in the Documents page
+      if (documentRows.length > 0) {
+        await supabase.from('estate_documents').insert(documentRows)
       }
 
       setUploading(false)

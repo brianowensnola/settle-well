@@ -17,6 +17,12 @@ Extract structured data from the provided document and map it to the following i
 
 Extract ONLY information explicitly stated in the document. If a field cannot be extracted, omit it rather than guessing.
 
+CRITICAL RULES — avoid false positives:
+- A "yes" must be backed by an explicit fact about the DECEASED, not by boilerplate.
+- Do NOT infer "yes" from a Power of Attorney's "powers granted" list (e.g. it listing "retirement plans", "insurance", "digital assets", "Social Security, Medicare, Medicaid, VA"). Those are standard legal boilerplate present in nearly every POA and do NOT prove the person actually had that account, benefit, policy, or status. Omit those fields unless another document explicitly confirms them.
+- Omit a field entirely when the document does not directly state the answer. Do not answer "no" just because something is absent — absence is "unknown", which means omit.
+- Only assign confidence above 0.8 when the document states the fact directly and unambiguously about the deceased.
+
 ESTATE INTAKE FIELDS:
 
 DECEASED INFO:

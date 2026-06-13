@@ -146,20 +146,27 @@ export default function IntakeReview() {
 
           {question.type === 'yes-no' && (
             <div className="space-y-2">
-              {['yes', 'no'].map(opt => (
-                <button
-                  key={opt}
-                  onClick={() => updateAnswer(editingKey, opt)}
-                  disabled={saving}
-                  className={`w-full px-4 py-2 rounded-lg text-sm font-medium ${
-                    answers[editingKey] === opt
-                      ? opt === 'yes' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
-                  } disabled:opacity-50`}
-                >
-                  {opt === 'yes' ? '✓ Yes' : '✗ No'}
-                </button>
-              ))}
+              {['yes', 'no', 'unknown'].map(opt => {
+                const active = answers[editingKey] === opt
+                const activeClass = opt === 'yes'
+                  ? 'bg-green-600 text-white'
+                  : opt === 'no'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-500 text-white'
+                const label = opt === 'yes' ? '✓ Yes' : opt === 'no' ? '✗ No' : '? Unknown'
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => updateAnswer(editingKey, opt)}
+                    disabled={saving}
+                    className={`w-full px-4 py-2 rounded-lg text-sm font-medium ${
+                      active ? activeClass : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
+                    } disabled:opacity-50`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
             </div>
           )}
 
@@ -228,7 +235,7 @@ export default function IntakeReview() {
                     answers[key] === 'no' ? 'text-red-600 dark:text-red-400' :
                     'text-gray-500 dark:text-gray-400'
                   }`}>
-                    {answers[key] === 'yes' ? '✓ Yes' : answers[key] === 'no' ? '✗ No' : answers[key] || 'Not answered'}
+                    {answers[key] === 'yes' ? '✓ Yes' : answers[key] === 'no' ? '✗ No' : answers[key] === 'unknown' ? '? Unknown' : answers[key] || 'Not answered'}
                   </p>
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Click to edit</p>
                 </div>

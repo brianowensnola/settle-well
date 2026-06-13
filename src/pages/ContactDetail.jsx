@@ -138,6 +138,13 @@ export default function ContactDetail() {
               </div>
             </div>
 
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Address</label>
+              <textarea value={editData.address ?? ''} onChange={e => setEditData(p => ({ ...p, address: e.target.value }))}
+                rows={2} placeholder="Street, City, State ZIP"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+            </div>
+
             <textarea value={editData.notes ?? ''} onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
               rows={3} placeholder="Notes..."
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
@@ -160,6 +167,7 @@ export default function ContactDetail() {
             <div className="space-y-1 text-sm">
               {contact.phones?.length > 0 && contact.phones.map((p, i) => <div key={i}><span className="text-gray-400">{contact.phone_labels?.[i] || 'Phone'}: </span>{p}</div>)}
               {contact.emails?.length > 0 && contact.emails.map((e, i) => <div key={i}><span className="text-gray-400">{contact.email_labels?.[i] || 'Email'}: </span>{e}</div>)}
+              {contact.address && <div className="whitespace-pre-line"><span className="text-gray-400">Address: </span>{contact.address}</div>}
               {contact.notes && <div className="text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">{contact.notes}</div>}
             </div>
           </div>
