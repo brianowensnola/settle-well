@@ -40,7 +40,7 @@ export async function initiateExtraction(estateId, filePaths) {
 }
 
 // Poll extraction status for a specific set of files
-export async function pollExtractionStatus(estateId, filePaths = null, maxWaitMs = 300000) {
+export async function pollExtractionStatus(estateId, filePaths = null, maxWaitMs = 900000) {
   const pollIntervalMs = 2000;
   const startTime = Date.now();
 
