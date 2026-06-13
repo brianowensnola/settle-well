@@ -106,6 +106,56 @@ Return ONLY JSON:
   }));
 }
 
+// Match uploaded documents to the tasks they satisfy, and recommend an action
+async function runDocuments(estate) {
+  const estateId = estate.id;
+  const [docsRes, tasksRes, secRes] = await Promise.all([
+    supabase.from("estate_documents").select("id, name, doc_type, have, linked_task_id").eq("estate_id", estateId).eq("have", true),
+    supabase.from("estate_tasks").select("id, text, status, section_id").eq("estate_id", estateId),
+    supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
+  ]);
+  const docs = (docsRes.data ?? []).filter(d => !d.linked_task_id);
+  const tasks = tasksRes.data ?? [];
+  if (docs.length === 0 || tasks.length === 0) return [];
+  const secLabel = Object.fromEntries((secRes.data ?? []).map(s => [s.id, s.label]));
+  const docById = Object.fromEntries(docs.map(d => [d.id, d]));
+  const taskById = Object.fromEntries(tasks.map(t => [t.id, t]));
+
+  const prompt = `You help an estate executor connect uploaded documents to the tasks they satisfy.
+For each DOCUMENT, decide if it clearly relates to one of the TASKS. If so, recommend an action:
+- "mark_done": the document shows the task is complete (e.g. a death certificate for an "order death certificates" task; a recorded deed for a transfer; an obituary for an obituary task).
+- "mark_in_progress": it shows the task is underway.
+- "link_only": attach it without changing status.
+Only include confident matches; omit documents that don't clearly match a task.
+
+DOCUMENTS (id — name [type]):
+${docs.map(d => `${d.id} — ${d.name} [${d.doc_type}]`).join("\n")}
+
+TASKS (id — text (status)):
+${tasks.map(t => `${t.id} — ${t.text} (${t.status})`).join("\n")}
+
+Return ONLY JSON:
+{"matches":[{"document_id":"...","task_id":"...","action":"mark_done|mark_in_progress|link_only","reason":"one sentence"}]}`;
+
+  const resp = await client.messages.create({ model: "claude-sonnet-4-6", max_tokens: 3000, messages: [{ role: "user", content: prompt }] });
+  const text = resp.content[0].type === "text" ? resp.content[0].text : "";
+  const parsed = jsonFrom(text);
+  const rows = [];
+  for (const m of (parsed.matches || [])) {
+    const doc = docById[m.document_id], task = taskById[m.task_id];
+    if (!doc || !task) continue;
+    const label = m.action === "mark_done" ? "mark done" : m.action === "mark_in_progress" ? "mark in progress" : "link";
+    rows.push({
+      estate_id: estateId, kind: "documents",
+      title: `Link "${doc.name}" → "${task.text}" (${label})`,
+      detail: m.reason || null, suggested_phase: secLabel[task.section_id] || null,
+      is_private: false, status: "pending",
+      link_document_id: doc.id, link_task_id: task.id, action: m.action || "link_only",
+    });
+  }
+  return rows;
+}
+
 export const handler = async (event) => {
   let estateId, mode, filePaths;
   try {
@@ -119,7 +169,9 @@ export const handler = async (event) => {
     const { data: estate, error } = await supabase.from("estates").select("*").eq("id", estateId).single();
     if (error || !estate) throw new Error("estate not found");
 
-    const rows = mode === "forensic" ? await runForensic(estate, filePaths) : await runReview(estate);
+    const rows = mode === "forensic" ? await runForensic(estate, filePaths)
+      : mode === "documents" ? await runDocuments(estate)
+      : await runReview(estate);
     if (rows.length > 0) {
       await supabase.from("estate_ai_suggestions").insert(rows);
     }

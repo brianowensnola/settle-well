@@ -39,8 +39,34 @@ export async function dismissSuggestion(id) {
   await supabase.from('estate_ai_suggestions').update({ status: 'dismissed' }).eq('id', id)
 }
 
-// Accept a suggestion → create a real task in the suggested phase, mark accepted.
+// Accept a suggestion. Document-link suggestions attach the doc to its task
+// (and optionally update status); review/forensic suggestions create a task.
 export async function acceptSuggestion(s) {
+  if (s.kind === 'documents' && s.link_task_id) {
+    // Attach the document to the task
+    if (s.link_document_id) {
+      await supabase.from('estate_documents')
+        .update({ linked_task_id: s.link_task_id })
+        .eq('id', s.link_document_id)
+    }
+    // Update task status per the recommended action
+    if (s.action === 'mark_done' || s.action === 'mark_in_progress') {
+      await supabase.from('estate_tasks')
+        .update({ status: s.action === 'mark_done' ? 'done' : 'in_progress', updated_at: new Date().toISOString() })
+        .eq('id', s.link_task_id)
+    }
+    // Leave a trail on the task
+    await supabase.from('estate_task_logs').insert({
+      task_id: s.link_task_id,
+      estate_id: s.estate_id,
+      note: `Linked document via AI: ${s.title}`,
+    })
+    await supabase.from('estate_ai_suggestions')
+      .update({ status: 'accepted', created_task_id: s.link_task_id })
+      .eq('id', s.id)
+    return null
+  }
+
   let section_id = null
   if (s.suggested_phase) {
     const { data: sec } = await supabase

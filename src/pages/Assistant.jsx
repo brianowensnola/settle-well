@@ -35,6 +35,15 @@ export default function Assistant() {
     finally { setRunning(false); setProgress('') }
   }
 
+  async function matchDocuments() {
+    setRunning(true); setError(''); setProgress('Matching documents to tasks…')
+    try {
+      await runAdvisor(currentEstate.id, 'documents')
+      await refresh()
+    } catch (e) { setError(e.message || 'Document matching failed') }
+    finally { setRunning(false); setProgress('') }
+  }
+
   async function forensic() {
     if (files.length === 0) { setError('Add at least one financial statement first.'); return }
     setRunning(true); setError(''); setProgress('Uploading…')
@@ -66,6 +75,7 @@ export default function Assistant() {
 
   const reviewSugs = suggestions.filter(s => s.kind === 'review')
   const forensicSugs = suggestions.filter(s => s.kind === 'forensic')
+  const docSugs = suggestions.filter(s => s.kind === 'documents')
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -81,6 +91,15 @@ export default function Assistant() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Reviews your intake, tasks, notes, documents, and assets and proposes tasks or gaps you may have missed.</p>
         <button onClick={review} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
           {running ? 'Working…' : 'Review the estate'}
+        </button>
+      </div>
+
+      {/* Match documents to tasks */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Match documents to tasks</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks at your uploaded documents and the tasks they satisfy — e.g. a death certificate or obituary — and proposes linking them and checking the task off.</p>
+        <button onClick={matchDocuments} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
+          {running ? 'Working…' : 'Match documents'}
         </button>
       </div>
 
@@ -104,7 +123,7 @@ export default function Assistant() {
         <div className="text-gray-400 text-sm">No pending suggestions. Run a review or forensic audit above.</div>
       ) : (
         <div className="space-y-5">
-          {[['Suggested tasks', reviewSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
+          {[['Suggested tasks', reviewSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
             <div key={label}>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</h3>
               <div className="space-y-2">
