@@ -71,10 +71,20 @@ Propose 5-15 of the most valuable, non-duplicative suggestions. If something in 
   }));
 }
 
-const FORENSIC_PROMPT = `You are a forensic financial analyst reviewing a deceased person's financial statement for an estate. Identify items the executor should investigate: recurring payments/subscriptions, unknown or unexpected payees, transfers to individuals, large or unusual withdrawals, and any sign of accounts, debts, income, or obligations that may not be otherwise known. Be specific (names, amounts, dates when visible). This is investigative assistance, not an accusation or legal conclusion.
+const FORENSIC_PROMPT = `You are a forensic financial analyst reviewing ONE of a deceased person's financial statements for an estate. Surface only the findings an executor genuinely needs to investigate — quality over quantity.
 
-Return ONLY JSON:
-{"findings":[{"title":"short actionable task, e.g. 'Investigate recurring $287 payment to ...'","detail":"what you saw and why it warrants a look"}]}`;
+Report:
+- Unknown, unexpected, or unusual payees and transfers (especially to individuals).
+- Large or atypical deposits and withdrawals.
+- Signs of OTHER accounts, loans, debts, income, or obligations not otherwise known (loan payments, transfers to other accounts, etc.).
+- Recurring payments/subscriptions — report each recurring item ONCE, consolidated (e.g. "Recurring $287.78/mo to Goodleap"), never per occurrence.
+
+Do NOT flag ordinary, expected, low-value purchases individually. Consolidate aggressively. Return the ~10 most significant findings; never more than 15.
+
+Be specific (names, amounts, dates). This is investigative assistance, not an accusation or legal conclusion.
+
+Return ONLY valid, COMPLETE JSON (do not truncate):
+{"findings":[{"title":"short actionable task","detail":"what you saw and why it warrants a look"}]}`;
 
 // Forensic audit — analyze each financial statement separately (one Claude call
 // per file). A combined multi-PDF request hits page/processing limits, so we
