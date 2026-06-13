@@ -24,3 +24,30 @@ export const roleLabel = role => ROLE_LABELS[role] ?? role
 // Full-access (the Executor): the only role that sees private/forensic items
 // and can manage the estate.
 export const isFullAccess = role => role === 'administrator' || role === 'executor'
+
+// Which roles may see/visit each page. Pages not listed are open to all estate
+// members. 'administrator' is the Executor (full access).
+const ALL = ['administrator', 'collaborator', 'heir', 'observer']
+export const PAGE_ROLES = {
+  '/dashboard':        ALL,
+  '/assistant':        ['administrator'],
+  '/tasks':            ALL,
+  '/mail':             ['administrator', 'collaborator'],
+  '/intake-review':    ['administrator'],
+  '/send-to-attorney': ['administrator'],
+  '/send-documents':   ['administrator'],
+  '/finances':         ['administrator'],
+  '/notes':            ['administrator', 'collaborator'],
+  '/documents':        ['administrator', 'collaborator', 'heir', 'observer'],
+  '/documents/upload': ['administrator', 'collaborator'],
+  '/credentials':      ['administrator'],
+  '/contacts':         ALL,
+  '/settings':         ['administrator'],
+}
+
+export function canAccess(path, role) {
+  const allowed = PAGE_ROLES[path]
+  if (!allowed) return true
+  const r = role === 'executor' ? 'administrator' : role
+  return allowed.includes(r)
+}

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 import { useDarkMode } from '../lib/DarkModeContext'
+import { canAccess } from '../lib/roles'
 
 const MOBILE_NAV = [
   { to: '/dashboard',   label: '📊', icon: 'Dashboard' },
@@ -34,6 +35,8 @@ const SINGLE_ESTATE_NAV = [
 export default function Layout() {
   const navigate = useNavigate()
   const { currentEstate, role, estates, switchEstate } = useEstate()
+  const { pathname } = useLocation()
+  const blocked = !canAccess(pathname, role)
   const user = useUser()
   const { isDark, setIsDark } = useDarkMode()
   const [expandedEstate, setExpandedEstate] = useState(currentEstate?.id)
@@ -106,9 +109,9 @@ export default function Layout() {
 
                     {isExpanded && (
                       <div className="ml-2 mt-1 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
-                        {SINGLE_ESTATE_NAV.map(({ to, label }) =>
-                          renderNavLink(to, label)
-                        )}
+                        {SINGLE_ESTATE_NAV
+                          .filter(({ to }) => canAccess(to, currentEstate?.id === estate.id ? role : estate._role))
+                          .map(({ to, label }) => renderNavLink(to, label))}
                       </div>
                     )}
                   </div>
@@ -137,7 +140,7 @@ export default function Layout() {
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around safe-area-inset-bottom">
-        {MOBILE_NAV.map(({ to, label }) => (
+        {MOBILE_NAV.filter(({ to }) => canAccess(to, role)).map(({ to, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -162,7 +165,11 @@ export default function Layout() {
           </div>
         )}
         <div className="flex-1 overflow-auto">
-          <Outlet />
+          {blocked ? (
+            <div className="p-8 text-gray-400">You don't have access to this page.</div>
+          ) : (
+            <Outlet />
+          )}
         </div>
       </main>
     </div>
