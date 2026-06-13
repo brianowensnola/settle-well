@@ -104,6 +104,8 @@ export default function QuickEstateSetup() {
         .update({ intake_answers: extractedAnswers })
         .eq('id', createdEstate)
     }
+    // Refresh the in-memory estate so Intake Review sees the new answers
+    await reload()
     navigate('/intake-review')
   }
 
