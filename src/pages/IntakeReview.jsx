@@ -53,7 +53,14 @@ export default function IntakeReview() {
   }, [currentEstate])
 
   async function loadAnswers() {
-    setAnswers(currentEstate.intake_answers || {})
+    // deceased_name / deceased_dod / state_of_residence live on the estate
+    // record (entered during Quick Estate Setup) — seed them into the answers
+    // so they show as already answered. Stored intake answers win if present.
+    const seeded = {}
+    if (currentEstate.deceased_name) seeded.deceased_name = currentEstate.deceased_name
+    if (currentEstate.deceased_dod) seeded.deceased_dod = currentEstate.deceased_dod
+    if (currentEstate.state_of_residence) seeded.state_of_residence = currentEstate.state_of_residence
+    setAnswers({ ...seeded, ...(currentEstate.intake_answers || {}) })
     setLoading(false)
   }
 
@@ -71,10 +78,15 @@ export default function IntakeReview() {
   async function updateAnswer(key, value) {
     setSaving(true)
     const updated = { ...answers, [key]: value }
-    await supabase.from('estates').update({
+    const estateUpdate = {
       intake_answers: updated,
       updated_at: new Date().toISOString()
-    }).eq('id', currentEstate.id)
+    }
+    // Keep the estate record in sync for fields it owns
+    if (['deceased_name', 'deceased_dod', 'state_of_residence'].includes(key) && value) {
+      estateUpdate[key] = value
+    }
+    await supabase.from('estates').update(estateUpdate).eq('id', currentEstate.id)
     setAnswers(updated)
     advanceFrom(key)
     await reload()
