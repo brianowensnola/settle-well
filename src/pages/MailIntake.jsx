@@ -81,14 +81,22 @@ export default function MailIntake() {
         let reviewTaskId = existingTask?.id
 
         if (!existingTask) {
+          // File the mail-review task under a phase so it shows on the board
+          const { data: sec } = await supabase
+            .from('estate_sections')
+            .select('id')
+            .eq('estate_id', currentEstate.id)
+            .eq('label', 'Phase 2 — First Week')
+            .maybeSingle()
           const { data: newTask } = await supabase
             .from('estate_tasks')
             .insert({
               estate_id: currentEstate.id,
+              section_id: sec?.id ?? null,
               text: taskName,
               status: 'pending',
               tag: 'mail-review',
-              notes: 'Review today\'s mail and decide what actions to take',
+              detail: 'Review today\'s mail and decide what actions to take',
             })
             .select()
             .single()
