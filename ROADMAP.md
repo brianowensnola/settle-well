@@ -118,10 +118,11 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   optional (a person may be added before their email is known).
 - ◐ **Define & confirm role-based views.** Roles consolidated: **Executor**
   (full) → **Heir** → **Collaborator** (works all non-private tasks) →
-  **Observer** (read-only). Private/forensic items now hidden from non-Executor
-  roles in Tasks + Finances. STILL TODO: gate the nav/pages per role (e.g.
-  hide Settings/Credentials from Collaborator) and build a distinct Observer
-  view (currently falls through to the Heir dashboard).
+  **Observer** (read-only). Private/forensic items hidden from non-Executor
+  roles in Tasks + Finances. ☑ Nav + pages now gated per role (Credentials,
+  Settings, Finances, AI Assistant, Intake, Send-to-attorney are Executor-only;
+  enforced in the sidebar AND on the page render). STILL TODO: a distinct
+  Observer read-only view (currently uses the Heir dashboard).
 
 ### P2 — Bigger / ongoing (likely past Monday)
 - ☐ **Always-on background AI agent.** Watches *all* inputs continuously,
