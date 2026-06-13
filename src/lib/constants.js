@@ -36,6 +36,19 @@ export const CONTACT_ROLES = {
   other:       'Other',
 }
 
+// Fiduciary estate status the heir/observer sees on the transparency report.
+export const STATUS_STAGES = [
+  { key: 'not_started',          label: 'Not started' },
+  { key: 'probate_filed',        label: 'Probate filed' },
+  { key: 'inventory',            label: 'Inventory in progress' },
+  { key: 'creditor_notice',      label: 'Creditor notice period' },
+  { key: 'tax_review',           label: 'Tax review' },
+  { key: 'liquidation',          label: 'Asset liquidation' },
+  { key: 'distribution_pending', label: 'Distribution pending' },
+  { key: 'closed',               label: 'Estate closed' },
+]
+export const statusStageLabel = key => STATUS_STAGES.find(s => s.key === key)?.label
+
 export const DOC_TYPES = {
   identity:       'Identity',
   legal:          'Legal',

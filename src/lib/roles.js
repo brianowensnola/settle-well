@@ -27,21 +27,22 @@ export const isFullAccess = role => role === 'administrator' || role === 'execut
 
 // Which roles may see/visit each page. Pages not listed are open to all estate
 // members. 'administrator' is the Executor (full access).
-const ALL = ['administrator', 'collaborator', 'heir', 'observer']
+// Observer (Level 4) gets the status dashboard only. Heir (Level 3) gets
+// maximum transparency: dashboard + non-private task board + documents/contacts.
 export const PAGE_ROLES = {
-  '/dashboard':        ALL,
+  '/dashboard':        ['administrator', 'collaborator', 'heir', 'observer'],
   '/assistant':        ['administrator'],
-  '/tasks':            ALL,
+  '/tasks':            ['administrator', 'collaborator', 'heir'],
   '/mail':             ['administrator', 'collaborator'],
   '/intake-review':    ['administrator'],
   '/send-to-attorney': ['administrator'],
   '/send-documents':   ['administrator'],
   '/finances':         ['administrator'],
   '/notes':            ['administrator', 'collaborator'],
-  '/documents':        ['administrator', 'collaborator', 'heir', 'observer'],
+  '/documents':        ['administrator', 'collaborator', 'heir'],
   '/documents/upload': ['administrator', 'collaborator'],
   '/credentials':      ['administrator'],
-  '/contacts':         ALL,
+  '/contacts':         ['administrator', 'collaborator', 'heir'],
   '/settings':         ['administrator'],
 }
 

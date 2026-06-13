@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { INVITE_ROLES, roleLabel } from '../lib/roles'
+import { STATUS_STAGES } from '../lib/constants'
 
 export default function Settings() {
   const { currentEstate, reload } = useEstate()
@@ -21,6 +22,7 @@ export default function Settings() {
       administrator_phone: currentEstate.administrator_phone ?? '',
       state_of_residence: currentEstate.state_of_residence ?? '',
       status: currentEstate.status,
+      status_stage: currentEstate.status_stage ?? 'not_started',
     })
     loadUsers()
   }, [currentEstate])
@@ -119,6 +121,13 @@ export default function Settings() {
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
             <option value="active">Active</option>
             <option value="closed">Closed</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 block mb-1">Estate stage (shown to heirs on their Transparency Report)</label>
+          <select value={form.status_stage ?? 'not_started'} onChange={e => setForm(p => ({ ...p, status_stage: e.target.value }))}
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+            {STATUS_STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select>
         </div>
         <button type="submit" className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">

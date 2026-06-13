@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
+import { statusStageLabel } from '../lib/constants'
+
+const fmt = n => '$' + (n ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
 
 export default function HeirDashboard() {
   const { currentEstate } = useEstate()
   const [tasks, setTasks] = useState([])
   const [logs, setLogs] = useState([])
-  const [financials, setFinancials] = useState([])
+  const [summary, setSummary] = useState(null) // safe accounting aggregates (RPC)
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -16,16 +19,16 @@ export default function HeirDashboard() {
   }, [currentEstate])
 
   async function loadData() {
-    const [tasksRes, logsRes, financialsRes, docsRes] = await Promise.all([
+    const [tasksRes, logsRes, sumRes, docsRes] = await Promise.all([
       supabase.from('estate_tasks').select('*').eq('estate_id', currentEstate.id),
       supabase.from('estate_task_logs').select('*').eq('estate_id', currentEstate.id).order('created_at', { ascending: false }).limit(50),
-      supabase.from('estate_financials').select('*').eq('estate_id', currentEstate.id),
+      supabase.rpc('estate_transparency', { p_estate_id: currentEstate.id }),
       supabase.from('estate_documents').select('*').eq('estate_id', currentEstate.id).in('doc_type', ['legal', 'property']),
     ])
 
     setTasks(tasksRes.data ?? [])
     setLogs(logsRes.data ?? [])
-    setFinancials(financialsRes.data ?? [])
+    setSummary(sumRes.data ?? null)
     setDocuments(docsRes.data ?? [])
     setLoading(false)
   }
@@ -33,21 +36,19 @@ export default function HeirDashboard() {
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
-  // Calculate estate status
+  // Estate status: executor-set stage if present, else derived from task progress
   const getEstateStatus = () => {
+    if (currentEstate.status_stage) return statusStageLabel(currentEstate.status_stage) || 'In progress'
     const total = tasks.length
     const done = tasks.filter(t => t.status === 'done').length
-    if (done === 0) return 'Inventory in progress'
-    if (done < total * 0.5) return 'Inventory in progress'
+    if (total === 0 || done < total * 0.5) return 'Inventory in progress'
     if (done < total * 0.9) return 'Asset review'
     return 'Distribution pending'
   }
 
-  // Calculate financials
-  const accounts = financials.filter(f => f.category === 'account')
-  const obligations = financials.filter(f => f.category === 'obligation')
-  const totalBalance = accounts.reduce((s, a) => s + (a.amount ?? 0), 0)
-  const totalSpent = obligations.reduce((s, o) => s + (o.amount ?? 0), 0)
+  const s = summary || {}
+  const totalBalance = s.accounts_total ?? 0
+  const assetList = Array.isArray(s.assets) ? s.assets : []
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
@@ -78,28 +79,41 @@ export default function HeirDashboard() {
         </div>
       </div>
 
-      {/* Estate Accounting Breakdown */}
+      {/* Estate Accounting */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Estate Accounting</h2>
-        <div className="space-y-3">
-          {accounts.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Accounts & Assets</p>
-              <p className="text-lg font-medium text-gray-900 dark:text-white">
-                ${accounts.reduce((s, a) => s + (a.amount ?? 0), 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {[
+            ['Accounts', s.accounts_total],
+            ['Money received', s.received],
+            ['Money spent', s.spent],
+            ['Known assets', s.assets_total],
+            ['Liabilities', s.liabilities_total],
+            ['Monthly obligations', s.monthly_obligations],
+          ].map(([label, val]) => (
+            <div key={label}>
+              <p className="text-xs text-gray-600 dark:text-gray-400">{label}</p>
+              <p className="text-lg font-medium text-gray-900 dark:text-white">{fmt(val)}</p>
             </div>
-          )}
-          {obligations.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Obligations & Expenses</p>
-              <p className="text-lg font-medium text-gray-900 dark:text-white">
-                ${obligations.reduce((s, o) => s + (o.amount ?? 0), 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </p>
-            </div>
-          )}
+          ))}
         </div>
+        <p className="text-xs text-gray-400 mt-3">Summary figures only. Account numbers and credentials are not shown.</p>
       </div>
+
+      {/* Asset Summary */}
+      {assetList.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Asset Summary</h2>
+          <div className="space-y-2">
+            {assetList.map((a, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                <span className="text-sm text-gray-900 dark:text-white">{a.name}</span>
+                {a.status && <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{a.status}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Court Documents */}
       {documents.length > 0 && (
