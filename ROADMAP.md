@@ -85,14 +85,18 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   (`get_estate_role`), not just UI.
 
 ### P1 — The "invaluable to the next person" differentiators
-- ☐ **AI Forensic Financial Audit.** Upload financial statements → Claude
-  surfaces recurring payees, unknown transfers, subscriptions, and signs of
-  unaccounted accounts/assets → each actionable finding becomes a task.
-  (This is what Brian did by hand on Dan's estate — the "investigate Cash App
-  payment," "WA child support" tasks were forensic-audit findings.)
-- ☐ **Note → task generation.** When the user writes a note (e.g. "meeting with
-  probate attorney June 17"), AI proposes a task/subtask so an action mentioned
-  in passing doesn't get lost.
+- ☑ **AI Assistant (one engine, two modes)** — new executor-only AI Assistant page:
+  - **"What am I missing?" review** — scans intake/tasks/notes/documents/assets,
+    proposes missing tasks + gaps (state-scoped, not legal advice).
+  - **Forensic financial audit** — upload statements → findings (recurring payees,
+    unknown transfers, hidden accounts) as **private** suggestions.
+  - Both produce **reviewable suggestions** → executor Accepts (→ task in the
+    right phase) or Dismisses. Human-in-the-loop.
+- ◐ **Note → task generation.** Partially covered: the "What am I missing?" review
+  flags note-implied actions with no task. TODO if wanted: automatic suggestion
+  the moment a note is saved.
+- ☐ **Tune / upgrade the advisor.** Currently Sonnet; consider Opus for deeper
+  review, and an automatic (vs on-demand) trigger once the on-demand proves out.
 - ☑ **Running asset / inventory list tied to tasks.** Assets live in the
   Finances "Assets" section. Adding one auto-creates a linked "decide keep/
   sell/transfer" disposition task in the matching phase; each asset shows its
