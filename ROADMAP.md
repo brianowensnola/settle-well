@@ -72,12 +72,12 @@ Status key: ☐ todo · ◐ in progress · ☑ done
 - ☑ **Tasks: at-a-glance assignee + group/sort by person.** Assignee chip on
   every task; "Group by: Phase | Person" toggle on the one Tasks page.
 
-### P0 — Security hardening (do soon)
-- ☐ **Enforce private tasks/financials at the database (RLS) level.** Private
-  forensic tasks and private financials are currently hidden in the UI for
-  non-Executor roles, but RLS still lets any estate member read them via the
-  API. Notes are already locked down this way (migration 016) — do the same for
-  estate_tasks and estate_financials so "Executor only" is truly enforced.
+### Done — Security hardening
+- ☑ **Private items enforced at the database (RLS) level.** Private tasks are
+  readable by the Executor only (heir/observer/collaborator see non-private
+  only); private financials were already executor-only; private notes gated via
+  RLS. Also made Collaborator functional: can read + update non-private tasks
+  and read/add their notes, never private ones. (migrations 016, 017)
 
 ### Done — Notes
 - ☑ **Executor-only vs Shared daily notes.** Visibility toggle (Executor sees
