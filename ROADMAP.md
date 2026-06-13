@@ -61,9 +61,11 @@ Status key: ☐ todo · ◐ in progress · ☑ done
 - ☐ **Restore Dan's real estate data.** Real contacts (Paul Mullin + phone,
   Cotts Law, Guardian Funeral, PNC, Truist, Goodleap) and the specific
   outstanding tasks, so Monday is real work, not a demo. (Backup captured.)
-- ☐ **Documents ↔ tasks.** Uploaded documents auto-attach to the relevant task,
-  and recognized completed items (death certificates, obituary) auto-note or
-  check off the matching task instead of leaving it open.
+- ☑ **Documents ↔ tasks.** AI Assistant "Match documents" mode matches uploaded
+  documents to the tasks they satisfy (death cert → order death certs, obituary,
+  recorded deed → transfer) and proposes linking + checking the task off;
+  accepting links the doc, updates status, and logs a note. (Suggestion-based,
+  executor-confirmed.)
 - ☑ **Verify & split data, then migrate.** Split confirmed by Brian and
   restored: Dan got his contacts + 68 specific tasks (10 forensic flagged
   private, 9 assigned to Kaynin); Traci got Guardian Funeral + her 2 items;
