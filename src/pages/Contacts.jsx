@@ -7,7 +7,7 @@ import { CONTACT_ROLES } from '../lib/constants'
 
 export default function Contacts() {
   const { currentEstate, estates, role } = useEstate()
-  const canManage = isFullAccess(role) || role === 'collaborator'
+  const canManage = isFullAccess(role)  // only the executor adds/edits contacts
   const [contacts, setContacts] = useState([])
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)

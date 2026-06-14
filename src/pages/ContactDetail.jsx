@@ -211,8 +211,10 @@ export default function ContactDetail() {
                 )}
               </div>
               <div className="flex gap-3 shrink-0">
-                <button onClick={() => { setEditing(true); setEditData({ ...contact }) }}
-                  className="text-xs text-blue-600 hover:underline">Edit</button>
+                {canDelete && (
+                  <button onClick={() => { setEditing(true); setEditData({ ...contact }) }}
+                    className="text-xs text-blue-600 hover:underline">Edit</button>
+                )}
                 {canDelete && (
                   <button onClick={deleteContact} className="text-xs text-red-500 hover:text-red-700 hover:underline">Delete</button>
                 )}
@@ -235,7 +237,8 @@ export default function ContactDetail() {
         )}
       </div>
 
-      {/* Log interaction */}
+      {/* Log interaction (executor only) */}
+      {canDelete && (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Log Interaction</h2>
         <div className="flex gap-3 mb-2">
@@ -257,6 +260,7 @@ export default function ContactDetail() {
           Log
         </button>
       </div>
+      )}
 
       {/* Interaction history */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
