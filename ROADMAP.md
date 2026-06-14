@@ -20,9 +20,6 @@ Items graduate into the structured backlog below when it's time to do them.
   reviews/sends.
 - **(2026-06-14)** Help-desk / support view for the finished app — a way for end
   users to get help (FAQ, guided help, contact/support) once the app ships.
-- **(2026-06-14)** Smart mail→task linking — on mail approval, match to an
-  existing relevant task (with new-task fallback) instead of always the daily
-  "Review mail" task. (Deferred from the mail pipeline build.)
 - **(2026-06-14)** Path-scope storage policies — the estate-documents bucket
   currently lets ANY authenticated user read/upload/delete ANY file (the
   policies aren't scoped by estate/path). Tighten to per-estate path prefixes so
