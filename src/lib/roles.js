@@ -33,6 +33,7 @@ export const PAGE_ROLES = {
   '/dashboard':        ['administrator', 'collaborator', 'heir', 'observer'],
   '/assistant':        ['administrator'],
   '/admin':            ['administrator'],
+  '/executor':         ['administrator'],
   '/activity':         ['administrator', 'collaborator'],
   '/tasks':            ['administrator', 'collaborator', 'heir'],
   '/mail':             ['administrator', 'collaborator'],

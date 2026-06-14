@@ -32,6 +32,7 @@ import Settings from './pages/Settings'
 import Assistant from './pages/Assistant'
 import Activity from './pages/Activity'
 import AdminUsers from './pages/AdminUsers'
+import ExecutorTools from './pages/ExecutorTools'
 import ConfirmEmail from './pages/ConfirmEmail'
 
 function RequireAuth({ children }) {
@@ -72,6 +73,7 @@ function AppRoutes() {
         <Route path="/all-tasks" element={<AllTasks />} />
         <Route path="/multi-settings" element={<MultiEstateSettings />} />
         <Route path="/admin" element={<AdminUsers />} />
+        <Route path="/executor" element={<ExecutorTools />} />
         <Route path="/intake-review" element={<IntakeReview />} />
         <Route path="/send-to-attorney" element={<SendToAttorney />} />
         <Route path="/send-documents" element={<SendDocumentsToAttorney />} />
