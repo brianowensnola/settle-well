@@ -42,7 +42,7 @@ export const PAGE_ROLES = {
   '/finances':         ['administrator'],
   '/notes':            ['administrator', 'collaborator'],
   '/documents':        ['administrator', 'collaborator', 'heir'],
-  '/documents/upload': ['administrator', 'collaborator'],
+  '/documents/upload': ['administrator'],
   '/credentials':      ['administrator'],
   '/contacts':         ['administrator', 'collaborator', 'heir'],
   '/settings':         ['administrator'],

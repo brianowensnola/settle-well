@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { INVITE_ROLES, roleLabel } from '../lib/roles'
@@ -145,84 +146,11 @@ export default function Settings() {
       </div>
 
       <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Users & Invites</h2>
-
-        {/* Invite form */}
-        <form onSubmit={inviteUser} className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 space-y-2">
-          <label className="text-xs text-gray-500 block">Invite someone by email</label>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={e => setInviteEmail(e.target.value)}
-              placeholder="person@example.com"
-              className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-            />
-            <select
-              value={inviteRole}
-              onChange={e => setInviteRole(e.target.value)}
-              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-            >
-              {INVITE_ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
-            </select>
-            <button
-              type="submit"
-              disabled={inviting || !inviteEmail.trim()}
-              className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40"
-            >
-              {inviting ? '...' : 'Invite'}
-            </button>
-          </div>
-        </form>
-
-        {/* User list */}
-        <div className="space-y-1 text-sm">
-          {users.length === 0 && <p className="text-gray-400">No users yet.</p>}
-          {users.map(user => {
-            const inviteUrl = (!user.auth_user_id && user.email) ? `https://settle-well.netlify.app/invite?email=${encodeURIComponent(user.email)}` : null
-            return (
-              <div key={user.id} className="px-3 py-2 border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-800">
-                <div className="flex items-center justify-between mb-1">
-                  <div>
-                    <div className="font-medium text-gray-800 dark:text-white">{user.name || user.email || '(no name)'}</div>
-                    <div className="text-xs text-gray-400">
-                      {roleLabel(user.role)}
-                      {user.email ? ` · ${user.email}` : ' · no email yet'}
-                      {' '}{user.auth_user_id ? '(confirmed)' : '(pending)'}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => removeUser(user.id)}
-                    className="text-xs text-red-500 hover:text-red-700 underline"
-                  >
-                    Remove
-                  </button>
-                </div>
-                {inviteUrl && (
-                  <div className="mt-1.5 flex gap-2 items-start">
-                    <div className="flex-1 min-w-0">
-                      <input
-                        type="text"
-                        readOnly
-                        value={inviteUrl}
-                        className="w-full text-xs bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded px-2 py-1 text-gray-700 dark:text-gray-300 truncate"
-                      />
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(inviteUrl)
-                        alert('Link copied! Send via text, WhatsApp, email, or any way you prefer.')
-                      }}
-                      className="shrink-0 text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Users &amp; Roles</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          People, roles, and passwords are now managed in one place for all estates:{' '}
+          <Link to="/admin" className="text-blue-600 hover:underline">Multi-Estate → Users &amp; Roles</Link>.
+        </p>
       </div>
     </div>
   )

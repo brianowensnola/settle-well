@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 import { useDarkMode } from '../lib/DarkModeContext'
-import { canAccess } from '../lib/roles'
+import { canAccess, isFullAccess } from '../lib/roles'
 
 const MOBILE_NAV = [
   { to: '/dashboard',   label: '📊', icon: 'Dashboard' },
@@ -15,21 +15,27 @@ const MOBILE_NAV = [
   { to: '/contacts',    label: '👥', icon: 'Contacts' },
 ]
 
-const SINGLE_ESTATE_NAV = [
+// Per-estate items everyone (per their role) uses — shown under each estate.
+const SHARED_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
-  { to: '/assistant',   label: 'AI Assistant' },
   { to: '/tasks',       label: 'Tasks' },
-  { to: '/intake-review', label: 'Intake Review' },
-  { to: '/send-to-attorney', label: 'Send to Attorney' },
-  { to: '/send-documents', label: 'Send Documents' },
-  { to: '/finances',    label: 'Finances' },
   { to: '/notes',       label: 'Daily Notes' },
   { to: '/activity',    label: 'Activity Log' },
   { to: '/documents',   label: 'Documents' },
-  { to: '/documents/upload', label: 'Upload Files' },
-  { to: '/credentials', label: 'Credentials' },
   { to: '/contacts',    label: 'Contacts' },
-  { to: '/settings',    label: 'Settings' },
+]
+
+// Executor-only tools — shown in a dedicated top section; they act on the
+// currently-selected estate.
+const EXECUTOR_NAV = [
+  { to: '/assistant',        label: 'AI Assistant' },
+  { to: '/finances',         label: 'Finances' },
+  { to: '/credentials',      label: 'Credentials' },
+  { to: '/documents/upload', label: 'Upload Files' },
+  { to: '/intake-review',    label: 'Intake Review' },
+  { to: '/send-to-attorney', label: 'Send to Attorney' },
+  { to: '/send-documents',   label: 'Send Documents' },
+  { to: '/settings',         label: 'Estate Settings' },
 ]
 
 export default function Layout() {
@@ -76,6 +82,18 @@ export default function Layout() {
       {renderNavLink('/admin', 'Users & Roles')}
       {renderNavLink('/multi-settings', 'Settings')}
 
+      {/* Executor tools — act on the currently-selected estate */}
+      {isFullAccess(role) && currentEstate && (
+        <>
+          <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">
+            Executor · <span className="font-normal text-gray-500 dark:text-gray-400">{currentEstate.deceased_name}</span>
+          </div>
+          {EXECUTOR_NAV
+            .filter(({ to }) => canAccess(to, role))
+            .map(({ to, label }) => renderNavLink(to, label))}
+        </>
+      )}
+
       {/* Estates Section */}
       <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">Estates</div>
       <div className="space-y-1">
@@ -108,7 +126,7 @@ export default function Layout() {
 
                 {isExpanded && (
                   <div className="ml-2 mt-1 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
-                    {SINGLE_ESTATE_NAV
+                    {SHARED_NAV
                       .filter(({ to }) => canAccess(to, currentEstate?.id === estate.id ? role : estate._role))
                       .map(({ to, label }) => renderNavLink(to, label))}
                   </div>
