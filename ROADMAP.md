@@ -32,6 +32,8 @@ Items graduate into the structured backlog below when it's time to do them.
   *obligations* are on Traci. Decide what migrates where.
 - **(2026-06-14)** Color scheme / formatting — Brian preferred an earlier look on
   some screens; needs specifics on which screens before changing.
+- **(2026-06-14)** Need a way to change passwords in admin — let the executor
+  reset/change a user's password from an admin screen (Settings).
 
 ---
 
