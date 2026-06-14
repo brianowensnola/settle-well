@@ -37,6 +37,13 @@ Items graduate into the structured backlog below when it's time to do them.
 - **(2026-06-14)** Documents on multiple tasks — let one document be referenced
   from several tasks at once (currently `linked_task_id` is single-valued, so
   attaching a doc moves it). Needs a task↔document many-to-many link.
+- **(2026-06-14)** Protect the code / keep it proprietary (long-term). How do we
+  guard against other AIs or third parties poaching or copying the codebase?
+  Consider: private repo + tight access controls, a proprietary LICENSE, keeping
+  business logic server-side (Netlify functions) rather than in the shipped
+  client bundle, code obfuscation/minification, and legal terms. (Note: any code
+  shipped to the browser is inherently readable; true protection lives on the
+  server + legal, not in the front-end.)
 - **(2026-06-14)** Estate Info (Read-Only) on the Settings page — make it
   editable (deceased name, DOB, DOD), or require all of that info up front at
   intake so it's always complete. Whichever makes the most sense.
