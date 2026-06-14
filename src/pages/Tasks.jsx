@@ -351,7 +351,7 @@ function TaskRow({ task, subtasks, logs, onCycle, canApprove, onApprove, onSendB
               {subtasks.map(st => (
                 <div key={st.id} className="flex items-center gap-2 text-xs text-gray-500">
                   <span className={`px-1.5 py-0.5 rounded text-xs ${STATUS_STYLES[st.status]}`}>{STATUS_LABELS[st.status]}</span>
-                  <span className={st.status === 'done' ? 'line-through' : ''}>{st.text}</span>
+                  <Link to={`/tasks/${st.id}`} className={`hover:text-gray-800 dark:hover:text-gray-200 hover:underline ${st.status === 'done' ? 'line-through' : ''}`}>{st.text}</Link>
                 </div>
               ))}
             </div>

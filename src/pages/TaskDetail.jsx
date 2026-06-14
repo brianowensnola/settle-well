@@ -654,9 +654,9 @@ export default function TaskDetail() {
         {subtasks.length === 0 && !addingSub && <p className="text-sm text-gray-400">No sub-tasks.</p>}
         <div className="space-y-2">
           {subtasks.map(st => (
-            <div key={st.id} className={`flex items-center gap-2 text-sm ${st.status === 'done' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
+            <div key={st.id} className="flex items-center gap-2 text-sm">
               <span className={`text-xs px-1.5 py-0.5 rounded ${STATUS_STYLES[st.status]}`}>{STATUS_LABELS[st.status]}</span>
-              {st.text}
+              <Link to={`/tasks/${st.id}`} className={`hover:underline ${st.status === 'done' ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'}`}>{st.text}</Link>
             </div>
           ))}
         </div>
