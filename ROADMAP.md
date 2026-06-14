@@ -37,6 +37,9 @@ Items graduate into the structured backlog below when it's time to do them.
 - **(2026-06-14)** Documents on multiple tasks — let one document be referenced
   from several tasks at once (currently `linked_task_id` is single-valued, so
   attaching a doc moves it). Needs a task↔document many-to-many link.
+- **(2026-06-14)** Estate Info (Read-Only) on the Settings page — make it
+  editable (deceased name, DOB, DOD), or require all of that info up front at
+  intake so it's always complete. Whichever makes the most sense.
 - **(2026-06-14)** Move AI Assistant, Activity Log, Send to Attorney, Intake
   Review, Credentials, and document uploads (Upload Files) out from under each
   estate into a secured, executor-only section (e.g. a Settings area under
