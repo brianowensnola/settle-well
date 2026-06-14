@@ -18,6 +18,10 @@ Items graduate into the structured backlog below when it's time to do them.
   surface for years), but move it out of the active view so the executor can take
   on a new, unrelated estate without clutter. Pairs with the "unrelated estate =
   separate account" idea in the Vision.
+- **(2026-06-14)** Executor sign-up disclaimer — when someone signs up as the
+  executor, present a disclaimer explaining their legal/fiduciary obligations
+  (act in the estate's best interest, keep records, not legal advice, etc.) and
+  require them to acknowledge it before proceeding.
 - **(2026-06-14)** Confirm/connect the Anthropic account to the app — verify the
   Anthropic API key in Netlify env is set and on a plan with the features we
   use (esp. the web-search tool for death-notification address lookup). If web

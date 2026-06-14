@@ -9,6 +9,9 @@ import { isFullAccess } from '../lib/roles'
 const EXEC_CYCLE = ['pending', 'in_progress', 'waiting', 'done']
 const STAFF_CYCLE = ['pending', 'in_progress', 'waiting', 'submitted'] // non-executors submit for approval
 
+// Display helper: "Phase 2 — First Week" → "First Week" (stored label is unchanged)
+const phaseLabel = l => (l || '').replace(/^Phase\s*\d+\s*[—–-]\s*/, '')
+
 export default function Tasks() {
   const { currentEstate, role } = useEstate()
   const user = useUser()
@@ -106,7 +109,7 @@ export default function Tasks() {
   }
 
   const assignees = ['all', ...new Set(tasks.map(t => t.assigned_to || 'Unassigned'))]
-  const sectionLabel = id => sections.find(s => s.id === id)?.label ?? ''
+  const sectionLabel = id => phaseLabel(sections.find(s => s.id === id)?.label ?? '')
   const submittedCount = tasks.filter(t => t.status === 'submitted' && (canSeePrivate || !t.is_private)).length
 
   // Group filtered top-level tasks by assignee (for the by-person view)
@@ -194,7 +197,7 @@ export default function Tasks() {
                 style={{ background: c.bg }}
                 onClick={() => setCollapsed(p => ({ ...p, [sec.id]: !p[sec.id] }))}
               >
-                <span className="text-sm font-semibold" style={{ color: c.text }}>{sec.label}</span>
+                <span className="text-sm font-semibold" style={{ color: c.text }}>{phaseLabel(sec.label)}</span>
                 <span className="text-xs" style={{ color: c.text }}>{isCollapsed ? '▶' : '▼'}</span>
               </button>
 

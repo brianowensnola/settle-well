@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState([])
   const [logs, setLogs] = useState([])
   const [financials, setFinancials] = useState([])
+  const [mailPending, setMailPending] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,10 +29,12 @@ export default function Dashboard() {
       supabase.from('estate_tasks').select('*').eq('estate_id', currentEstate.id).is('parent_task_id', null),
       supabase.from('estate_task_logs').select('*, estate_tasks(text)').eq('estate_id', currentEstate.id).order('created_at', { ascending: false }).limit(5),
       supabase.from('estate_financials').select('*').eq('estate_id', currentEstate.id),
-    ]).then(([t, l, f]) => {
+      supabase.from('family_mail').select('id').eq('status', 'pending'),
+    ]).then(([t, l, f, m]) => {
       setTasks(t.data ?? [])
       setLogs(l.data ?? [])
       setFinancials(f.data ?? [])
+      setMailPending((m.data ?? []).length)
       setLoading(false)
     })
   }, [currentEstate])
@@ -42,6 +45,8 @@ export default function Dashboard() {
   const total = tasks.length
   const done = tasks.filter(t => t.status === 'done').length
   const pct = total ? Math.round((done / total) * 100) : 0
+  const submittedCount = tasks.filter(t => t.status === 'submitted').length
+  const needsReview = submittedCount + mailPending
 
   const urgent = tasks
     .filter(t => t.status !== 'done')
@@ -83,6 +88,17 @@ export default function Dashboard() {
           + Add Estate
         </button>
       </div>
+
+      {/* Needs review */}
+      {needsReview > 0 && (
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4 mb-4">
+          <div className="text-sm font-semibold text-purple-900 dark:text-purple-200 mb-1">🔔 {needsReview} item{needsReview === 1 ? '' : 's'} need your review</div>
+          <div className="flex gap-4 text-sm">
+            {submittedCount > 0 && <Link to="/tasks" className="text-purple-700 dark:text-purple-300 hover:underline">{submittedCount} task{submittedCount === 1 ? '' : 's'} awaiting approval →</Link>}
+            {mailPending > 0 && <Link to="/mail" className="text-purple-700 dark:text-purple-300 hover:underline">{mailPending} mail item{mailPending === 1 ? '' : 's'} to review →</Link>}
+          </div>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">

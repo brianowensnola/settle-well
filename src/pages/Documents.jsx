@@ -41,6 +41,23 @@ export default function Documents() {
     const { data } = await supabase.from('estate_documents').insert({ ...form, estate_id: currentEstate.id }).select().single()
     if (data) {
       setDocs(prev => [data, ...prev])
+      // A needed or attorney-requested document spawns a task to obtain/provide it.
+      if (data.requested || !data.have) {
+        const text = data.requested
+          ? `Send to ${data.requested_from || 'attorney'}: ${data.name}`
+          : `Obtain document: ${data.name}`
+        const { data: sec } = await supabase.from('estate_sections')
+          .select('id').eq('estate_id', currentEstate.id).eq('label', 'Phase 2 — First Week').maybeSingle()
+        const { data: task } = await supabase.from('estate_tasks').insert({
+          estate_id: currentEstate.id, section_id: sec?.id ?? null, text,
+          status: 'pending', tag: data.requested ? 'attorney request' : 'needed doc',
+          detail: 'Auto-created from a document. Mark the document "Have it" once you obtain it.',
+        }).select('id').single()
+        if (task) {
+          await supabase.from('estate_task_documents').upsert({ estate_id: currentEstate.id, task_id: task.id, document_id: data.id }, { onConflict: 'task_id,document_id' })
+          await supabase.from('estate_documents').update({ linked_task_id: task.id }).eq('id', data.id)
+        }
+      }
       // Jump to the tab where the new doc actually lives, so it's visible.
       setTab(data.requested ? 'requested' : data.have ? 'have' : 'need')
     }
