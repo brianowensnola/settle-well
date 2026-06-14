@@ -10,6 +10,7 @@ const TOOLS = [
   { to: '/intake-review',    label: 'Intake Review',    icon: '📝', desc: 'Review and update the estate intake answers.' },
   { to: '/send-to-attorney', label: 'Send to Attorney', icon: '✉️', desc: 'Share an estate update with the attorney.' },
   { to: '/send-documents',   label: 'Send Documents',   icon: '📤', desc: 'Send selected documents to the attorney.' },
+  { to: '/activity',         label: 'Activity Log',     icon: '🧾', desc: 'Permanent, append-only record of every change.' },
   { to: '/settings',         label: 'Estate Settings',  icon: '⚙️', desc: 'Estate details, stage, and status.' },
 ]
 

@@ -20,7 +20,6 @@ const SHARED_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
   { to: '/tasks',       label: 'Tasks' },
   { to: '/notes',       label: 'Daily Notes' },
-  { to: '/activity',    label: 'Activity Log' },
   { to: '/documents',   label: 'Documents' },
   { to: '/contacts',    label: 'Contacts' },
 ]
@@ -35,6 +34,7 @@ const EXECUTOR_NAV = [
   { to: '/intake-review',    label: 'Intake Review' },
   { to: '/send-to-attorney', label: 'Send to Attorney' },
   { to: '/send-documents',   label: 'Send Documents' },
+  { to: '/activity',         label: 'Activity Log' },
   { to: '/settings',         label: 'Estate Settings' },
 ]
 
