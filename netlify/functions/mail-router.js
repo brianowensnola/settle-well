@@ -41,30 +41,43 @@ export const handler = async (event) => {
       ? { type: "image", source: { type: "base64", media_type: ext === "png" ? "image/png" : "image/jpeg", data: base64 } }
       : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
-    const prompt = `This is a piece of mail/correspondence for a family that is administering multiple related estates. Read it and decide WHICH ESTATE it belongs to, what kind of document it is, and summarize it briefly.
+    const prompt = `This is a scanned piece of mail (the first page is usually the ENVELOPE, then the contents) for a family administering multiple related estates. Read all pages and report on it.
 
 CANDIDATE ESTATES (use the addressee, the deceased's name, account holders, or context to choose):
 ${candidates}
 
-Pick the single best estate. If it genuinely could belong to either or you cannot tell, choose the most likely and lower your confidence.
+Determine:
+- which estate it most likely belongs to (or null if truly undeterminable — lower confidence if unsure)
+- the SENDER (from the envelope/letterhead)
+- a short display name and a one-sentence summary
+- whether it is a BILL or anything requiring PAYMENT; if so, the amount and due date
+- whether it is TIME-SENSITIVE (a deadline, court date, response-by date, or payment due soon)
+- the single most important ACTION the executor should take, if any
 
 Return ONLY JSON:
-{"estate_id":"<one of the ids above, or null if truly undeterminable>","name":"short display name for this document (e.g. 'PNC mortgage statement - May 2026')","doc_type":"one of: legal | financial | property | insurance | tax | mail | other","summary":"one sentence on what this is and any action it implies","confidence":0.0}`;
+{"estate_id":"<one of the ids above, or null>","sender":"who it's from","name":"short display name (e.g. 'PNC mortgage statement - May 2026')","doc_type":"one of: legal | financial | property | insurance | tax | mail | other","summary":"one sentence","is_bill":true|false,"amount":<number or null>,"due_date":"YYYY-MM-DD or null","urgent":true|false,"action":"one-line suggested action or null","confidence":0.0}`;
 
     const resp = await client.messages.create({
-      model: "claude-sonnet-4-6", max_tokens: 600,
+      model: "claude-sonnet-4-6", max_tokens: 700,
       messages: [{ role: "user", content: [block, { type: "text", text: prompt }] }],
     });
     const text = resp.content[0].type === "text" ? resp.content[0].text : "";
     const m = jsonFrom(text);
 
     const validId = (estates ?? []).some(e => e.id === m.estate_id) ? m.estate_id : null;
+    const validDate = d => (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null);
     await supabase.from("family_mail").update({
       suggested_estate_id: validId,
+      sender: m.sender || null,
       ai_name: m.name || mail.original_name,
       ai_doc_type: ["legal", "financial", "property", "insurance", "tax", "mail", "other"].includes(m.doc_type) ? m.doc_type : "mail",
       ai_summary: m.summary || null,
       ai_confidence: typeof m.confidence === "number" ? m.confidence : null,
+      is_bill: !!m.is_bill,
+      bill_amount: (m.amount === 0 || m.amount) ? Number(m.amount) : null,
+      bill_due: validDate(m.due_date),
+      urgent: !!m.urgent,
+      ai_action: m.action || null,
     }).eq("id", mailId);
 
     return { statusCode: 200, body: JSON.stringify({ success: true }) };

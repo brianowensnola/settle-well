@@ -1,7 +1,7 @@
+import { jsPDF } from 'jspdf'
 import { supabase } from './supabase'
 
 const BUCKET = 'estate-documents'
-const sanitize = n => n.replace(/[^a-zA-Z0-9._-]/g, '_')
 
 export async function loadInbox() {
   const { data } = await supabase
@@ -12,30 +12,66 @@ export async function loadInbox() {
   return data ?? []
 }
 
-// Upload one mail file to the shared inbox, then ask the AI router to suggest
-// which estate it belongs to. Returns the created row id.
-export async function uploadMailFile(file, user) {
-  const path = `family-mail/${Date.now()}_${sanitize(file.name)}`
-  const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file)
+// --- image → PDF assembly (one scanned document per mailpiece) ---------------
+function downscaleToDataUrl(file, maxDim = 1600) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      let { width, height } = img
+      const scale = Math.min(1, maxDim / Math.max(width, height))
+      width = Math.round(width * scale); height = Math.round(height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = width; canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      URL.revokeObjectURL(url)
+      resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.8), width, height })
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
+async function imagesToPdf(files) {
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4' })
+  const pageW = pdf.internal.pageSize.getWidth()
+  const pageH = pdf.internal.pageSize.getHeight()
+  for (let i = 0; i < files.length; i++) {
+    const { dataUrl, width, height } = await downscaleToDataUrl(files[i])
+    const ratio = Math.min(pageW / width, pageH / height)
+    const dw = width * ratio, dh = height * ratio
+    if (i > 0) pdf.addPage()
+    pdf.addImage(dataUrl, 'JPEG', (pageW - dw) / 2, (pageH - dh) / 2, dw, dh)
+  }
+  return pdf.output('blob')
+}
+
+// Upload ONE mailpiece (envelope + pages) as a single combined PDF, then ask
+// the AI router to read it. The collaborator never picks an estate.
+export async function uploadMailPiece(files, dateReceived, user) {
+  if (!files?.length) throw new Error('Add the envelope and at least one page first.')
+  const onlyPdf = files.length === 1 && files[0].type === 'application/pdf'
+  const blob = onlyPdf ? files[0] : await imagesToPdf(files)
+  const path = `family-mail/${Date.now()}_mail.pdf`
+  const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'application/pdf' })
   if (upErr) throw upErr
 
   const { data, error } = await supabase.from('family_mail').insert({
     uploaded_by: user?.id ?? null,
     uploader_name: user?.email ?? null,
     file_path: path,
-    original_name: file.name,
-    ai_name: file.name,
+    original_name: `Mail received ${dateReceived || new Date().toISOString().slice(0, 10)}`,
+    ai_name: `Mail received ${dateReceived || new Date().toISOString().slice(0, 10)}`,
+    date_received: dateReceived || new Date().toISOString().slice(0, 10),
   }).select().single()
   if (error) throw error
 
-  // Best-effort AI routing (non-fatal — item still appears for manual routing).
   try {
     await fetch('/.netlify/functions/mail-router', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mailId: data.id }),
     })
-  } catch { /* ignore */ }
+  } catch { /* non-fatal — item still appears for manual review */ }
 
   return data.id
 }
@@ -45,19 +81,31 @@ export async function signedUrl(filePath) {
   return data?.signedUrl ?? null
 }
 
-// Approve: file the mail under the chosen estate. The file stays where it is
-// (bucket reads are estate-wide); we just create the estate's document record
-// pointing at it and link it to that estate's mail-review task.
-export async function routeMailItem(item, estateId, overrideName) {
+// Executor approval: file the mailpiece under the chosen estate (as a mail
+// document) and link it to that estate's mail-review task.
+export async function routeMailItem(item, estateId, overrideName, ledger) {
   const name = (overrideName ?? item.ai_name ?? item.original_name ?? 'Mail item').trim()
+
+  // If it's a bill the executor chose to record, add it to the Finances ledger.
+  if (ledger?.add) {
+    await supabase.from('estate_financials').insert({
+      estate_id: estateId,
+      category: ledger.category || 'obligation',
+      name: item.sender ? `${item.sender} (from mail)` : name,
+      amount: (ledger.amount === 0 || ledger.amount) ? Number(ledger.amount) : (item.bill_amount ?? null),
+      status: 'active',
+      is_private: false,
+      notes: [item.ai_summary, item.bill_due ? `Due ${item.bill_due}` : null].filter(Boolean).join(' — ') || null,
+    })
+  }
 
   const { data: doc, error } = await supabase.from('estate_documents').insert({
     estate_id: estateId,
     name,
-    doc_type: item.ai_doc_type || 'mail',
+    doc_type: 'mail',
     file_path: item.file_path,
     have: true,
-    notes: item.ai_summary || null,
+    notes: [item.sender ? `From: ${item.sender}` : null, item.ai_summary].filter(Boolean).join(' — ') || null,
   }).select().single()
   if (error) throw error
 
@@ -86,6 +134,5 @@ export async function routeMailItem(item, estateId, overrideName) {
 
 export async function dismissMailItem(item) {
   await supabase.from('family_mail').update({ status: 'dismissed' }).eq('id', item.id)
-  // Dismissed mail was never filed under an estate, so purge its file (best-effort).
   if (item.file_path) { try { await supabase.storage.from(BUCKET).remove([item.file_path]) } catch { /* ignore */ } }
 }
