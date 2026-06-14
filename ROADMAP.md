@@ -17,6 +17,13 @@ Items graduate into the structured backlog below when it's time to do them.
   mail removes the database record but the actual file stays in the bucket (no
   storage delete policy). Add an edge function or storage policy to really
   delete the file when intended.
+- **(2026-06-14)** Re-invited users should auto-reconnect to their existing login.
+  Today the account→estate linking only runs at sign-up, so re-inviting someone
+  who already has a login creates a pending invite that doesn't connect on their
+  next sign-in (they see no estates until linked manually). Fix: run the linking
+  check on every login, so a re-invite by email "just works." Their assigned
+  tasks/notes/history are preserved either way (assignment is by name, history is
+  snapshotted).
 - **(2026-06-14)** Let invited users set/change their own password (self-service),
   so shared passwords aren't permanent.
 - **(2026-06-14)** Forensic AI audit misses small recurring obligations — it
