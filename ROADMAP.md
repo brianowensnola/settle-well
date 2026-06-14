@@ -30,8 +30,6 @@ Items graduate into the structured backlog below when it's time to do them.
   dropped every utility and subscription (Spectrum, TXU, Amazon Prime, etc.)
   that the human audit flagged "cancel immediately." Tune the prompt so the
   audit captures recurring bills to cancel, not just large/unusual items.
-- **(2026-06-14)** Need a way to change passwords in admin — let the executor
-  reset/change a user's password from an admin screen (Settings).
 - **(2026-06-14)** Documents on multiple tasks — let one document be referenced
   from several tasks at once (currently `linked_task_id` is single-valued, so
   attaching a doc moves it). Needs a task↔document many-to-many link.
@@ -49,9 +47,6 @@ Items graduate into the structured backlog below when it's time to do them.
   Review, Credentials, and document uploads (Upload Files) out from under each
   estate into a secured, executor-only section (e.g. a Settings area under
   Multi-Estate). These should only be accessible by the executor.
-- **(2026-06-14)** Adding roles / managing users (Users & Invites) should live in
-  that same secured executor-only section, not inside each individual estate's
-  Settings.
 - **(2026-06-14)** Re-enable email confirmation once real email is set up.
   Turned OFF "Confirm email" in Supabase auth because the built-in default email
   sender is rate-limited and was blocking sign-ups ("email rate limit exceeded").
@@ -64,10 +59,6 @@ Items graduate into the structured backlog below when it's time to do them.
 - **(2026-06-14)** Tune / upgrade the AI advisor — currently Sonnet; consider
   Opus for deeper review, and an automatic (vs on-demand) trigger once on-demand
   proves out.
-- **(2026-06-14)** Full demographics for everyone with access — capture name,
-  phone, email, address, relationship for executor/heir/collaborator/observer,
-  editable in Settings (currently only email + role shown). Email optional (a
-  person may be added before their email is known).
 - **(2026-06-14)** Always-on background AI agent (bigger / P2) — watches all
   inputs continuously, cross-references state probate rules, and generates/
   updates tasks. State-law accuracy is a minefield: frame as general guidance
