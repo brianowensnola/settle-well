@@ -41,9 +41,10 @@ Items graduate into the structured backlog below when it's time to do them.
   fragile (NULL auth token columns caused "Database error querying schema" for
   Rebecca & Kaynin; fixed by setting them to ''). Use Supabase's admin API or
   the invite/self-register flow instead of manual inserts.
-- **(2026-06-14)** Tune / upgrade the AI advisor — currently Sonnet; consider
-  Opus for deeper review, and an automatic (vs on-demand) trigger once on-demand
-  proves out.
+- **(2026-06-14)** AI advisor auto-trigger — the advisor now runs on Opus for
+  the reasoning passes (done). Still TODO: run the "what am I missing" review
+  automatically (e.g. after intake or when new data lands) instead of only
+  on-demand.
 - **(2026-06-14)** Always-on background AI agent (bigger / P2) — watches all
   inputs continuously, cross-references state probate rules, and generates/
   updates tasks. State-law accuracy is a minefield: frame as general guidance
