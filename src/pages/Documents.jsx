@@ -7,6 +7,8 @@ import { DOC_TYPES } from '../lib/constants'
 export default function Documents() {
   const { currentEstate, role } = useEstate()
   const canDelete = isFullAccess(role)
+  // Executor + collaborator can rename; heirs/observers can't (matches RLS).
+  const canEdit = isFullAccess(role) || role === 'collaborator'
   const [docs, setDocs] = useState([])
   const [tab, setTab] = useState('have')
   const [adding, setAdding] = useState(false)
@@ -86,7 +88,7 @@ export default function Documents() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Documents</h1>
-        <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add document</button>
+        {canEdit && <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add document</button>}
       </div>
 
       <div className="flex gap-2 mb-5 flex-wrap">
@@ -176,13 +178,13 @@ export default function Documents() {
                 {doc.notes && <div className="text-xs text-gray-500 mt-0.5">{doc.notes}</div>}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {renaming !== doc.id && (
+                {canEdit && renaming !== doc.id && (
                   <button onClick={() => startRename(doc)} className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:underline">Rename</button>
                 )}
                 {doc.have && doc.file_path && (
                   <button onClick={() => getUrl(doc)} className="text-xs text-blue-600 hover:underline">View</button>
                 )}
-                {!doc.file_path && (
+                {canEdit && !doc.file_path && (
                   <label className="text-xs text-blue-600 hover:underline cursor-pointer">
                     {uploading === doc.id ? 'Uploading...' : 'Upload'}
                     <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.docx"

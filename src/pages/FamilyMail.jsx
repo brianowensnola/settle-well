@@ -93,7 +93,7 @@ export default function FamilyMail() {
           <li>Do <strong>one piece of mail at a time</strong>.</li>
           <li>Photograph the <strong>envelope first</strong>, then <strong>every page</strong> inside (front of each page).</li>
           <li>Set the <strong>date received</strong>, then tap <strong>Submit mailpiece</strong>.</li>
-          <li>The executor reviews and files it — you don't pick where it goes.</li>
+          <li>The executor reviews and files it.</li>
         </ol>
       </div>
 
