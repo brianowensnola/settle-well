@@ -61,7 +61,7 @@ export default function FamilyMail() {
   }
 
   async function dismiss(item) {
-    await dismissMailItem(item.id)
+    await dismissMailItem(item)
     setItems(prev => prev.filter(x => x.id !== item.id))
   }
 

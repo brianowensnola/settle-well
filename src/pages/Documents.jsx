@@ -71,6 +71,8 @@ export default function Documents() {
     if (!confirm(`Delete "${doc.name}"? This removes it from this estate's document list. This can't be undone.`)) return
     const { error } = await supabase.from('estate_documents').delete().eq('id', doc.id)
     if (error) { alert(`Couldn't delete: ${error.message}`); return }
+    // Purge the underlying file from storage (best-effort)
+    if (doc.file_path) { try { await supabase.storage.from('estate-documents').remove([doc.file_path]) } catch { /* ignore */ } }
     setDocs(prev => prev.filter(d => d.id !== doc.id))
   }
 

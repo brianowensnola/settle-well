@@ -84,6 +84,8 @@ export async function routeMailItem(item, estateId, overrideName) {
   return doc
 }
 
-export async function dismissMailItem(id) {
-  await supabase.from('family_mail').update({ status: 'dismissed' }).eq('id', id)
+export async function dismissMailItem(item) {
+  await supabase.from('family_mail').update({ status: 'dismissed' }).eq('id', item.id)
+  // Dismissed mail was never filed under an estate, so purge its file (best-effort).
+  if (item.file_path) { try { await supabase.storage.from(BUCKET).remove([item.file_path]) } catch { /* ignore */ } }
 }
