@@ -42,6 +42,9 @@ Items graduate into the structured backlog below when it's time to do them.
   Review, Credentials, and document uploads (Upload Files) out from under each
   estate into a secured, executor-only section (e.g. a Settings area under
   Multi-Estate). These should only be accessible by the executor.
+- **(2026-06-14)** Adding roles / managing users (Users & Invites) should live in
+  that same secured executor-only section, not inside each individual estate's
+  Settings.
 - **(2026-06-14)** Re-enable email confirmation once real email is set up.
   Turned OFF "Confirm email" in Supabase auth because the built-in default email
   sender is rate-limited and was blocking sign-ups ("email rate limit exceeded").
