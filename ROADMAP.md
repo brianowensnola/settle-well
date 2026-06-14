@@ -61,6 +61,17 @@ Items graduate into the structured backlog below when it's time to do them.
   fragile (NULL auth token columns caused "Database error querying schema" for
   Rebecca & Kaynin; fixed by setting them to ''). Use Supabase's admin API or
   the invite/self-register flow instead of manual inserts.
+- **(2026-06-14)** Tune / upgrade the AI advisor — currently Sonnet; consider
+  Opus for deeper review, and an automatic (vs on-demand) trigger once on-demand
+  proves out.
+- **(2026-06-14)** Full demographics for everyone with access — capture name,
+  phone, email, address, relationship for executor/heir/collaborator/observer,
+  editable in Settings (currently only email + role shown). Email optional (a
+  person may be added before their email is known).
+- **(2026-06-14)** Always-on background AI agent (bigger / P2) — watches all
+  inputs continuously, cross-references state probate rules, and generates/
+  updates tasks. State-law accuracy is a minefield: frame as general guidance
+  with human verification and clear "not legal advice" disclaimers.
 
 ---
 
@@ -179,8 +190,7 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   note's privacy and are tagged "AI · from note". Works for executor and
   collaborator (collaborator notes/tasks are non-private). The "What am I
   missing?" review still catches note-implied gaps after the fact.
-- ☐ **Tune / upgrade the advisor.** Currently Sonnet; consider Opus for deeper
-  review, and an automatic (vs on-demand) trigger once the on-demand proves out.
+- → **Tune / upgrade the advisor** — moved to the Parking Lot (single list).
 - ☑ **Running asset / inventory list tied to tasks.** Assets live in the
   Finances "Assets" section. Adding one auto-creates a linked "decide keep/
   sell/transfer" disposition task in the matching phase; each asset shows its
@@ -212,10 +222,7 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   bucket-wide) so no storage move is needed. (migration 024)
 - ☑ **De-duplicate cross-estate tasks.** Decided: work each estate separately,
   so no auto-dedup needed; Brian is handling overlaps manually. (2026-06-14)
-- ☐ **Full demographics for everyone with access.** Executor, heir, observer,
-  etc. — capture name, phone, email, address, relationship — and make it easy to
-  view/edit in Settings (currently only email + role are shown). Email should be
-  optional (a person may be added before their email is known).
+- → **Full demographics for everyone with access** — moved to the Parking Lot.
 - ◐ **Define & confirm role-based views.** Roles consolidated: **Executor**
   (full) → **Heir** → **Collaborator** (works all non-private tasks) →
   **Observer** (read-only). Private/forensic items hidden from non-Executor
@@ -227,10 +234,7 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   Report. DashboardRouter routes by role.
 
 ### P2 — Bigger / ongoing (likely past Monday)
-- ☐ **Always-on background AI agent.** Watches *all* inputs continuously,
-  cross-references state-specific probate rules, and generates/updates tasks.
-  NOTE: state-law accuracy is a minefield — frame as general guidance with
-  human verification and clear "not legal advice" disclaimers.
+- → **Always-on background AI agent** — moved to the Parking Lot.
 
 ### Polish / minor
 - ☑ Executor Name fixed to "Brian Owens" on both estates (Traci's still showed
