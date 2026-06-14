@@ -6,6 +6,35 @@ captured here; nothing here gets silently dropped.
 
 ---
 
+## Parking Lot — fix before "done," not urgent
+
+Quick-capture list of things to handle long-term or before the app is truly
+finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
+"add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
+Items graduate into the structured backlog below when it's time to do them.
+
+- **(2026-06-14)** True storage file purge — deleting a document or dismissing
+  mail removes the database record but the actual file stays in the bucket (no
+  storage delete policy). Add an edge function or storage policy to really
+  delete the file when intended.
+- **(2026-06-14)** Kaynin's login is a placeholder ID (`kaynin@settle-well.app`),
+  not a real inbox — "forgot password" can't reach him. Swap to his real email
+  when available.
+- **(2026-06-14)** Let invited users set/change their own password (self-service),
+  so shared passwords aren't permanent.
+- **(2026-06-14)** Forensic AI audit misses small recurring obligations — it
+  dropped every utility and subscription (Spectrum, TXU, Amazon Prime, etc.)
+  that the human audit flagged "cancel immediately." Tune the prompt so the
+  audit captures recurring bills to cancel, not just large/unusual items.
+- **(2026-06-14)** Cross-estate split decisions (confirm with Mullin June 17):
+  the house/vehicles/assets sit on Dan's estate but the TOD deed passed the house
+  to Traci; the 10 utility/subscription *cancellation tasks* are on Dan while the
+  *obligations* are on Traci. Decide what migrates where.
+- **(2026-06-14)** Color scheme / formatting — Brian preferred an earlier look on
+  some screens; needs specifics on which screens before changing.
+
+---
+
 ## Vision
 
 SettleWell is **not a checklist app**. It's the expert estate advisor a
