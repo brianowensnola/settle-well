@@ -47,6 +47,7 @@ export default function Layout() {
   const { isDark, setIsDark } = useDarkMode()
   const [expandedEstate, setExpandedEstate] = useState(currentEstate?.id)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [executorOpen, setExecutorOpen] = useState(false)
   const closeMobile = () => setMobileNavOpen(false)
 
   async function signOut() {
@@ -82,17 +83,29 @@ export default function Layout() {
       {renderNavLink('/admin', 'Users & Roles')}
       {renderNavLink('/multi-settings', 'Settings')}
 
-      {/* Executor tools — act on the currently-selected estate */}
-      {isFullAccess(role) && currentEstate && (
-        <>
-          <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">
-            Executor · <span className="font-normal text-gray-500 dark:text-gray-400">{currentEstate.deceased_name}</span>
-          </div>
-          {EXECUTOR_NAV
-            .filter(({ to }) => canAccess(to, role))
-            .map(({ to, label }) => renderNavLink(to, label))}
-        </>
-      )}
+      {/* Executor tools — collapsible; act on the currently-selected estate */}
+      {isFullAccess(role) && currentEstate && (() => {
+        const onExecPage = EXECUTOR_NAV.some(n => pathname === n.to || pathname.startsWith(n.to + '/'))
+        const showExec = executorOpen || onExecPage
+        return (
+          <>
+            <button
+              onClick={() => setExecutorOpen(o => !o)}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4"
+            >
+              <span>Executor · <span className="font-normal text-gray-500 dark:text-gray-400">{currentEstate.deceased_name}</span></span>
+              <span className="text-gray-400">{showExec ? '▼' : '▶'}</span>
+            </button>
+            {showExec && (
+              <div className="ml-2 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
+                {EXECUTOR_NAV
+                  .filter(({ to }) => canAccess(to, role))
+                  .map(({ to, label }) => renderNavLink(to, label))}
+              </div>
+            )}
+          </>
+        )
+      })()}
 
       {/* Estates Section */}
       <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">Estates</div>
