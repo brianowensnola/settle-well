@@ -17,15 +17,6 @@ Items graduate into the structured backlog below when it's time to do them.
   mail removes the database record but the actual file stays in the bucket (no
   storage delete policy). Add an edge function or storage policy to really
   delete the file when intended.
-- **(2026-06-14)** Re-invited users should auto-reconnect to their existing login.
-  Today the account→estate linking only runs at sign-up, so re-inviting someone
-  who already has a login creates a pending invite that doesn't connect on their
-  next sign-in (they see no estates until linked manually). Fix: run the linking
-  check on every login, so a re-invite by email "just works." Their assigned
-  tasks/notes/history are preserved either way (assignment is by name, history is
-  snapshotted).
-- **(2026-06-14)** Let invited users set/change their own password (self-service),
-  so shared passwords aren't permanent.
 - **(2026-06-14)** Forensic AI audit misses small recurring obligations — it
   dropped every utility and subscription (Spectrum, TXU, Amazon Prime, etc.)
   that the human audit flagged "cancel immediately." Tune the prompt so the
@@ -40,9 +31,6 @@ Items graduate into the structured backlog below when it's time to do them.
   client bundle, code obfuscation/minification, and legal terms. (Note: any code
   shipped to the browser is inherently readable; true protection lives on the
   server + legal, not in the front-end.)
-- **(2026-06-14)** Estate Info (Read-Only) on the Settings page — make it
-  editable (deceased name, DOB, DOD), or require all of that info up front at
-  intake so it's always complete. Whichever makes the most sense.
 - **(2026-06-14)** Re-enable email confirmation once real email is set up.
   Turned OFF "Confirm email" in Supabase auth because the built-in default email
   sender is rate-limited and was blocking sign-ups ("email rate limit exceeded").
