@@ -3,17 +3,21 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
+import { isFullAccess } from '../lib/roles'
 import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
 
 const STATUS_CYCLE = ['pending', 'in_progress', 'waiting', 'done']
 
 export default function TaskDetail() {
   const { id } = useParams()
-  const { currentEstate } = useEstate()
+  const { currentEstate, role } = useEstate()
+  const canSeePrivate = isFullAccess(role)
   const user = useUser()
   const navigate = useNavigate()
   const [task, setTask] = useState(null)
   const [subtasks, setSubtasks] = useState([])
+  const [allTasks, setAllTasks] = useState([])   // candidate parents
+  const [parentChoice, setParentChoice] = useState('')
   const [logs, setLogs] = useState([])
   const [linkedDocs, setLinkedDocs] = useState([])
   const [noteText, setNoteText] = useState('')
@@ -45,6 +49,14 @@ export default function TaskDetail() {
     setSubtasks(st.data ?? [])
     setLogs(l.data ?? [])
     setLinkedDocs(d.data ?? [])
+
+    // All tasks in this estate — used to pick a parent to nest under
+    const { data: all } = await supabase
+      .from('estate_tasks')
+      .select('id, text, parent_task_id, is_private, section_id, status')
+      .eq('estate_id', t.data?.estate_id)
+      .order('text')
+    setAllTasks(all ?? [])
 
     // Load estate users for assignment
     const { data: users } = await supabase
@@ -119,6 +131,23 @@ export default function TaskDetail() {
     if (data) setSubtasks(prev => [...prev, data])
     setNewSubText('')
     setAddingSub(false)
+  }
+
+  // Move THIS task to be a sub-task of another task.
+  async function makeSubtaskOf(parentId) {
+    if (!parentId) return
+    const parent = allTasks.find(t => t.id === parentId)
+    await supabase.from('estate_tasks')
+      .update({ parent_task_id: parentId, section_id: parent?.section_id ?? task.section_id, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    setTask(prev => ({ ...prev, parent_task_id: parentId, section_id: parent?.section_id ?? prev.section_id }))
+    setParentChoice('')
+  }
+
+  // Promote a sub-task back to a top-level task.
+  async function detachParent() {
+    await supabase.from('estate_tasks').update({ parent_task_id: null, updated_at: new Date().toISOString() }).eq('id', id)
+    setTask(prev => ({ ...prev, parent_task_id: null }))
   }
 
   async function noteToTask(log) {
@@ -218,6 +247,14 @@ export default function TaskDetail() {
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
   if (!task) return <div className="p-8 text-gray-400">Task not found.</div>
 
+  // Candidate parents: other top-level tasks (one level of nesting), never this
+  // task or its own children, respecting privacy.
+  const childIds = new Set(subtasks.map(s => s.id))
+  const parentCandidates = allTasks.filter(x =>
+    x.id !== id && !x.parent_task_id && !childIds.has(x.id) && (canSeePrivate || !x.is_private)
+  )
+  const parentTask = task.parent_task_id ? allTasks.find(x => x.id === task.parent_task_id) : null
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto w-full">
       <Link to="/tasks" className="text-sm text-gray-400 hover:text-gray-600 dark:text-gray-400 mb-4 block">← Back to tasks</Link>
@@ -263,6 +300,40 @@ export default function TaskDetail() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Parent task — nest this task under another, or detach it */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Parent task</h2>
+        {parentTask ? (
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Sub-task of <Link to={`/tasks/${parentTask.id}`} className="text-blue-600 hover:underline">{parentTask.text}</Link>
+            </div>
+            <button onClick={detachParent} className="text-xs px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200">Make top-level</button>
+          </div>
+        ) : subtasks.length > 0 ? (
+          <p className="text-sm text-gray-400">This task has its own sub-tasks, so it can't also become a sub-task. Detach or move its sub-tasks first.</p>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-400">This is a top-level task.</span>
+            <select
+              value={parentChoice}
+              onChange={e => setParentChoice(e.target.value)}
+              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none max-w-xs"
+            >
+              <option value="">Make it a sub-task of…</option>
+              {parentCandidates.map(p => <option key={p.id} value={p.id}>{p.text}</option>)}
+            </select>
+            <button
+              onClick={() => makeSubtaskOf(parentChoice)}
+              disabled={!parentChoice}
+              className="text-xs px-2.5 py-1 bg-gray-900 dark:bg-gray-700 text-white rounded-lg disabled:opacity-40"
+            >
+              Move
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Mail Review Section */}
