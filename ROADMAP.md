@@ -13,6 +13,10 @@ finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
 "add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
 Items graduate into the structured backlog below when it's time to do them.
 
+- **(2026-06-14)** Shared contacts across estates — option to have one contact
+  (e.g. Paul Mullen, who works both estates) appear in multiple estates without
+  re-entering. Today each contact is a separate per-estate row, so the same
+  person must be added/edited in each estate independently.
 - **(2026-06-14)** True storage file purge — deleting a document or dismissing
   mail removes the database record but the actual file stays in the bucket (no
   storage delete policy). Add an edge function or storage policy to really
