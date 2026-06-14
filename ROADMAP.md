@@ -38,9 +38,9 @@ Items graduate into the structured backlog below when it's time to do them.
   from several tasks at once (currently `linked_task_id` is single-valued, so
   attaching a doc moves it). Needs a task↔document many-to-many link.
 - **(2026-06-14)** Move AI Assistant, Activity Log, Send to Attorney, Intake
-  Review, and Credentials out from under each estate into a secured,
-  executor-only section (e.g. a Settings area under Multi-Estate). These should
-  only be accessible by the executor.
+  Review, Credentials, and document uploads (Upload Files) out from under each
+  estate into a secured, executor-only section (e.g. a Settings area under
+  Multi-Estate). These should only be accessible by the executor.
 - **(2026-06-14)** Re-enable email confirmation once real email is set up.
   Turned OFF "Confirm email" in Supabase auth because the built-in default email
   sender is rate-limited and was blocking sign-ups ("email rate limit exceeded").
