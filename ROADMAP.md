@@ -17,9 +17,6 @@ Items graduate into the structured backlog below when it's time to do them.
   mail removes the database record but the actual file stays in the bucket (no
   storage delete policy). Add an edge function or storage policy to really
   delete the file when intended.
-- **(2026-06-14)** Documents on multiple tasks — let one document be referenced
-  from several tasks at once (currently `linked_task_id` is single-valued, so
-  attaching a doc moves it). Needs a task↔document many-to-many link.
 - **(2026-06-14)** Protect the code / keep it proprietary (long-term). How do we
   guard against other AIs or third parties poaching or copying the codebase?
   Consider: private repo + tight access controls, a proprietary LICENSE, keeping
