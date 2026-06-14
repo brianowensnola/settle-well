@@ -2,14 +2,12 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { statusStageLabel } from '../lib/constants'
-import ActivityFeed from '../components/ActivityFeed'
 
 const fmt = n => '$' + (n ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
 
 export default function HeirDashboard() {
   const { currentEstate } = useEstate()
   const [tasks, setTasks] = useState([])
-  const [logs, setLogs] = useState([])
   const [summary, setSummary] = useState(null) // safe accounting aggregates (RPC)
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -20,15 +18,13 @@ export default function HeirDashboard() {
   }, [currentEstate])
 
   async function loadData() {
-    const [tasksRes, logsRes, sumRes, docsRes] = await Promise.all([
+    const [tasksRes, sumRes, docsRes] = await Promise.all([
       supabase.from('estate_tasks').select('*').eq('estate_id', currentEstate.id),
-      supabase.from('estate_activity_log').select('*').eq('estate_id', currentEstate.id).order('created_at', { ascending: false }).limit(50),
       supabase.rpc('estate_transparency', { p_estate_id: currentEstate.id }),
       supabase.from('estate_documents').select('*').eq('estate_id', currentEstate.id).in('doc_type', ['legal', 'property']),
     ])
 
     setTasks(tasksRes.data ?? [])
-    setLogs(logsRes.data ?? [])
     setSummary(sumRes.data ?? null)
     setDocuments(docsRes.data ?? [])
     setLoading(false)
@@ -133,15 +129,9 @@ export default function HeirDashboard() {
         </div>
       )}
 
-      {/* Activity Log */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Activity Log</h2>
-        <ActivityFeed logs={logs} />
-      </div>
-
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <p className="text-sm text-blue-900 dark:text-blue-300">
-          📋 This Transparency Report shows estate status, assets, expenses, court documents, and a complete activity log for all actions taken.
+          📋 This Transparency Report shows estate status, assets, expenses, and court documents.
         </p>
       </div>
     </div>

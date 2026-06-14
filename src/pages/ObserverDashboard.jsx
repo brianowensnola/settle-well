@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { statusStageLabel } from '../lib/constants'
-import ActivityFeed from '../components/ActivityFeed'
 
 // Observer (Level 4): read-only, NOT a beneficiary. Sees estate status,
-// progress, court documents, and the (non-private) activity log — but not the
-// financial accounting or asset values that heirs are entitled to.
+// progress, and court documents — but not the financial accounting/asset values
+// heirs are entitled to, nor the executor-only activity log.
 export default function ObserverDashboard() {
   const { currentEstate } = useEstate()
   const [tasks, setTasks] = useState([])
-  const [logs, setLogs] = useState([])
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -18,11 +16,9 @@ export default function ObserverDashboard() {
     if (!currentEstate) return
     Promise.all([
       supabase.from('estate_tasks').select('status').eq('estate_id', currentEstate.id),
-      supabase.from('estate_activity_log').select('*').eq('estate_id', currentEstate.id).order('created_at', { ascending: false }).limit(50),
       supabase.from('estate_documents').select('id, name, created_at').eq('estate_id', currentEstate.id).in('doc_type', ['legal', 'property']),
-    ]).then(([tasksRes, logsRes, docsRes]) => {
+    ]).then(([tasksRes, docsRes]) => {
       setTasks(tasksRes.data ?? [])
-      setLogs(logsRes.data ?? [])
       setDocuments(docsRes.data ?? [])
       setLoading(false)
     })
@@ -76,14 +72,9 @@ export default function ObserverDashboard() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Activity Log</h2>
-        <ActivityFeed logs={logs} />
-      </div>
-
       <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-lg">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          You have read-only observer access: estate status, progress, court documents, and the activity log. Financial detail is shown to beneficiaries.
+          You have read-only observer access: estate status, progress, and court documents. Financial detail is shown to beneficiaries.
         </p>
       </div>
     </div>
