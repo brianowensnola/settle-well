@@ -161,8 +161,20 @@ export default function Layout() {
       {/* Main Content */}
       <main className="flex-1 min-w-0 overflow-auto md:pb-0 pb-16 flex flex-col">
         {currentEstate && estates.length > 1 && (
-          <div className="bg-blue-600 text-white px-4 py-2 text-sm font-medium sticky top-0 z-50">
-            📋 Currently managing: <strong>{currentEstate.deceased_name}</strong> — Use sidebar to switch
+          <div className="bg-blue-600 text-white px-4 py-2 text-sm font-medium sticky top-0 z-50 flex items-center gap-2">
+            <span className="shrink-0">📋 Managing:</span>
+            <select
+              value={currentEstate.id}
+              onChange={e => {
+                const next = estates.find(es => es.id === e.target.value)
+                if (next) switchEstate(next)
+              }}
+              className="bg-blue-700 text-white rounded px-2 py-1 text-sm border border-blue-400 focus:outline-none max-w-[60%]"
+            >
+              {estates.map(es => (
+                <option key={es.id} value={es.id} className="text-gray-900">{es.deceased_name}</option>
+              ))}
+            </select>
           </div>
         )}
         <div className="flex-1 overflow-auto">
