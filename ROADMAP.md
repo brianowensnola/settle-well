@@ -17,21 +17,12 @@ Items graduate into the structured backlog below when it's time to do them.
   mail removes the database record but the actual file stays in the bucket (no
   storage delete policy). Add an edge function or storage policy to really
   delete the file when intended.
-- **(2026-06-14)** Kaynin's login is a placeholder ID (`kaynin@settle-well.app`),
-  not a real inbox — "forgot password" can't reach him. Swap to his real email
-  when available.
 - **(2026-06-14)** Let invited users set/change their own password (self-service),
   so shared passwords aren't permanent.
 - **(2026-06-14)** Forensic AI audit misses small recurring obligations — it
   dropped every utility and subscription (Spectrum, TXU, Amazon Prime, etc.)
   that the human audit flagged "cancel immediately." Tune the prompt so the
   audit captures recurring bills to cancel, not just large/unusual items.
-- **(2026-06-14)** Cross-estate split decisions (confirm with Mullin June 17):
-  the house/vehicles/assets sit on Dan's estate but the TOD deed passed the house
-  to Traci; the 10 utility/subscription *cancellation tasks* are on Dan while the
-  *obligations* are on Traci. Decide what migrates where.
-- **(2026-06-14)** Color scheme / formatting — Brian preferred an earlier look on
-  some screens; needs specifics on which screens before changing.
 - **(2026-06-14)** Need a way to change passwords in admin — let the executor
   reset/change a user's password from an admin screen (Settings).
 - **(2026-06-14)** Documents on multiple tasks — let one document be referenced
@@ -209,8 +200,8 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   by a `family_mail` inbox table (RLS via `is_family_admin()`) + a synchronous
   `mail-router` function. Files stay in a shared bucket path (reads are
   bucket-wide) so no storage move is needed. (migration 024)
-- ☐ **De-duplicate cross-estate tasks.** Shared-household tasks (check the mail,
-  the residence, shared utilities) shouldn't repeat across related estates.
+- ☑ **De-duplicate cross-estate tasks.** Decided: work each estate separately,
+  so no auto-dedup needed; Brian is handling overlaps manually. (2026-06-14)
 - ☐ **Full demographics for everyone with access.** Executor, heir, observer,
   etc. — capture name, phone, email, address, relationship — and make it easy to
   view/edit in Settings (currently only email + role are shown). Email should be
@@ -236,8 +227,7 @@ Status key: ☐ todo · ◐ in progress · ☑ done
   the `brian.owens_nola` email prefix).
 - ☑ Rename a document's display name inline in Documents (storage path
   untouched, so View links and AI doc→task links still work).
-- ☐ Restore preferred formatting / color scheme from before recent changes
-  (Brian liked the earlier look better — needs specifics on which screens).
+- ☑ Formatting / color scheme — Brian confirmed it looks good as-is. (2026-06-14)
 
 ---
 
