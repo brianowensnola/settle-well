@@ -30,10 +30,20 @@ export default function Documents() {
     setLoading(false)
   }
 
+  function openAdd() {
+    // Default the flags to match the tab you're on, so adding here behaves as expected.
+    setForm({ name: '', doc_type: 'legal', have: tab === 'have', requested: tab === 'requested', requested_from: '', notes: '' })
+    setAdding(true)
+  }
+
   async function addDoc() {
     if (!form.name) return
     const { data } = await supabase.from('estate_documents').insert({ ...form, estate_id: currentEstate.id }).select().single()
-    if (data) setDocs(prev => [data, ...prev])
+    if (data) {
+      setDocs(prev => [data, ...prev])
+      // Jump to the tab where the new doc actually lives, so it's visible.
+      setTab(data.requested ? 'requested' : data.have ? 'have' : 'need')
+    }
     setAdding(false)
     setForm({ name: '', doc_type: 'legal', have: false, requested: false, requested_from: '', notes: '' })
   }
@@ -88,7 +98,7 @@ export default function Documents() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Documents</h1>
-        {canEdit && <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add document</button>}
+        {canEdit && <button onClick={openAdd} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add document</button>}
       </div>
 
       <div className="flex gap-2 mb-5 flex-wrap">
