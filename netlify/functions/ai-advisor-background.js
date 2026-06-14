@@ -7,6 +7,12 @@ const supabase = createClient(
 );
 const client = new Anthropic();
 
+// Reasoning-heavy passes (estate review, forensic consolidation) use the most
+// capable model for depth; high-volume vision/extraction stays on Sonnet for
+// speed/cost.
+const ADVISOR_MODEL = "claude-opus-4-8";
+const EXTRACT_MODEL = "claude-sonnet-4-6";
+
 const PHASES = [
   "Phase 1 — Immediate", "Phase 2 — First Week", "Phase 3 — Government Notifications",
   "Phase 4 — Financial Accounts", "Phase 5 — Insurance", "Phase 6 — Real Estate & Property",
@@ -59,7 +65,7 @@ Return ONLY JSON:
 Propose 5-15 of the most valuable, non-duplicative suggestions. If something in the notes implies an action with no task, include it.`;
 
   const resp = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: ADVISOR_MODEL,
     max_tokens: 4096,
     messages: [{ role: "user", content: prompt }],
   });
@@ -123,7 +129,7 @@ async function runForensic(estate, filePaths) {
         : { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } };
 
       const resp = await client.messages.create({
-        model: "claude-sonnet-4-6", max_tokens: 4096,
+        model: EXTRACT_MODEL, max_tokens: 4096,
         messages: [{ role: "user", content: [block, { type: "text", text: FORENSIC_PROMPT }] }],
       });
       const text = resp.content[0].type === "text" ? resp.content[0].text : "";
@@ -167,7 +173,7 @@ ${raw.map((f, i) => `${i + 1}. ${f.title} — ${f.detail}`).join("\n")}
 
 Return ONLY valid, COMPLETE JSON: {"entries":[{"category":"","name":"","amount":null,"lender":null,"status":null,"detail":""}],"findings":[{"title":"","detail":""}]}`;
     const resp = await client.messages.create({
-      model: "claude-sonnet-4-6", max_tokens: 4096,
+      model: ADVISOR_MODEL, max_tokens: 4096,
       messages: [{ role: "user", content: consPrompt }],
     });
     const text = resp.content[0].type === "text" ? resp.content[0].text : "";
@@ -228,7 +234,7 @@ For the financial record (only if applicable): category is one of account | obli
 Return ONLY JSON: {"doc_type":"short label of what this is","task_id":"<task id or null>","action":"mark_done|mark_in_progress|link_only","reason":"one sentence","financial":{"category":"","name":"","amount":null,"lender":null,"detail":""}}`;
 
       const resp = await client.messages.create({
-        model: "claude-sonnet-4-6", max_tokens: 700,
+        model: EXTRACT_MODEL, max_tokens: 700,
         messages: [{ role: "user", content: [block, { type: "text", text: prompt }] }],
       });
       const text = resp.content[0].type === "text" ? resp.content[0].text : "";
