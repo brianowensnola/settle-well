@@ -10,7 +10,7 @@ const STATUS_CYCLE = ['pending', 'in_progress', 'waiting', 'done']
 
 export default function TaskDetail() {
   const { id } = useParams()
-  const { currentEstate, role } = useEstate()
+  const { currentEstate, role, estates } = useEstate()
   const canSeePrivate = isFullAccess(role)
   const user = useUser()
   const navigate = useNavigate()
@@ -18,6 +18,8 @@ export default function TaskDetail() {
   const [subtasks, setSubtasks] = useState([])
   const [allTasks, setAllTasks] = useState([])   // candidate parents
   const [parentChoice, setParentChoice] = useState('')
+  const [moveChoice, setMoveChoice] = useState('')
+  const [moving, setMoving] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [detailDraft, setDetailDraft] = useState('')
@@ -156,6 +158,53 @@ export default function TaskDetail() {
       .eq('id', id)
     setTask(prev => ({ ...prev, parent_task_id: parentId, section_id: parent?.section_id ?? prev.section_id }))
     setParentChoice('')
+  }
+
+  // Move this task (and its sub-tasks + notes) to another estate. Remaps the
+  // phase by label, unlinks documents (they stay on the source estate), and
+  // clears any financial link. Requires executor access on both estates (RLS).
+  async function moveToEstate(targetId) {
+    if (!targetId) return
+    const target = estates.find(e => e.id === targetId)
+    if (!confirm(`Move "${task.text}"${subtasks.length ? ` and its ${subtasks.length} sub-task(s)` : ''} to the ${target?.deceased_name} estate? Linked documents will be unlinked.`)) return
+    setMoving(true)
+    try {
+      const moving = [task, ...subtasks]
+      const ids = moving.map(t => t.id)
+
+      // Map phase by label: source section id -> label -> target section id
+      const [{ data: srcSec }, { data: tgtSec }] = await Promise.all([
+        supabase.from('estate_sections').select('id, label').eq('estate_id', task.estate_id),
+        supabase.from('estate_sections').select('id, label').eq('estate_id', targetId),
+      ])
+      const labelBySrc = Object.fromEntries((srcSec ?? []).map(s => [s.id, s.label]))
+      const idByLabel = Object.fromEntries((tgtSec ?? []).map(s => [s.label, s.id]))
+      const targetSection = secId => idByLabel[labelBySrc[secId]] ?? null
+
+      for (const t of moving) {
+        await supabase.from('estate_tasks').update({
+          estate_id: targetId,
+          section_id: targetSection(t.section_id),
+          linked_financial_id: null,
+          updated_at: new Date().toISOString(),
+        }).eq('id', t.id)
+      }
+
+      // Notes follow the task
+      try { await supabase.from('estate_task_logs').update({ estate_id: targetId }).in('task_id', ids) } catch { /* best effort */ }
+
+      // Unlink documents (they stay on the source estate)
+      const { data: unlinked } = await supabase.from('estate_documents')
+        .update({ linked_task_id: null }).in('linked_task_id', ids).select('id')
+      const n = unlinked?.length ?? 0
+
+      alert(`Moved to the ${target?.deceased_name} estate.` + (n > 0 ? ` ${n} linked document(s) were unlinked — re-attach them on that estate if needed.` : ''))
+      navigate('/tasks')
+    } catch (e) {
+      alert('Move failed: ' + e.message)
+    } finally {
+      setMoving(false)
+    }
   }
 
   // Promote a sub-task back to a top-level task.
@@ -310,6 +359,8 @@ export default function TaskDetail() {
   const parentTask = task.parent_task_id ? allTasks.find(x => x.id === task.parent_task_id) : null
   // Executor can edit any task; collaborator can edit non-private tasks. Heirs/observers cannot.
   const canEdit = canSeePrivate || (role === 'collaborator' && !task.is_private)
+  // Estates this task could move to (executor on both is required by RLS).
+  const moveTargets = (estates ?? []).filter(e => e.id !== task.estate_id && isFullAccess(e._role))
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto w-full">
@@ -418,6 +469,31 @@ export default function TaskDetail() {
           </div>
         )}
       </div>
+
+      {/* Move to another estate (executor only, top-level tasks) */}
+      {canSeePrivate && !task.parent_task_id && moveTargets.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Move to another estate</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={moveChoice}
+              onChange={e => setMoveChoice(e.target.value)}
+              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none max-w-xs"
+            >
+              <option value="">Choose estate…</option>
+              {moveTargets.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
+            </select>
+            <button
+              onClick={() => moveToEstate(moveChoice)}
+              disabled={!moveChoice || moving}
+              className="text-xs px-2.5 py-1 bg-gray-900 dark:bg-gray-700 text-white rounded-lg disabled:opacity-40"
+            >
+              {moving ? 'Moving…' : 'Move'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">Moves this task, its sub-tasks, and notes to the other estate (re-filed into the matching phase). Linked documents are unlinked and stay on this estate.</p>
+        </div>
+      )}
 
       {/* Mail Review Section */}
       {task?.tag === 'mail-review' && mailItems.length > 0 && (
