@@ -17,10 +17,6 @@ Items graduate into the structured backlog below when it's time to do them.
   mail removes the database record but the actual file stays in the bucket (no
   storage delete policy). Add an edge function or storage policy to really
   delete the file when intended.
-- **(2026-06-14)** Forensic AI audit misses small recurring obligations — it
-  dropped every utility and subscription (Spectrum, TXU, Amazon Prime, etc.)
-  that the human audit flagged "cancel immediately." Tune the prompt so the
-  audit captures recurring bills to cancel, not just large/unusual items.
 - **(2026-06-14)** Documents on multiple tasks — let one document be referenced
   from several tasks at once (currently `linked_task_id` is single-valued, so
   attaching a doc moves it). Needs a task↔document many-to-many link.
