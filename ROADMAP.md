@@ -13,11 +13,6 @@ finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
 "add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
 Items graduate into the structured backlog below when it's time to do them.
 
-- **(2026-06-14)** AI-generated death-notification forms/letters — option to
-  generate the notices that inform agencies, government offices, banks, etc. of
-  the death, for any that can be handled by mail/email (e.g. SSA, IRS, credit
-  bureaus, pension/benefit providers). Pre-fill from estate data; executor
-  reviews/sends.
 - **(2026-06-14)** Help-desk / support view for the finished app — a way for end
   users to get help (FAQ, guided help, contact/support) once the app ships.
 - **(2026-06-14)** Path-scope storage policies — the estate-documents bucket
