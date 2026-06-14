@@ -18,6 +18,9 @@ export default function TaskDetail() {
   const [subtasks, setSubtasks] = useState([])
   const [allTasks, setAllTasks] = useState([])   // candidate parents
   const [parentChoice, setParentChoice] = useState('')
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const [detailDraft, setDetailDraft] = useState('')
   const [logs, setLogs] = useState([])
   const [linkedDocs, setLinkedDocs] = useState([])
   const [noteText, setNoteText] = useState('')
@@ -235,6 +238,22 @@ export default function TaskDetail() {
     }
   }
 
+  function startEditTitle() {
+    setTitleDraft(task.text || '')
+    setDetailDraft(task.detail || '')
+    setEditingTitle(true)
+  }
+
+  async function saveTitle() {
+    const text = titleDraft.trim()
+    if (!text) return
+    await supabase.from('estate_tasks')
+      .update({ text, detail: detailDraft.trim() || null, updated_at: new Date().toISOString() })
+      .eq('id', id)
+    setTask(prev => ({ ...prev, text, detail: detailDraft.trim() || null }))
+    setEditingTitle(false)
+  }
+
   async function updateAssignment() {
     await supabase
       .from('estate_tasks')
@@ -254,6 +273,8 @@ export default function TaskDetail() {
     x.id !== id && !x.parent_task_id && !childIds.has(x.id) && (canSeePrivate || !x.is_private)
   )
   const parentTask = task.parent_task_id ? allTasks.find(x => x.id === task.parent_task_id) : null
+  // Executor can edit any task; collaborator can edit non-private tasks. Heirs/observers cannot.
+  const canEdit = canSeePrivate || (role === 'collaborator' && !task.is_private)
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto w-full">
@@ -274,9 +295,36 @@ export default function TaskDetail() {
             </span>
           )}
         </div>
-        <h1 className={`text-lg font-medium text-gray-900 dark:text-white leading-snug mb-1 ${task.status === 'done' ? 'line-through text-gray-400' : ''}`}>
-          {task.text}
-        </h1>
+        {editingTitle ? (
+          <div className="space-y-2 mb-2">
+            <input
+              autoFocus
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false) }}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-gray-200"
+            />
+            <textarea
+              value={detailDraft}
+              onChange={e => setDetailDraft(e.target.value)}
+              rows={2}
+              placeholder="Detail / why this matters (optional)"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
+            />
+            <div className="flex gap-2">
+              <button onClick={saveTitle} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Save</button>
+              <button onClick={() => setEditingTitle(false)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h1 className={`text-lg font-medium text-gray-900 dark:text-white leading-snug mb-1 ${task.status === 'done' ? 'line-through text-gray-400' : ''}`}>
+              {task.text}
+              {canEdit && <button onClick={startEditTitle} className="ml-2 align-middle text-xs font-normal text-blue-600 hover:underline">Edit</button>}
+            </h1>
+            {task.detail && <p className="text-sm text-gray-500 dark:text-gray-400 leading-snug mb-1">{task.detail}</p>}
+          </>
+        )}
         <div className="flex items-center justify-between text-xs text-gray-400">
           <span>Added {task.date_added}</span>
           {editingAssignment ? (
