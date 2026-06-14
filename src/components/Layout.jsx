@@ -88,7 +88,6 @@ export default function Layout() {
       {renderNavLink('/all-tasks', 'All Tasks')}
       {renderNavLink('/mail', 'Mail Intake')}
       {renderNavLink('/admin', 'Users & Roles')}
-      {renderNavLink('/multi-settings', 'Settings')}
 
       {/* Executor tools — single entry that opens a tools page (acts on the selected estate) */}
       {isFullAccess(role) && currentEstate && renderNavLink('/executor', 'Executor Tools')}

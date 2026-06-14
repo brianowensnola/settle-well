@@ -12,6 +12,7 @@ const TOOLS = [
   { to: '/send-documents',   label: 'Send Documents',   icon: '📤', desc: 'Send selected documents to the attorney.' },
   { to: '/activity',         label: 'Activity Log',     icon: '🧾', desc: 'Permanent, append-only record of every change.' },
   { to: '/settings',         label: 'Estate Settings',  icon: '⚙️', desc: 'Estate details, stage, and status.' },
+  { to: '/multi-settings',   label: 'Multi-Estate Settings', icon: '🗂️', desc: 'Manage and delete estates across the family unit.' },
 ]
 
 export default function ExecutorTools() {
