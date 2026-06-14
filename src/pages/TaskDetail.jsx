@@ -23,6 +23,8 @@ export default function TaskDetail() {
   const [detailDraft, setDetailDraft] = useState('')
   const [logs, setLogs] = useState([])
   const [linkedDocs, setLinkedDocs] = useState([])
+  const [allDocs, setAllDocs] = useState([])     // every estate document, for attaching existing ones
+  const [attachChoice, setAttachChoice] = useState('')
   const [noteText, setNoteText] = useState('')
   const [newSubText, setNewSubText] = useState('')
   const [addingSub, setAddingSub] = useState(false)
@@ -60,6 +62,15 @@ export default function TaskDetail() {
       .eq('estate_id', t.data?.estate_id)
       .order('text')
     setAllTasks(all ?? [])
+
+    // All estate documents that have a file — for attaching an existing one
+    const { data: docs } = await supabase
+      .from('estate_documents')
+      .select('id, name, doc_type, file_path, linked_task_id, is_private')
+      .eq('estate_id', t.data?.estate_id)
+      .not('file_path', 'is', null)
+      .order('name')
+    setAllDocs(docs ?? [])
 
     // Load estate users for assignment
     const { data: users } = await supabase
@@ -166,6 +177,30 @@ export default function TaskDetail() {
       setSubtasks(prev => [...prev, data])
       setLogs(prev => prev.map(l => l.id === log.id ? { ...l, spawned_task_id: data.id } : l))
     }
+  }
+
+  // Attach an already-uploaded document to this task (quick reference).
+  async function attachDoc(docId) {
+    if (!docId) return
+    await supabase.from('estate_documents').update({ linked_task_id: id }).eq('id', docId)
+    const doc = allDocs.find(d => d.id === docId)
+    if (doc) {
+      setLinkedDocs(prev => prev.some(d => d.id === docId) ? prev : [...prev, { ...doc, linked_task_id: id }])
+      setAllDocs(prev => prev.map(d => d.id === docId ? { ...d, linked_task_id: id } : d))
+    }
+    setAttachChoice('')
+  }
+
+  async function detachDoc(docId) {
+    await supabase.from('estate_documents').update({ linked_task_id: null }).eq('id', docId)
+    setLinkedDocs(prev => prev.filter(d => d.id !== docId))
+    setAllDocs(prev => prev.map(d => d.id === docId ? { ...d, linked_task_id: null } : d))
+  }
+
+  async function viewDoc(doc) {
+    if (!doc.file_path) return
+    const { data } = await supabase.storage.from('estate-documents').createSignedUrl(doc.file_path, 3600)
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
   }
 
   async function uploadDocument(file) {
@@ -557,11 +592,42 @@ export default function TaskDetail() {
         <div className="space-y-2">
           {linkedDocs.map(doc => (
             <div key={doc.id} className="flex items-center gap-2 text-sm">
-              <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">{doc.doc_type}</span>
-              <span className="text-gray-700 dark:text-gray-300">{doc.name}</span>
+              <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded shrink-0">{doc.doc_type}</span>
+              <span className="text-gray-700 dark:text-gray-300 flex-1 min-w-0 truncate">{doc.name}</span>
+              {doc.file_path && <button onClick={() => viewDoc(doc)} className="text-xs text-blue-600 hover:underline shrink-0">View</button>}
+              <button onClick={() => detachDoc(doc.id)} className="text-xs text-gray-400 hover:text-red-500 shrink-0">Detach</button>
             </div>
           ))}
         </div>
+
+        {/* Attach an already-uploaded document */}
+        {(() => {
+          const linkedIds = new Set(linkedDocs.map(d => d.id))
+          const candidates = allDocs.filter(d => !linkedIds.has(d.id) && (canSeePrivate || !d.is_private))
+          if (candidates.length === 0) return null
+          return (
+            <div className="mt-3 flex items-center gap-2 flex-wrap border-t border-gray-100 dark:border-gray-800 pt-3">
+              <span className="text-xs text-gray-400">Attach existing:</span>
+              <select
+                value={attachChoice}
+                onChange={e => setAttachChoice(e.target.value)}
+                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none max-w-xs"
+              >
+                <option value="">Choose a document…</option>
+                {candidates.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}{d.linked_task_id ? ' (currently on another task)' : ''}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => attachDoc(attachChoice)}
+                disabled={!attachChoice}
+                className="text-xs px-2.5 py-1 bg-gray-900 dark:bg-gray-700 text-white rounded-lg disabled:opacity-40"
+              >
+                Attach
+              </button>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Log */}
