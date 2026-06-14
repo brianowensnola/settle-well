@@ -6,7 +6,7 @@ import { CONTACT_ROLES } from '../lib/constants'
 
 export default function ContactDetail() {
   const { id } = useParams()
-  const { currentEstate } = useEstate()
+  const { currentEstate, estates } = useEstate()
   const [contact, setContact] = useState(null)
   const [interactions, setInteractions] = useState([])
   const [logForm, setLogForm] = useState({ direction: 'outbound', summary: '' })
@@ -148,6 +148,32 @@ export default function ContactDetail() {
             <textarea value={editData.notes ?? ''} onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
               rows={3} placeholder="Notes..."
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+
+            {/* Opt-in: also show this contact in another estate */}
+            {estates?.filter(e => e.id !== (editData.estate_id ?? contact.estate_id)).length > 0 && (
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Also show in (optional)</label>
+                <div className="space-y-1">
+                  {estates.filter(e => e.id !== (editData.estate_id ?? contact.estate_id)).map(e => (
+                    <label key={e.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={(editData.shared_with ?? []).includes(e.id)}
+                        onChange={ev => setEditData(p => ({
+                          ...p,
+                          shared_with: ev.target.checked
+                            ? [...(p.shared_with ?? []), e.id]
+                            : (p.shared_with ?? []).filter(x => x !== e.id),
+                        }))}
+                      />
+                      {e.deceased_name} estate
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Unchecked = this contact stays only in its own estate.</p>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button onClick={saveEdit} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">Save</button>
               <button onClick={() => setEditing(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
@@ -160,6 +186,11 @@ export default function ContactDetail() {
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{contact.name}</h1>
                 {contact.company && <div className="text-sm text-gray-500 dark:text-gray-400">{contact.company}</div>}
                 <div className="text-xs text-gray-400 mt-0.5">{CONTACT_ROLES[contact.role] ?? contact.role}</div>
+                {contact.shared_with?.length > 0 && (
+                  <div className="text-xs text-blue-600 dark:text-blue-300 mt-0.5">
+                    ↔ Shared with {contact.shared_with.map(eid => estates?.find(e => e.id === eid)?.deceased_name).filter(Boolean).join(', ')}
+                  </div>
+                )}
               </div>
               <button onClick={() => { setEditing(true); setEditData({ ...contact }) }}
                 className="text-xs text-blue-600 hover:underline">Edit</button>

@@ -5,11 +5,11 @@ import { useEstate } from '../lib/EstateContext'
 import { CONTACT_ROLES } from '../lib/constants'
 
 export default function Contacts() {
-  const { currentEstate } = useEstate()
+  const { currentEstate, estates } = useEstate()
   const [contacts, setContacts] = useState([])
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', notes: '' })
+  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', notes: '', shared_with: [] })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -18,7 +18,10 @@ export default function Contacts() {
   }, [currentEstate])
 
   async function load() {
-    const { data } = await supabase.from('estate_contacts').select('*').eq('estate_id', currentEstate.id).order('name')
+    // Contacts whose home is this estate, OR that are shared into this estate.
+    const { data } = await supabase.from('estate_contacts').select('*')
+      .or(`estate_id.eq.${currentEstate.id},shared_with.cs.{${currentEstate.id}}`)
+      .order('name')
     setContacts(data ?? [])
     setLoading(false)
   }
@@ -39,11 +42,12 @@ export default function Contacts() {
       email_labels,
       address: form.address,
       notes: form.notes,
-      estate_id: currentEstate.id
+      estate_id: currentEstate.id,
+      shared_with: form.shared_with ?? [],
     }).select().single()
     if (data) setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
     setAdding(false)
-    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', notes: '' })
+    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', notes: '', shared_with: [] })
   }
 
   async function seedContacts() {
@@ -200,6 +204,32 @@ export default function Contacts() {
           <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
             placeholder="Notes..." rows={2}
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+
+          {/* Opt-in: also show this contact in another estate */}
+          {estates?.filter(e => e.id !== currentEstate.id).length > 0 && (
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Also show in (optional)</label>
+              <div className="space-y-1">
+                {estates.filter(e => e.id !== currentEstate.id).map(e => (
+                  <label key={e.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={(form.shared_with ?? []).includes(e.id)}
+                      onChange={ev => setForm(p => ({
+                        ...p,
+                        shared_with: ev.target.checked
+                          ? [...(p.shared_with ?? []), e.id]
+                          : (p.shared_with ?? []).filter(x => x !== e.id),
+                      }))}
+                    />
+                    {e.deceased_name} estate
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Leave unchecked to keep this contact only in the current estate.</p>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button onClick={save} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">Save</button>
             <button onClick={() => setAdding(false)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
@@ -220,7 +250,12 @@ export default function Contacts() {
                 {group.map(c => (
                   <Link key={c.id} to={`/contacts/${c.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800">
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-800 dark:text-white">{c.name}</div>
+                      <div className="text-sm font-medium text-gray-800 dark:text-white flex items-center gap-2">
+                        {c.name}
+                        {(c.shared_with?.length > 0 || c.estate_id !== currentEstate.id) && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">↔ shared</span>
+                        )}
+                      </div>
                       {c.company && <div className="text-xs text-gray-500 dark:text-gray-400">{c.company}</div>}
                     </div>
                     <div className="text-right text-xs text-gray-400 space-y-0.5">
