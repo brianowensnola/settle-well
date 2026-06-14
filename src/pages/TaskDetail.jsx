@@ -169,8 +169,8 @@ export default function TaskDetail() {
     if (!confirm(`Move "${task.text}"${subtasks.length ? ` and its ${subtasks.length} sub-task(s)` : ''} to the ${target?.deceased_name} estate? Linked documents will be unlinked.`)) return
     setMoving(true)
     try {
-      const moving = [task, ...subtasks]
-      const ids = moving.map(t => t.id)
+      const movingTasks = [task, ...subtasks]
+      const ids = movingTasks.map(t => t.id)
 
       // Map phase by label: source section id -> label -> target section id
       const [{ data: srcSec }, { data: tgtSec }] = await Promise.all([
@@ -181,13 +181,14 @@ export default function TaskDetail() {
       const idByLabel = Object.fromEntries((tgtSec ?? []).map(s => [s.label, s.id]))
       const targetSection = secId => idByLabel[labelBySrc[secId]] ?? null
 
-      for (const t of moving) {
-        await supabase.from('estate_tasks').update({
+      for (const t of movingTasks) {
+        const { error } = await supabase.from('estate_tasks').update({
           estate_id: targetId,
           section_id: targetSection(t.section_id),
           linked_financial_id: null,
           updated_at: new Date().toISOString(),
         }).eq('id', t.id)
+        if (error) throw error
       }
 
       // Notes follow the task
