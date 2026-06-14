@@ -43,10 +43,6 @@ Items graduate into the structured backlog below when it's time to do them.
 - **(2026-06-14)** Estate Info (Read-Only) on the Settings page — make it
   editable (deceased name, DOB, DOD), or require all of that info up front at
   intake so it's always complete. Whichever makes the most sense.
-- **(2026-06-14)** Move AI Assistant, Activity Log, Send to Attorney, Intake
-  Review, Credentials, and document uploads (Upload Files) out from under each
-  estate into a secured, executor-only section (e.g. a Settings area under
-  Multi-Estate). These should only be accessible by the executor.
 - **(2026-06-14)** Re-enable email confirmation once real email is set up.
   Turned OFF "Confirm email" in Supabase auth because the built-in default email
   sender is rate-limited and was blocking sign-ups ("email rate limit exceeded").
