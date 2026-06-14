@@ -71,15 +71,15 @@ Propose 5-15 of the most valuable, non-duplicative suggestions. If something in 
   }));
 }
 
-const FORENSIC_PROMPT = `You are a forensic financial analyst reviewing ONE of a deceased person's financial statements for an estate. Surface only the findings an executor genuinely needs to investigate — quality over quantity.
+const FORENSIC_PROMPT = `You are a forensic financial analyst reviewing ONE of a deceased person's financial statements for an estate. The executor needs TWO things: (1) anything suspicious or unknown to investigate, and (2) EVERY recurring bill, subscription, utility, loan, and insurance payment — because each one keeps draining the estate until it is cancelled or transferred, no matter how small.
 
 Report:
+- EVERY recurring / automatic payment, INCLUDING small ones: subscriptions (streaming, apps, memberships, dating sites), utilities (electric, water/sewer, gas, internet/cable, cell phone), insurance, loan/mortgage payments, and any other repeating charge. Report each recurring item ONCE, consolidated with its payee and monthly amount (e.g. "Recurring $287.78/mo to Goodleap", "Netflix $15.49/mo", "City of Corpus Christi water ~$170/mo"). A $9.99/mo subscription still must be surfaced so it can be cancelled.
+- Signs of OTHER accounts, loans, debts, income, or obligations not otherwise known (loan payments, transfers to other accounts, etc.).
 - Unknown, unexpected, or unusual payees and transfers (especially to individuals).
 - Large or atypical deposits and withdrawals.
-- Signs of OTHER accounts, loans, debts, income, or obligations not otherwise known (loan payments, transfers to other accounts, etc.).
-- Recurring payments/subscriptions — report each recurring item ONCE, consolidated (e.g. "Recurring $287.78/mo to Goodleap"), never per occurrence.
 
-Do NOT flag ordinary, expected, low-value purchases individually. Consolidate aggressively. Return the ~10 most significant findings; never more than 15.
+Do NOT list ordinary ONE-OFF purchases (a single grocery run, a one-time restaurant charge). But DO include anything that RECURS, even if it's small and ordinary.
 
 Be specific (names, amounts, dates). This is investigative assistance, not an accusation or legal conclusion.
 
@@ -145,7 +145,7 @@ async function runForensic(estate, filePaths) {
   let entries = [];
   let finalFindings = raw;
   try {
-    const consPrompt = `These are raw forensic findings pulled from MULTIPLE monthly statements of the same estate, so many are duplicates or the same recurring item repeated across months. First merge duplicates and recurring items into ONE item each (e.g. combine every "Goodleap $287.78" hit into a single recurring item). Drop trivial/routine items. Keep specifics (names, amounts, dates/ranges).
+    const consPrompt = `These are raw forensic findings pulled from MULTIPLE monthly statements of the same estate, so many are duplicates or the same recurring item repeated across months. First merge duplicates and recurring items into ONE item each (e.g. combine every "Goodleap $287.78" hit into a single recurring item). Drop ONLY true one-off ordinary purchases — KEEP every recurring bill, subscription, utility, loan, and insurance payment even if it's small (each must be surfaced so the executor can cancel or transfer it). Keep specifics (names, amounts, dates/ranges).
 
 Then split everything into two buckets:
 
