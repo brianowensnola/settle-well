@@ -33,6 +33,7 @@ import Assistant from './pages/Assistant'
 import Activity from './pages/Activity'
 import AdminUsers from './pages/AdminUsers'
 import ExecutorTools from './pages/ExecutorTools'
+import DeathNotifications from './pages/DeathNotifications'
 import ConfirmEmail from './pages/ConfirmEmail'
 
 function RequireAuth({ children }) {
@@ -74,6 +75,7 @@ function AppRoutes() {
         <Route path="/multi-settings" element={<MultiEstateSettings />} />
         <Route path="/admin" element={<AdminUsers />} />
         <Route path="/executor" element={<ExecutorTools />} />
+        <Route path="/death-notices" element={<DeathNotifications />} />
         <Route path="/intake-review" element={<IntakeReview />} />
         <Route path="/send-to-attorney" element={<SendToAttorney />} />
         <Route path="/send-documents" element={<SendDocumentsToAttorney />} />

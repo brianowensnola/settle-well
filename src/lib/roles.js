@@ -34,6 +34,7 @@ export const PAGE_ROLES = {
   '/assistant':        ['administrator'],
   '/admin':            ['administrator'],
   '/executor':         ['administrator'],
+  '/death-notices':    ['administrator'],
   '/multi-settings':   ['administrator'],
   '/activity':         ['administrator'],
   '/tasks':            ['administrator', 'collaborator', 'heir'],

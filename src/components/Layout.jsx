@@ -31,6 +31,7 @@ const EXECUTOR_NAV = [
   { to: '/finances',         label: 'Finances' },
   { to: '/credentials',      label: 'Credentials' },
   { to: '/documents/upload', label: 'Upload Files' },
+  { to: '/death-notices',    label: 'Death Notifications' },
   { to: '/intake-review',    label: 'Intake Review' },
   { to: '/send-to-attorney', label: 'Send to Attorney' },
   { to: '/send-documents',   label: 'Send Documents' },

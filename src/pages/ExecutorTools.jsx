@@ -7,6 +7,7 @@ const TOOLS = [
   { to: '/finances',         label: 'Finances',         icon: '💰', desc: 'Accounts, debts, monthly obligations, insurance, and assets.' },
   { to: '/credentials',      label: 'Credentials',      icon: '🔑', desc: 'Account logins and access details for this estate.' },
   { to: '/documents/upload', label: 'Upload Files',     icon: '⬆️', desc: 'Upload documents into this estate.' },
+  { to: '/death-notices',    label: 'Death Notifications', icon: '✉️', desc: 'Draft letters notifying agencies, banks, and companies of the death.' },
   { to: '/intake-review',    label: 'Intake Review',    icon: '📝', desc: 'Review and update the estate intake answers.' },
   { to: '/send-to-attorney', label: 'Send to Attorney', icon: '✉️', desc: 'Share an estate update with the attorney.' },
   { to: '/send-documents',   label: 'Send Documents',   icon: '📤', desc: 'Send selected documents to the attorney.' },
