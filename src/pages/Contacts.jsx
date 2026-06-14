@@ -9,7 +9,7 @@ export default function Contacts() {
   const [contacts, setContacts] = useState([])
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', notes: '', shared_with: [] })
+  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', website: '', notes: '', shared_with: [] })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -41,13 +41,14 @@ export default function Contacts() {
       emails,
       email_labels,
       address: form.address,
+      website: form.website || null,
       notes: form.notes,
       estate_id: currentEstate.id,
       shared_with: form.shared_with ?? [],
     }).select().single()
     if (data) setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
     setAdding(false)
-    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', notes: '', shared_with: [] })
+    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', website: '', notes: '', shared_with: [] })
   }
 
   async function seedContacts() {
@@ -199,6 +200,13 @@ export default function Contacts() {
             <textarea value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
               placeholder="Street, City, State ZIP" rows={2}
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Website</label>
+            <input value={form.website} onChange={e => setForm(p => ({ ...p, website: e.target.value }))}
+              placeholder="example.com"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
           </div>
 
           <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
