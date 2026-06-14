@@ -11,6 +11,7 @@ export const STATUS_STYLES = {
   pending:     'bg-gray-100 text-gray-600',
   in_progress: 'bg-blue-100 text-blue-700',
   waiting:     'bg-amber-100 text-amber-700',
+  submitted:   'bg-purple-100 text-purple-700',
   done:        'bg-green-100 text-green-700',
 }
 
@@ -18,6 +19,7 @@ export const STATUS_LABELS = {
   pending:     'Pending',
   in_progress: 'In Progress',
   waiting:     'Waiting',
+  submitted:   'Submitted',
   done:        'Done',
 }
 

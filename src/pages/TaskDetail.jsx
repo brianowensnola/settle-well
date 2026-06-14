@@ -6,7 +6,8 @@ import { useUser } from '../lib/AuthContext'
 import { isFullAccess } from '../lib/roles'
 import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
 
-const STATUS_CYCLE = ['pending', 'in_progress', 'waiting', 'done']
+const EXEC_CYCLE = ['pending', 'in_progress', 'waiting', 'done']
+const STAFF_CYCLE = ['pending', 'in_progress', 'waiting', 'submitted']
 
 export default function TaskDetail() {
   const { id } = useParams()
@@ -121,11 +122,14 @@ export default function TaskDetail() {
     setLoading(false)
   }
 
-  async function cycleStatus() {
-    const idx = STATUS_CYCLE.indexOf(task.status)
-    const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length]
-    await supabase.from('estate_tasks').update({ status: next }).eq('id', id)
+  async function setStatusTo(next) {
+    await supabase.from('estate_tasks').update({ status: next, updated_at: new Date().toISOString() }).eq('id', id)
     setTask(prev => ({ ...prev, status: next }))
+  }
+  async function cycleStatus() {
+    const cycle = canSeePrivate ? EXEC_CYCLE : STAFF_CYCLE
+    const idx = cycle.indexOf(task.status)
+    setStatusTo(cycle[(idx + 1) % cycle.length])
   }
 
   async function saveNote() {
@@ -375,12 +379,23 @@ export default function TaskDetail() {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
         <div className="flex items-start gap-3 mb-3 flex-wrap">
-          <button
-            onClick={cycleStatus}
-            className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[task.status]}`}
-          >
-            {task.status === 'done' ? '✓ Done' : STATUS_LABELS[task.status]}
-          </button>
+          {task.status === 'submitted' ? (
+            <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES.submitted}`}>Submitted</span>
+          ) : (
+            <button
+              onClick={cycleStatus}
+              className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[task.status]}`}
+            >
+              {task.status === 'done' ? '✓ Done' : STATUS_LABELS[task.status]}
+            </button>
+          )}
+          {task.status === 'submitted' && canSeePrivate && (
+            <>
+              <button onClick={() => setStatusTo('done')} className="text-xs px-2 py-0.5 bg-green-600 text-white rounded-full hover:bg-green-700">Approve</button>
+              <button onClick={() => setStatusTo('in_progress')} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full hover:bg-gray-200">Send back</button>
+            </>
+          )}
+          {task.status === 'submitted' && <span className="text-xs text-gray-400 self-center">marked complete by {task.submitted_by_name || 'a collaborator'}</span>}
           {task.tag && <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full">{task.tag}</span>}
           {task.assigned_to && (
             <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
