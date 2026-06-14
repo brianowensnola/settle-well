@@ -31,6 +31,8 @@ export const isFullAccess = role => role === 'administrator' || role === 'execut
 // maximum transparency: dashboard + non-private task board + documents/contacts.
 export const PAGE_ROLES = {
   '/dashboard':        ['administrator', 'collaborator', 'heir', 'observer'],
+  '/all-estates':      ['administrator'],
+  '/all-tasks':        ['administrator', 'collaborator'],
   '/assistant':        ['administrator'],
   '/admin':            ['administrator'],
   '/executor':         ['administrator'],

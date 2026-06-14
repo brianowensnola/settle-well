@@ -15,6 +15,14 @@ const MOBILE_NAV = [
   { to: '/contacts',    label: '👥', icon: 'Contacts' },
 ]
 
+// Multi-estate section links (filtered per role at render).
+const MULTI_NAV = [
+  { to: '/all-estates', label: 'All Estates' },
+  { to: '/all-tasks',   label: 'All Tasks' },
+  { to: '/mail',        label: 'Mail Intake' },
+  { to: '/admin',       label: 'Users & Roles' },
+]
+
 // Per-estate items everyone (per their role) uses — shown under each estate.
 const SHARED_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
@@ -83,15 +91,19 @@ export default function Layout() {
   // Shared nav body + footer, used by both the desktop sidebar and the mobile drawer.
   const renderNavBody = () => (
     <nav className="flex-1 py-3 space-y-0.5 px-2 overflow-y-auto">
-      {/* Multi-Estate Section */}
-      <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
-      {renderNavLink('/all-estates', 'All Estates')}
-      {renderNavLink('/all-tasks', 'All Tasks')}
-      {renderNavLink('/mail', 'Mail Intake')}
-      {renderNavLink('/admin', 'Users & Roles')}
-
-      {/* Executor tools — single entry that opens a tools page (acts on the selected estate) */}
-      {isFullAccess(role) && currentEstate && renderNavLink('/executor', 'Executor Tools')}
+      {/* Multi-Estate Section — only the links this role can actually open */}
+      {(() => {
+        const links = MULTI_NAV.filter(({ to }) => canAccess(to, role))
+        const showExec = isFullAccess(role) && currentEstate
+        if (links.length === 0 && !showExec) return null
+        return (
+          <>
+            <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
+            {links.map(({ to, label }) => renderNavLink(to, label))}
+            {showExec && renderNavLink('/executor', 'Executor Tools')}
+          </>
+        )
+      })()}
 
       {/* Estates Section */}
       <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">Estates</div>

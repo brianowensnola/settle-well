@@ -11,3 +11,15 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Never cache the HTML shell — so a deploy reaches everyone on their next visit
+# (no stale-app surprises). Hashed assets are safe to cache forever.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
