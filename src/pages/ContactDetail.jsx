@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
+import { isFullAccess } from '../lib/roles'
 import { CONTACT_ROLES } from '../lib/constants'
 
 export default function ContactDetail() {
   const { id } = useParams()
-  const { currentEstate, estates } = useEstate()
+  const navigate = useNavigate()
+  const { currentEstate, estates, role } = useEstate()
+  const canDelete = isFullAccess(role)
   const [contact, setContact] = useState(null)
   const [interactions, setInteractions] = useState([])
   const [logForm, setLogForm] = useState({ direction: 'outbound', summary: '' })
@@ -42,6 +45,14 @@ export default function ContactDetail() {
     await supabase.from('estate_contacts').update({ ...editData, updated_at: new Date().toISOString() }).eq('id', id)
     setContact(prev => ({ ...prev, ...editData }))
     setEditing(false)
+  }
+
+  async function deleteContact() {
+    const shared = contact.shared_with?.length > 0
+    if (!confirm(`Delete "${contact.name}"?${shared ? ' This removes it from every estate it\'s shared with.' : ''} This can't be undone.`)) return
+    const { error } = await supabase.from('estate_contacts').delete().eq('id', id)
+    if (error) { alert(`Couldn't delete: ${error.message}`); return }
+    navigate('/contacts')
   }
 
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
@@ -192,8 +203,13 @@ export default function ContactDetail() {
                   </div>
                 )}
               </div>
-              <button onClick={() => { setEditing(true); setEditData({ ...contact }) }}
-                className="text-xs text-blue-600 hover:underline">Edit</button>
+              <div className="flex gap-3 shrink-0">
+                <button onClick={() => { setEditing(true); setEditData({ ...contact }) }}
+                  className="text-xs text-blue-600 hover:underline">Edit</button>
+                {canDelete && (
+                  <button onClick={deleteContact} className="text-xs text-red-500 hover:text-red-700 hover:underline">Delete</button>
+                )}
+              </div>
             </div>
             <div className="space-y-1 text-sm">
               {contact.phones?.length > 0 && contact.phones.map((p, i) => <div key={i}><span className="text-gray-400">{contact.phone_labels?.[i] || 'Phone'}: </span>{p}</div>)}
