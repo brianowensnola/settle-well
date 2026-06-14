@@ -47,6 +47,12 @@ export default function AdminUsers() {
     const role = person.memberships[0]?.role || 'heir'
     await addMembership(estateId, person, role); await refresh()
   }
+  function copyInvite(person) {
+    const url = `https://settle-well.netlify.app/invite?email=${encodeURIComponent(person.email)}`
+    navigator.clipboard.writeText(url)
+    setMsg(`Invite link copied — send it to ${person.name || person.email}. They open it, create a password, and they're connected.`)
+  }
+
   async function doReset(person) {
     if (!person.auth_user_id) { alert("This person hasn't created a login yet, so there's no password to reset."); return }
     const pw = prompt(`Set a new password for ${person.name || person.email} (min 6 characters):`)
@@ -117,7 +123,9 @@ export default function AdminUsers() {
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button onClick={() => startEdit(p)} className="text-xs text-blue-600 hover:underline">Edit</button>
-                      <button onClick={() => doReset(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">Reset password</button>
+                      {!p.auth_user_id && p.email
+                        ? <button onClick={() => copyInvite(p)} className="text-xs text-blue-600 hover:underline">Copy invite link</button>
+                        : <button onClick={() => doReset(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">Reset password</button>}
                     </div>
                   </div>
 
