@@ -46,16 +46,21 @@ export default function TaskDetail() {
   }, [id])
 
   async function load() {
-    const [t, st, l, d] = await Promise.all([
+    const [t, st, l, d, j] = await Promise.all([
       supabase.from('estate_tasks').select('*').eq('id', id).single(),
       supabase.from('estate_tasks').select('*').eq('parent_task_id', id).order('sort_order'),
       supabase.from('estate_task_logs').select('*').eq('task_id', id).order('created_at'),
-      supabase.from('estate_documents').select('*').eq('linked_task_id', id),
+      supabase.from('estate_documents').select('*').eq('linked_task_id', id),       // legacy/auto links
+      supabase.from('estate_task_documents').select('estate_documents(*)').eq('task_id', id), // many-to-many links
     ])
     setTask(t.data)
     setSubtasks(st.data ?? [])
     setLogs(l.data ?? [])
-    setLinkedDocs(d.data ?? [])
+    // Union of auto-linked + manually-attached documents, deduped by id.
+    const joinedDocs = (j.data ?? []).map(r => r.estate_documents).filter(Boolean)
+    const byId = {}
+    for (const doc of [...(d.data ?? []), ...joinedDocs]) byId[doc.id] = doc
+    setLinkedDocs(Object.values(byId))
 
     // All tasks in this estate — used to pick a parent to nest under
     const { data: all } = await supabase
@@ -194,9 +199,10 @@ export default function TaskDetail() {
       // Notes follow the task
       try { await supabase.from('estate_task_logs').update({ estate_id: targetId }).in('task_id', ids) } catch { /* best effort */ }
 
-      // Unlink documents (they stay on the source estate)
+      // Unlink documents (they stay on the source estate) — legacy + many-to-many links
       const { data: unlinked } = await supabase.from('estate_documents')
         .update({ linked_task_id: null }).in('linked_task_id', ids).select('id')
+      await supabase.from('estate_task_documents').delete().in('task_id', ids)
       const n = unlinked?.length ?? 0
 
       alert(`Moved to the ${target?.deceased_name} estate.` + (n > 0 ? ` ${n} linked document(s) were unlinked — re-attach them on that estate if needed.` : ''))
@@ -229,22 +235,22 @@ export default function TaskDetail() {
     }
   }
 
-  // Attach an already-uploaded document to this task (quick reference).
+  // Attach an already-uploaded document to this task (many-to-many — a document
+  // can be referenced from several tasks at once; this doesn't move it).
   async function attachDoc(docId) {
     if (!docId) return
-    await supabase.from('estate_documents').update({ linked_task_id: id }).eq('id', docId)
+    await supabase.from('estate_task_documents')
+      .upsert({ estate_id: currentEstate.id, task_id: id, document_id: docId }, { onConflict: 'task_id,document_id' })
     const doc = allDocs.find(d => d.id === docId)
-    if (doc) {
-      setLinkedDocs(prev => prev.some(d => d.id === docId) ? prev : [...prev, { ...doc, linked_task_id: id }])
-      setAllDocs(prev => prev.map(d => d.id === docId ? { ...d, linked_task_id: id } : d))
-    }
+    if (doc) setLinkedDocs(prev => prev.some(d => d.id === docId) ? prev : [...prev, doc])
     setAttachChoice('')
   }
 
   async function detachDoc(docId) {
-    await supabase.from('estate_documents').update({ linked_task_id: null }).eq('id', docId)
+    // Remove the many-to-many link, and also clear a legacy single link if it points here.
+    await supabase.from('estate_task_documents').delete().eq('task_id', id).eq('document_id', docId)
+    await supabase.from('estate_documents').update({ linked_task_id: null }).eq('id', docId).eq('linked_task_id', id)
     setLinkedDocs(prev => prev.filter(d => d.id !== docId))
-    setAllDocs(prev => prev.map(d => d.id === docId ? { ...d, linked_task_id: null } : d))
   }
 
   async function viewDoc(doc) {
@@ -692,7 +698,7 @@ export default function TaskDetail() {
               >
                 <option value="">Choose a document…</option>
                 {candidates.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}{d.linked_task_id ? ' (currently on another task)' : ''}</option>
+                  <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
               <button
