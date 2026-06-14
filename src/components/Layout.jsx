@@ -73,6 +73,7 @@ export default function Layout() {
       {renderNavLink('/all-estates', 'All Estates')}
       {renderNavLink('/all-tasks', 'All Tasks')}
       {renderNavLink('/mail', 'Mail Intake')}
+      {renderNavLink('/admin', 'Users & Roles')}
       {renderNavLink('/multi-settings', 'Settings')}
 
       {/* Estates Section */}
