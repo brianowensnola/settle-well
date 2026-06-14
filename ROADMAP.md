@@ -13,6 +13,10 @@ finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
 "add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
 Items graduate into the structured backlog below when it's time to do them.
 
+- **(2026-06-14)** Confirm/connect the Anthropic account to the app — verify the
+  Anthropic API key in Netlify env is set and on a plan with the features we
+  use (esp. the web-search tool for death-notification address lookup). If web
+  search isn't enabled, enable it or the lookup falls back to a placeholder.
 - **(2026-06-14)** Help-desk / support view for the finished app — a way for end
   users to get help (FAQ, guided help, contact/support) once the app ships.
 - **(2026-06-14)** Path-scope storage policies — the estate-documents bucket
