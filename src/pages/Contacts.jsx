@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
+import { isFullAccess } from '../lib/roles'
 import { CONTACT_ROLES } from '../lib/constants'
 
 export default function Contacts() {
-  const { currentEstate, estates } = useEstate()
+  const { currentEstate, estates, role } = useEstate()
+  const canManage = isFullAccess(role) || role === 'collaborator'
   const [contacts, setContacts] = useState([])
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
@@ -86,12 +88,12 @@ export default function Contacts() {
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Contacts</h1>
         <div className="flex gap-2">
-          {contacts.length === 0 && (
+          {canManage && contacts.length === 0 && (
             <button onClick={seedContacts} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
               Seed Key Contacts
             </button>
           )}
-          <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add contact</button>
+          {canManage && <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add contact</button>}
         </div>
       </div>
 
