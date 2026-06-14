@@ -34,6 +34,9 @@ Items graduate into the structured backlog below when it's time to do them.
   some screens; needs specifics on which screens before changing.
 - **(2026-06-14)** Need a way to change passwords in admin — let the executor
   reset/change a user's password from an admin screen (Settings).
+- **(2026-06-14)** Documents on multiple tasks — let one document be referenced
+  from several tasks at once (currently `linked_task_id` is single-valued, so
+  attaching a doc moves it). Needs a task↔document many-to-many link.
 
 ---
 
