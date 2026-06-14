@@ -54,6 +54,14 @@ export default function Layout() {
     navigate('/login')
   }
 
+  async function changePassword() {
+    const pw = prompt('Enter a new password (at least 6 characters):')
+    if (!pw) return
+    if (pw.length < 6) { alert('Password must be at least 6 characters.'); return }
+    const { error } = await supabase.auth.updateUser({ password: pw })
+    alert(error ? `Could not change password: ${error.message}` : 'Your password has been updated.')
+  }
+
   const renderNavLink = (to, label) => (
     <NavLink
       key={to}
@@ -133,6 +141,12 @@ export default function Layout() {
   const renderNavFooter = () => (
     <div className="p-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
       <div className="text-xs text-gray-400 dark:text-gray-500 truncate mb-2">{user?.email}</div>
+      <button
+        onClick={changePassword}
+        className="w-full text-left px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+      >
+        🔑 Change password
+      </button>
       <button
         onClick={() => setIsDark(!isDark)}
         className="w-full text-left px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-800"

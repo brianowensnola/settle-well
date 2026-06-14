@@ -18,6 +18,9 @@ export function EstateProvider({ children }) {
 
   async function loadEstates() {
     setLoading(true)
+    // Link any pending invites for this user's email to their account, so a
+    // re-invited (or newly-invited) person connects automatically on login.
+    try { await supabase.rpc('claim_my_invites') } catch { /* non-fatal */ }
     const { data: euRows } = await supabase
       .from('estate_users')
       .select('estate_id, role, estates(*)')

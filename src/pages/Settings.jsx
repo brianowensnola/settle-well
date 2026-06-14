@@ -18,6 +18,9 @@ export default function Settings() {
     if (!currentEstate) return
     setForm({
       name: currentEstate.name,
+      deceased_name: currentEstate.deceased_name ?? '',
+      deceased_dob: currentEstate.deceased_dob ?? '',
+      deceased_dod: currentEstate.deceased_dod ?? '',
       administrator_name: currentEstate.administrator_name ?? '',
       administrator_email: currentEstate.administrator_email ?? '',
       administrator_phone: currentEstate.administrator_phone ?? '',
@@ -38,9 +41,13 @@ export default function Settings() {
 
   async function save(e) {
     e.preventDefault()
+    const payload = { ...form, updated_at: new Date().toISOString() }
+    // Date columns reject empty strings — store null instead.
+    if (!payload.deceased_dob) payload.deceased_dob = null
+    if (!payload.deceased_dod) payload.deceased_dod = null
     const { data, error } = await supabase
       .from('estates')
-      .update({ ...form, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq('id', currentEstate.id)
       .select()
     if (error) {
@@ -117,6 +124,23 @@ export default function Settings() {
           </div>
         ))}
         <div>
+          <label className="text-xs text-gray-500 block mb-1">Deceased Name</label>
+          <input value={form.deceased_name ?? ''} onChange={e => setForm(p => ({ ...p, deceased_name: e.target.value }))}
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Date of Birth</label>
+            <input type="date" value={form.deceased_dob ?? ''} onChange={e => setForm(p => ({ ...p, deceased_dob: e.target.value }))}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Date of Death</label>
+            <input type="date" value={form.deceased_dod ?? ''} onChange={e => setForm(p => ({ ...p, deceased_dod: e.target.value }))}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+          </div>
+        </div>
+        <div>
           <label className="text-xs text-gray-500 block mb-1">Status</label>
           <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
@@ -136,14 +160,6 @@ export default function Settings() {
         </button>
       </form>
 
-      <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Estate Info (read-only)</h2>
-        <div className="space-y-1 text-sm">
-          <div><span className="text-gray-400">Deceased: </span>{currentEstate.deceased_name}</div>
-          <div><span className="text-gray-400">Date of Birth: </span>{currentEstate.deceased_dob ?? '—'}</div>
-          <div><span className="text-gray-400">Date of Death: </span>{currentEstate.deceased_dod}</div>
-        </div>
-      </div>
 
       <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Users &amp; Roles</h2>
