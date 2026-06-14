@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 import { isFullAccess } from '../lib/roles'
-import { loadInbox, uploadMailPiece, routeMailItem, dismissMailItem, signedUrl } from '../lib/familyMail'
+import { loadInbox, uploadMailPiece, routeMailItem, dismissMailItem, signedUrl, loadOpenTasks } from '../lib/familyMail'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -19,14 +19,18 @@ export default function FamilyMail() {
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
-  const [choice, setChoice] = useState({})        // mailId -> { estateId, name }
+  const [choice, setChoice] = useState({})        // mailId -> { estateId, name, ledger, ledgerCat, taskMode, taskId, newText }
+  const [openTasks, setOpenTasks] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { loadInbox().then(d => { setItems(d); setLoading(false) }) }, [])
   useEffect(() => {
+    if (isExecutor && estates?.length) loadOpenTasks(estates.map(e => e.id)).then(setOpenTasks)
+  }, [isExecutor, estates])
+  useEffect(() => {
     setChoice(prev => {
       const next = { ...prev }
-      for (const it of items) if (!next[it.id]) next[it.id] = { estateId: it.suggested_estate_id || '', name: it.ai_name || it.original_name || '', ledger: !!it.is_bill, ledgerCat: 'obligation' }
+      for (const it of items) if (!next[it.id]) next[it.id] = { estateId: it.suggested_estate_id || '', name: it.ai_name || it.original_name || '', ledger: !!it.is_bill, ledgerCat: 'obligation', taskMode: 'review', taskId: '', newText: it.ai_action || '' }
       return next
     })
   }, [items])
@@ -60,10 +64,12 @@ export default function FamilyMail() {
   async function approve(item) {
     const c = choice[item.id]
     if (!c?.estateId) { setError('Pick an estate to file this under.'); return }
+    if (c.taskMode === 'existing' && !c.taskId) { setError('Choose the existing task to link to.'); return }
     setBusy(true); setError('')
     try {
       const ledger = (item.is_bill && c.ledger) ? { add: true, category: c.ledgerCat, amount: item.bill_amount } : null
-      await routeMailItem(item, c.estateId, c.name, ledger)
+      const taskOpt = { mode: c.taskMode, taskId: c.taskId, newText: c.newText }
+      await routeMailItem(item, c.estateId, c.name, ledger, taskOpt)
       setItems(prev => prev.filter(x => x.id !== item.id))
     } catch (e) { setError(e.message || 'Filing failed') }
     finally { setBusy(false) }
@@ -176,15 +182,41 @@ export default function FamilyMail() {
                   </label>
                 )}
                 {isExecutor ? (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-gray-400">File under:</span>
-                    <select value={c.estateId} onChange={e => setChoice(p => ({ ...p, [item.id]: { ...c, estateId: e.target.value } }))}
-                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none">
-                      <option value="">Choose estate…</option>
-                      {estates?.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
-                    </select>
-                    {item.suggested_estate_id && <span className="text-xs text-gray-400">AI: {estateName(item.suggested_estate_id)}</span>}
-                    <div className="flex gap-2 ml-auto">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-gray-400">File under:</span>
+                      <select value={c.estateId} onChange={e => setChoice(p => ({ ...p, [item.id]: { ...c, estateId: e.target.value } }))}
+                        className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none">
+                        <option value="">Choose estate…</option>
+                        {estates?.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
+                      </select>
+                      {item.suggested_estate_id && <span className="text-xs text-gray-400">AI: {estateName(item.suggested_estate_id)}</span>}
+                    </div>
+
+                    {/* Where the action/task goes */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-gray-400">Action:</span>
+                      <select value={c.taskMode} onChange={e => setChoice(p => ({ ...p, [item.id]: { ...c, taskMode: e.target.value } }))}
+                        className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none">
+                        <option value="review">Add to "Review mail" task</option>
+                        <option value="new">Create a new task</option>
+                        <option value="existing">Link to an existing task</option>
+                      </select>
+                    </div>
+                    {c.taskMode === 'new' && (
+                      <input value={c.newText} onChange={e => setChoice(p => ({ ...p, [item.id]: { ...c, newText: e.target.value } }))}
+                        placeholder="New task description"
+                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none" />
+                    )}
+                    {c.taskMode === 'existing' && (
+                      <select value={c.taskId} onChange={e => setChoice(p => ({ ...p, [item.id]: { ...c, taskId: e.target.value } }))}
+                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none">
+                        <option value="">{c.estateId ? 'Choose a task…' : 'Pick an estate first'}</option>
+                        {openTasks.filter(t => t.estate_id === c.estateId).map(t => <option key={t.id} value={t.id}>{t.text}</option>)}
+                      </select>
+                    )}
+
+                    <div className="flex gap-2">
                       <button onClick={() => approve(item)} disabled={busy} className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">Approve &amp; file</button>
                       <button onClick={() => dismiss(item)} className="text-xs px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200">Discard</button>
                     </div>

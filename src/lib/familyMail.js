@@ -81,9 +81,21 @@ export async function signedUrl(filePath) {
   return data?.signedUrl ?? null
 }
 
+// Open tasks across the executor's estates — to link a mailpiece to an existing one.
+export async function loadOpenTasks(estateIds) {
+  if (!estateIds?.length) return []
+  const { data } = await supabase
+    .from('estate_tasks')
+    .select('id, text, estate_id, status')
+    .in('estate_id', estateIds)
+    .neq('status', 'done')
+    .order('text')
+  return data ?? []
+}
+
 // Executor approval: file the mailpiece under the chosen estate (as a mail
 // document) and link it to that estate's mail-review task.
-export async function routeMailItem(item, estateId, overrideName, ledger) {
+export async function routeMailItem(item, estateId, overrideName, ledger, taskOpt) {
   const name = (overrideName ?? item.ai_name ?? item.original_name ?? 'Mail item').trim()
 
   // If it's a bill the executor chose to record, add it to the Finances ledger.
@@ -109,21 +121,41 @@ export async function routeMailItem(item, estateId, overrideName, ledger) {
   }).select().single()
   if (error) throw error
 
-  // Link to (or create) that estate's daily mail-review task.
-  const today = new Date().toISOString().split('T')[0]
-  const taskName = `Review mail from ${new Date(today + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-  let { data: task } = await supabase.from('estate_tasks')
-    .select('id').eq('estate_id', estateId).eq('text', taskName).eq('status', 'pending').maybeSingle()
-  if (!task) {
+  // Decide which task this mailpiece links to.
+  let taskId = null
+  if (taskOpt?.mode === 'existing' && taskOpt.taskId) {
+    taskId = taskOpt.taskId
+  } else if (taskOpt?.mode === 'new') {
+    const text = (taskOpt.newText || item.ai_action || `Follow up on mail: ${name}`).trim()
     const { data: sec } = await supabase.from('estate_sections')
       .select('id').eq('estate_id', estateId).eq('label', 'Phase 2 — First Week').maybeSingle()
-    const { data: newTask } = await supabase.from('estate_tasks').insert({
-      estate_id: estateId, section_id: sec?.id ?? null, text: taskName,
-      status: 'pending', tag: 'mail-review', detail: 'Review newly filed mail and decide what actions to take.',
+    const { data: nt } = await supabase.from('estate_tasks').insert({
+      estate_id: estateId, section_id: sec?.id ?? null, text,
+      status: 'pending', tag: 'from mail', detail: item.ai_summary || null,
     }).select('id').single()
-    task = newTask
+    taskId = nt?.id ?? null
+  } else {
+    // Default: link to (or create) that estate's daily mail-review task.
+    const today = new Date().toISOString().split('T')[0]
+    const taskName = `Review mail from ${new Date(today + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    let { data: task } = await supabase.from('estate_tasks')
+      .select('id').eq('estate_id', estateId).eq('text', taskName).eq('status', 'pending').maybeSingle()
+    if (!task) {
+      const { data: sec } = await supabase.from('estate_sections')
+        .select('id').eq('estate_id', estateId).eq('label', 'Phase 2 — First Week').maybeSingle()
+      const { data: newTask } = await supabase.from('estate_tasks').insert({
+        estate_id: estateId, section_id: sec?.id ?? null, text: taskName,
+        status: 'pending', tag: 'mail-review', detail: 'Review newly filed mail and decide what actions to take.',
+      }).select('id').single()
+      task = newTask
+    }
+    taskId = task?.id ?? null
   }
-  if (task) await supabase.from('estate_documents').update({ linked_task_id: task.id }).eq('id', doc.id)
+  // Link the filed document to the chosen task (many-to-many + legacy single link).
+  if (taskId) {
+    await supabase.from('estate_task_documents').upsert({ estate_id: estateId, task_id: taskId, document_id: doc.id }, { onConflict: 'task_id,document_id' })
+    await supabase.from('estate_documents').update({ linked_task_id: taskId }).eq('id', doc.id)
+  }
 
   await supabase.from('family_mail').update({
     status: 'routed', routed_estate_id: estateId, routed_document_id: doc.id,
