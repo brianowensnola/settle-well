@@ -13,10 +13,11 @@ finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
 "add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
 Items graduate into the structured backlog below when it's time to do them.
 
-- **(2026-06-14)** True storage file purge — deleting a document or dismissing
-  mail removes the database record but the actual file stays in the bucket (no
-  storage delete policy). Add an edge function or storage policy to really
-  delete the file when intended.
+- **(2026-06-14)** Path-scope storage policies — the estate-documents bucket
+  currently lets ANY authenticated user read/upload/delete ANY file (the
+  policies aren't scoped by estate/path). Tighten to per-estate path prefixes so
+  a member of one estate can't touch another's files. (Loose but consistent
+  posture for now; real fix when multi-account/unrelated estates arrive.)
 - **(2026-06-14)** Protect the code / keep it proprietary (long-term). How do we
   guard against other AIs or third parties poaching or copying the codebase?
   Consider: private repo + tight access controls, a proprietary LICENSE, keeping
