@@ -10,8 +10,7 @@ export default function FamilyMail() {
   const { estates } = useEstate()
   const user = useUser()
   const isExecutor = (estates ?? []).some(e => isFullAccess(e._role))
-  const isCollaborator = (estates ?? []).some(e => e._role === 'collaborator')
-  const canUse = isExecutor || isCollaborator
+  const canUse = isExecutor || (estates ?? []).some(e => e._role === 'collaborator' || e._role === 'heir')
 
   const [items, setItems] = useState([])
   const [pages, setPages] = useState([])          // File[] for the current mailpiece

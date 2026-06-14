@@ -38,7 +38,7 @@ export const PAGE_ROLES = {
   '/multi-settings':   ['administrator'],
   '/activity':         ['administrator'],
   '/tasks':            ['administrator', 'collaborator', 'heir'],
-  '/mail':             ['administrator', 'collaborator'],
+  '/mail':             ['administrator', 'collaborator', 'heir'],
   '/intake-review':    ['administrator'],
   '/send-to-attorney': ['administrator'],
   '/send-documents':   ['administrator'],
