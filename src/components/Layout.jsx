@@ -57,7 +57,33 @@ export default function Layout() {
   const [expandedEstate, setExpandedEstate] = useState(currentEstate?.id)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [familyName, setFamilyName] = useState('')
+  const [counts, setCounts] = useState({ mail: 0, ai: 0, submittedByEstate: {}, submittedTotal: 0 })
   const closeMobile = () => setMobileNavOpen(false)
+
+  // Pending-item counts for nav badges. Refresh on estate switch and on each
+  // navigation so badges clear soon after you act on something.
+  useEffect(() => {
+    let off = false
+    ;(async () => {
+      const [mailRes, subRes, aiRes] = await Promise.all([
+        supabase.from('family_mail').select('id').eq('status', 'pending'),
+        supabase.from('estate_tasks').select('estate_id').eq('status', 'submitted'),
+        currentEstate
+          ? supabase.from('estate_ai_suggestions').select('id').eq('estate_id', currentEstate.id).eq('status', 'pending')
+          : Promise.resolve({ data: [] }),
+      ])
+      if (off) return
+      const byEstate = {}
+      for (const r of subRes.data ?? []) byEstate[r.estate_id] = (byEstate[r.estate_id] ?? 0) + 1
+      setCounts({
+        mail: (mailRes.data ?? []).length,
+        ai: (aiRes.data ?? []).length,
+        submittedByEstate: byEstate,
+        submittedTotal: (subRes.data ?? []).length,
+      })
+    })()
+    return () => { off = true }
+  }, [currentEstate, pathname])
 
   // The current estate's family-estate name (heads the Multi-Estate section).
   useEffect(() => {
@@ -83,20 +109,25 @@ export default function Layout() {
     alert(error ? `Could not change password: ${error.message}` : 'Your password has been updated.')
   }
 
-  const renderNavLink = (to, label) => (
+  const renderNavLink = (to, label, badge = 0) => (
     <NavLink
       key={to}
       to={to}
       onClick={closeMobile}
       className={({ isActive }) =>
-        `block px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        `flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           isActive
             ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
             : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
         }`
       }
     >
-      {label}
+      <span className="truncate">{label}</span>
+      {badge > 0 && (
+        <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full bg-red-500 text-white">
+          {badge}
+        </span>
+      )}
     </NavLink>
   )
 
@@ -115,8 +146,9 @@ export default function Layout() {
             {/* The family estate name heads the section and links to the family overview */}
             {showParent && renderNavLink('/all-estates', familyName || 'All Estates')}
             <div className="ml-2 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
-              {links.map(({ to, label }) => renderNavLink(to, label))}
-              {showExec && renderNavLink('/executor', 'Executor Tools')}
+              {links.map(({ to, label }) => renderNavLink(to, label,
+                to === '/mail' ? counts.mail : to === '/all-tasks' ? counts.submittedTotal : 0))}
+              {showExec && renderNavLink('/executor', 'Executor Tools', counts.ai)}
             </div>
           </>
         )
@@ -156,7 +188,8 @@ export default function Layout() {
                   <div className="ml-2 mt-1 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
                     {SHARED_NAV
                       .filter(({ to }) => canAccess(to, currentEstate?.id === estate.id ? role : estate._role))
-                      .map(({ to, label }) => renderNavLink(to, label))}
+                      .map(({ to, label }) => renderNavLink(to, label,
+                        to === '/tasks' ? (counts.submittedByEstate[estate.id] ?? 0) : 0))}
                   </div>
                 )}
               </div>
@@ -229,21 +262,27 @@ export default function Layout() {
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around safe-area-inset-bottom">
-        {MOBILE_NAV.filter(({ to }) => canAccess(to, role)).map(({ to, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex-1 flex flex-col items-center justify-center min-h-[56px] text-xs font-medium transition-colors ${
-                isActive
-                  ? 'text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800'
-                  : 'text-gray-500 dark:text-gray-400'
-              }`
-            }
-          >
-            <div className="text-xl mb-0.5">{label}</div>
-          </NavLink>
-        ))}
+        {MOBILE_NAV.filter(({ to }) => canAccess(to, role)).map(({ to, label }) => {
+          const dot = to === '/tasks' && (counts.submittedByEstate[currentEstate?.id] ?? 0) > 0
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex-1 flex flex-col items-center justify-center min-h-[56px] text-xs font-medium transition-colors ${
+                  isActive
+                    ? 'text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800'
+                    : 'text-gray-500 dark:text-gray-400'
+                }`
+              }
+            >
+              <div className="text-xl mb-0.5 relative">
+                {label}
+                {dot && <span className="absolute -top-1 -right-2 h-2 w-2 bg-red-500 rounded-full" />}
+              </div>
+            </NavLink>
+          )
+        })}
       </nav>
 
       {/* Main Content */}

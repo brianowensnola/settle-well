@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 
@@ -17,9 +19,18 @@ const TOOLS = [
 
 export default function ExecutorTools() {
   const { currentEstate, role } = useEstate()
+  const [aiPending, setAiPending] = useState(0)
+
+  useEffect(() => {
+    if (!currentEstate) return
+    supabase.from('estate_ai_suggestions').select('id').eq('estate_id', currentEstate.id).eq('status', 'pending')
+      .then(({ data }) => setAiPending((data ?? []).length))
+  }, [currentEstate])
 
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (!isFullAccess(role)) return <div className="p-8 text-gray-400">Executor access required.</div>
+
+  const badgeFor = to => (to === '/assistant' ? aiPending : 0)
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -36,8 +47,13 @@ export default function ExecutorTools() {
             className="flex items-start gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 hover:border-gray-300 dark:hover:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <span className="text-xl leading-none mt-0.5">{t.icon}</span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-gray-900 dark:text-white">{t.label}</span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
+                {t.label}
+                {badgeFor(t.to) > 0 && (
+                  <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold rounded-full bg-red-500 text-white">{badgeFor(t.to)}</span>
+                )}
+              </span>
               <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t.desc}</span>
             </span>
           </Link>
