@@ -90,6 +90,7 @@ export default function FamilyFinances() {
     { label: 'Liabilities', value: combined.liabilities > 0 ? fmt(combined.liabilities) : '—' },
     { label: 'Assets', value: assetDisplay(combined) },
     { label: 'Net (Assets − Liab.)', value: fmt(combined.assets - combined.liabilities), neg: (combined.assets - combined.liabilities) < 0 },
+    { label: 'Net Worth (incl. accounts)', value: fmt(combined.balance + combined.assets - combined.liabilities), neg: (combined.balance + combined.assets - combined.liabilities) < 0 },
     { label: 'Ledger Balance', value: fmt(combinedLedger), neg: combinedLedger < 0 },
   ]
 
@@ -107,7 +108,7 @@ export default function FamilyFinances() {
       </div>
 
       {/* Combined summary */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
         {SUMMARY.map(s => (
           <div key={s.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
             <div className="text-xs text-gray-500 mb-1">{s.label}</div>

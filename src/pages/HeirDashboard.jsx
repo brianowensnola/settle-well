@@ -90,6 +90,7 @@ export default function HeirDashboard() {
             ['Known assets', s.assets_total],
             ['Liabilities', s.liabilities_total],
             ['Net (assets − liabilities)', (s.assets_total ?? 0) - (s.liabilities_total ?? 0)],
+            ['Net worth (incl. accounts)', (s.accounts_total ?? 0) + (s.assets_total ?? 0) - (s.liabilities_total ?? 0)],
             ['Monthly obligations', s.monthly_obligations],
           ].map(([label, val]) => (
             <div key={label}>

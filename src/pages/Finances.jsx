@@ -199,6 +199,7 @@ export default function Finances() {
   // Exclude sold/distributed assets — they've left the estate.
   const totalAssets = assets.filter(a => !DISPOSED_ASSET_STATUSES.includes(a.status)).reduce((s, a) => s + (a.amount ?? 0), 0)
   const netAssetsLiabilities = totalAssets - totalLiabilities
+  const netWorth = totalBalance + totalAssets - totalLiabilities
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
@@ -208,13 +209,14 @@ export default function Finances() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
         {[
           { label: 'Account Balance', value: fmt(totalBalance) },
           { label: 'Monthly Obligations', value: fmt(monthlyBurn) },
           { label: 'Known Liabilities', value: totalLiabilities > 0 ? fmt(totalLiabilities) : '—' },
           { label: 'Known Assets', value: totalAssets > 0 ? fmt(totalAssets) : '—' },
           { label: 'Net (Assets − Liab.)', value: fmt(netAssetsLiabilities), neg: netAssetsLiabilities < 0 },
+          { label: 'Net Worth (incl. accounts)', value: fmt(netWorth), neg: netWorth < 0 },
         ].map(s => (
           <div key={s.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
             <div className="text-xs text-gray-500 mb-1">{s.label}</div>
