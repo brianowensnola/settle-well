@@ -163,6 +163,15 @@ export default function Layout() {
             )
           })
         )}
+        {/* Account-level: start a brand-new, unrelated family estate */}
+        {estates.length > 0 && isFullAccess(role) && (
+          <button
+            onClick={() => { closeMobile(); navigate('/quick-estate', { state: { newFamily: true } }) }}
+            className="w-full text-left px-3 py-2 mt-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            + New family estate
+          </button>
+        )}
       </div>
     </nav>
   )
