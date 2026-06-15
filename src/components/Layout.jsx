@@ -56,9 +56,38 @@ export default function Layout() {
   const { isDark, setIsDark } = useDarkMode()
   const [expandedEstate, setExpandedEstate] = useState(currentEstate?.id)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [familyName, setFamilyName] = useState('')
+  const [groupNames, setGroupNames] = useState({}) // group_id -> name
   const [counts, setCounts] = useState({ mail: 0, ai: 0, submittedByEstate: {}, submittedTotal: 0 })
   const closeMobile = () => setMobileNavOpen(false)
+
+  // Group estates into families. A grouped estate's family is its group; an
+  // ungrouped estate is its own standalone family. The nav only ever shows the
+  // CURRENT family's estates — other families never bleed in.
+  const familyKeyOf = e => e?.group_id || (e ? `solo:${e.id}` : null)
+  const currentFamilyKey = familyKeyOf(currentEstate)
+  const familyMembers = estates.filter(e => currentFamilyKey && familyKeyOf(e) === currentFamilyKey)
+  const familyNameOf = key =>
+    key?.startsWith('solo:')
+      ? (estates.find(e => `solo:${e.id}` === key)?.deceased_name ?? 'Estate')
+      : (groupNames[key] || 'Family estate')
+  const familyName = currentFamilyKey ? (currentFamilyKey.startsWith('solo:') ? '' : familyNameOf(currentFamilyKey)) : ''
+  // Distinct families for the switcher.
+  const families = []
+  const seenFam = new Set()
+  for (const e of estates) {
+    const key = familyKeyOf(e)
+    if (seenFam.has(key)) continue
+    seenFam.add(key)
+    families.push({ key, name: familyNameOf(key), firstEstate: estates.find(x => familyKeyOf(x) === key) })
+  }
+
+  function switchFamily(key) {
+    const fam = families.find(f => f.key === key)
+    if (fam?.firstEstate) { switchEstate(fam.firstEstate); setExpandedEstate(fam.firstEstate.id) }
+  }
+
+  // Tasks awaiting approval within the current family (for the All Tasks badge).
+  const familySubmitted = familyMembers.reduce((s, e) => s + (counts.submittedByEstate[e.id] ?? 0), 0)
 
   // Pending-item counts for nav badges. Refresh on estate switch and on each
   // navigation so badges clear soon after you act on something.
@@ -85,16 +114,15 @@ export default function Layout() {
     return () => { off = true }
   }, [currentEstate, pathname])
 
-  // The current estate's family-estate name (heads the Multi-Estate section).
+  // Names of all family groups the user can see (for the section header + switcher).
   useEffect(() => {
     let off = false
     ;(async () => {
-      if (!currentEstate?.group_id) { setFamilyName(''); return }
-      const { data } = await supabase.from('estate_groups').select('name').eq('id', currentEstate.group_id).maybeSingle()
-      if (!off) setFamilyName(data?.name ?? '')
+      const { data } = await supabase.from('estate_groups').select('id, name')
+      if (!off) setGroupNames(Object.fromEntries((data ?? []).map(g => [g.id, g.name])))
     })()
     return () => { off = true }
-  }, [currentEstate?.group_id])
+  }, [estates])
 
   async function signOut() {
     await supabase.auth.signOut()
@@ -147,14 +175,28 @@ export default function Layout() {
             {showParent && renderNavLink('/all-estates', familyName || 'All Estates')}
             <div className="ml-2 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
               {links.map(({ to, label }) => renderNavLink(to, label,
-                to === '/mail' ? counts.mail : to === '/all-tasks' ? counts.submittedTotal : 0))}
+                to === '/mail' ? counts.mail : to === '/all-tasks' ? familySubmitted : 0))}
               {showExec && renderNavLink('/executor', 'Executor Tools', counts.ai)}
             </div>
           </>
         )
       })()}
 
-      {/* Estates Section */}
+      {/* Family switcher — only appears when the user has more than one family */}
+      {families.length > 1 && (
+        <div className="px-3 mt-4">
+          <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Family</label>
+          <select
+            value={currentFamilyKey ?? ''}
+            onChange={e => switchFamily(e.target.value)}
+            className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none"
+          >
+            {families.map(f => <option key={f.key} value={f.key}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Estates Section — only the current family's estates */}
       <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-4">Estates</div>
       <div className="space-y-1">
         {estates.length === 0 ? (
@@ -165,7 +207,7 @@ export default function Layout() {
             + Create New Estate
           </button>
         ) : (
-          estates.map(estate => {
+          familyMembers.map(estate => {
             const isExpanded = expandedEstate === estate.id
             return (
               <div key={estate.id}>
@@ -292,18 +334,18 @@ export default function Layout() {
           <button onClick={() => setMobileNavOpen(true)} aria-label="Open menu" className="text-2xl leading-none text-gray-700 dark:text-gray-300">☰</button>
           <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Estate Admin</span>
         </div>
-        {currentEstate && estates.length > 1 && (
+        {currentEstate && familyMembers.length > 1 && (
           <div className="bg-blue-600 text-white px-4 py-2 text-sm font-medium md:sticky md:top-0 z-30 flex items-center gap-2">
             <span className="shrink-0">📋 Managing:</span>
             <select
               value={currentEstate.id}
               onChange={e => {
-                const next = estates.find(es => es.id === e.target.value)
+                const next = familyMembers.find(es => es.id === e.target.value)
                 if (next) switchEstate(next)
               }}
               className="bg-blue-700 text-white rounded px-2 py-1 text-sm border border-blue-400 focus:outline-none max-w-[60%]"
             >
-              {estates.map(es => (
+              {familyMembers.map(es => (
                 <option key={es.id} value={es.id} className="text-gray-900">{es.deceased_name}</option>
               ))}
             </select>

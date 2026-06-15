@@ -74,6 +74,10 @@ export default function AllEstates() {
   if (!estates.length) return <div className="p-8 text-gray-400">No estates found.</div>
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
+  // Only the current family's estates — other families never show here.
+  const familyEstates = estates.filter(e =>
+    currentEstate && (currentEstate.group_id ? e.group_id === currentEstate.group_id : e.id === currentEstate.id))
+
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto w-full">
       <div className="mb-8 flex items-start justify-between">
@@ -81,7 +85,7 @@ export default function AllEstates() {
           <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white mb-2">
             {familyName || 'All Estates Overview'}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Managing {estates.length} estate{estates.length !== 1 ? 's' : ''}{familyName ? ' in this family' : ''}</p>
+          <p className="text-gray-600 dark:text-gray-400">Managing {familyEstates.length} estate{familyEstates.length !== 1 ? 's' : ''}{familyName ? ' in this family' : ''}</p>
         </div>
         {currentEstate?.group_id && (
           <button
@@ -94,7 +98,7 @@ export default function AllEstates() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {estates.map(estate => {
+        {familyEstates.map(estate => {
           const stats = estateStats[estate.id] || {}
           const dod = estate.deceased_dod
           const days = daysSince(dod)

@@ -5,7 +5,10 @@ import { useEstate } from '../lib/EstateContext'
 import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
 
 export default function AllTasks() {
-  const { estates } = useEstate()
+  const { estates, currentEstate } = useEstate()
+  // Only the current family's estates — other families stay separate.
+  const familyEstates = estates.filter(e =>
+    currentEstate && (currentEstate.group_id ? e.group_id === currentEstate.group_id : e.id === currentEstate.id))
   const [allTasks, setAllTasks] = useState({})
   const [sectionMap, setSectionMap] = useState({}) // section_id -> { label, order }
   const [filter, setFilter] = useState('open')
@@ -16,13 +19,13 @@ export default function AllTasks() {
   useEffect(() => {
     if (!estates.length) return
     loadAllTasks()
-  }, [estates])
+  }, [estates, currentEstate?.id])
 
   async function loadAllTasks() {
     const tasksByEstate = {}
     const secMap = {}
 
-    for (const estate of estates) {
+    for (const estate of familyEstates) {
       const { data } = await supabase
         .from('estate_tasks')
         .select('*')
@@ -36,11 +39,11 @@ export default function AllTasks() {
       }
     }
 
-    // Section labels (phases) across all estates, for the by-phase grouping.
+    // Section labels (phases) across this family's estates, for by-phase grouping.
     const { data: sections } = await supabase
       .from('estate_sections')
       .select('id, label, sort_order')
-      .in('estate_id', estates.map(e => e.id))
+      .in('estate_id', familyEstates.map(e => e.id))
     for (const s of sections ?? []) secMap[s.id] = { label: s.label, order: s.sort_order ?? 99 }
 
     setAllTasks(tasksByEstate)

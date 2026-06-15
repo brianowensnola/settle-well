@@ -5,29 +5,30 @@ import { useEstate } from '../lib/EstateContext'
 
 export default function MultiEstateSettings() {
   const navigate = useNavigate()
-  const { estates, reload } = useEstate()
+  const { estates, currentEstate, reload } = useEstate()
   const [deleting, setDeleting] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(null)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   // Family-estate grouping
-  const [groups, setGroups] = useState([])
   const [familyName, setFamilyName] = useState('')
   const [memberIds, setMemberIds] = useState([])
   const [activeGroupId, setActiveGroupId] = useState(null)
   const [savingGroup, setSavingGroup] = useState(false)
 
-  useEffect(() => { loadGroups() }, [estates])
+  // This page is scoped to the CURRENT family only — other families never show.
+  const activeGroup = currentEstate?.group_id ?? null
+  const familyEstates = estates.filter(e =>
+    activeGroup ? e.group_id === activeGroup : e.id === currentEstate?.id)
+
+  useEffect(() => { loadGroups() }, [estates, currentEstate?.id])
 
   async function loadGroups() {
-    const { data } = await supabase.from('estate_groups').select('*')
-    setGroups(data ?? [])
-    // Pre-fill from the first group any of the user's estates already belongs to.
-    const existing = estates.find(e => e.group_id)?.group_id ?? null
-    setActiveGroupId(existing)
-    if (existing) {
-      setFamilyName((data ?? []).find(g => g.id === existing)?.name ?? '')
-      setMemberIds(estates.filter(e => e.group_id === existing).map(e => e.id))
+    setActiveGroupId(activeGroup)
+    if (activeGroup) {
+      const { data } = await supabase.from('estate_groups').select('name').eq('id', activeGroup).maybeSingle()
+      setFamilyName(data?.name ?? '')
+      setMemberIds(estates.filter(e => e.group_id === activeGroup).map(e => e.id))
     } else {
       setFamilyName('')
       setMemberIds([])
@@ -105,7 +106,9 @@ export default function MultiEstateSettings() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white">Estate Management</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage {estates.length} estate{estates.length !== 1 ? 's' : ''}</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+          {familyName ? `${familyName} · ` : ''}{familyEstates.length} estate{familyEstates.length !== 1 ? 's' : ''} in this family
+        </p>
       </div>
 
       {/* Family estate grouping */}
@@ -123,15 +126,13 @@ export default function MultiEstateSettings() {
         />
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">Estates in this family</label>
         <div className="space-y-1.5 mb-4">
-          {estates.map(e => (
+          {familyEstates.map(e => (
             <label key={e.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input type="checkbox" checked={memberIds.includes(e.id)} onChange={() => toggleMember(e.id)} />
               {e.deceased_name}
-              {e.group_id && e.group_id !== activeGroupId && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">in another family</span>
-              )}
             </label>
           ))}
+          <p className="text-xs text-gray-400">Use "+ Add family member" to bring another decedent into this family.</p>
         </div>
         <button onClick={saveGroup} disabled={savingGroup}
           className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
@@ -140,12 +141,12 @@ export default function MultiEstateSettings() {
       </div>
 
       <div className="space-y-4">
-        {estates.length === 0 ? (
+        {familyEstates.length === 0 ? (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 text-center text-gray-500 dark:text-gray-400">
             No estates found
           </div>
         ) : (
-          estates.map(estate => (
+          familyEstates.map(estate => (
             <div
               key={estate.id}
               className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6"
