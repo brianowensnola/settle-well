@@ -19,6 +19,7 @@ const MOBILE_NAV = [
 const MULTI_NAV = [
   { to: '/all-estates', label: 'All Estates' },
   { to: '/all-tasks',   label: 'All Tasks' },
+  { to: '/family-finances', label: 'Family Finances' },
   { to: '/mail',        label: 'Mail Intake' },
   { to: '/admin',       label: 'Users & Roles' },
 ]

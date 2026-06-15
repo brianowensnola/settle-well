@@ -9,6 +9,7 @@ import Invite from './pages/Invite'
 import NewEstate from './pages/NewEstate'
 import AllEstates from './pages/AllEstates'
 import AllTasks from './pages/AllTasks'
+import FamilyFinances from './pages/FamilyFinances'
 import MultiEstateSettings from './pages/MultiEstateSettings'
 import IntakeReview from './pages/IntakeReview'
 import QuickEstateSetup from './pages/QuickEstateSetup'
@@ -72,6 +73,7 @@ function AppRoutes() {
         <Route path="/quick-estate" element={<QuickEstateSetup />} />
         <Route path="/all-estates" element={<AllEstates />} />
         <Route path="/all-tasks" element={<AllTasks />} />
+        <Route path="/family-finances" element={<FamilyFinances />} />
         <Route path="/multi-settings" element={<MultiEstateSettings />} />
         <Route path="/admin" element={<AdminUsers />} />
         <Route path="/executor" element={<ExecutorTools />} />

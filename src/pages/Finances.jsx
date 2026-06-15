@@ -75,15 +75,18 @@ function amountDisplay(row) {
 }
 
 export default function Finances() {
-  const { currentEstate, role } = useEstate()
+  const { currentEstate, role, estates } = useEstate()
   const canSeePrivate = isFullAccess(role)
+  // Other estates in the same family group — for the "shared / joint" option.
+  const siblings = (estates ?? []).filter(e => currentEstate?.group_id && e.group_id === currentEstate.group_id && e.id !== currentEstate.id)
+  const estateName = id => (estates ?? []).find(e => e.id === id)?.deceased_name ?? 'other estate'
   const [financials, setFinancials] = useState([])
   const [expanded, setExpanded] = useState({})
   const [editing, setEditing] = useState(null)
   const [editData, setEditData] = useState({})
   const [addingCategory, setAddingCategory] = useState(null) // which category's add form is open
-  const [assetForm, setAssetForm] = useState({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '' })
-  const [finForm, setFinForm] = useState({ name: '', amount: '', lender: '', status: '', is_private: false, notes: '' })
+  const [assetForm, setAssetForm] = useState({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '', shared_with: [] })
+  const [finForm, setFinForm] = useState({ name: '', amount: '', lender: '', status: '', is_private: false, notes: '', shared_with: [] })
   const [linkedTasks, setLinkedTasks] = useState({}) // financial_id -> [tasks]
   const [ledger, setLedger] = useState({ net: 0, count: 0 })
   const [loading, setLoading] = useState(true)
@@ -94,7 +97,10 @@ export default function Finances() {
   }, [currentEstate])
 
   async function load() {
-    const { data } = await supabase.from('estate_financials').select('*').eq('estate_id', currentEstate.id).order('sort_order')
+    // This estate's own items, plus items shared/joint into it from a family estate.
+    const { data } = await supabase.from('estate_financials').select('*')
+      .or(`estate_id.eq.${currentEstate.id},shared_with.cs.{${currentEstate.id}}`)
+      .order('sort_order')
     setFinancials(data ?? [])
     // Transaction-ledger summary (running balance = money in minus out)
     const { data: txns } = await supabase.from('estate_transactions').select('amount').eq('estate_id', currentEstate.id)
@@ -121,6 +127,7 @@ export default function Finances() {
       status: assetForm.status,
       notes: assetForm.notes,
       is_private: false,
+      shared_with: assetForm.shared_with ?? [],
     }).select().single()
     if (asset) {
       setFinancials(prev => [...prev, asset])
@@ -141,7 +148,7 @@ export default function Finances() {
       }
     }
     setAddingCategory(null)
-    setAssetForm({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '' })
+    setAssetForm({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '', shared_with: [] })
   }
 
   // Add an account / obligation / liability / insurance entry
@@ -156,10 +163,11 @@ export default function Finances() {
       status: finForm.status || 'unknown',
       notes: finForm.notes || null,
       is_private: finForm.is_private,
+      shared_with: finForm.shared_with ?? [],
     }).select().single()
     if (data) setFinancials(prev => [...prev, data])
     setAddingCategory(null)
-    setFinForm({ name: '', amount: '', lender: '', status: '', is_private: false, notes: '' })
+    setFinForm({ name: '', amount: '', lender: '', status: '', is_private: false, notes: '', shared_with: [] })
   }
 
   async function saveEdit() {
@@ -249,6 +257,19 @@ export default function Finances() {
                       placeholder="Notes (optional)" rows={2}
                       className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
                   </div>
+                  {siblings.length > 0 && (
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      <span className="block mb-1 font-medium">Shared / joint with:</span>
+                      {siblings.map(s => (
+                        <label key={s.id} className="flex items-center gap-2 mb-0.5">
+                          <input type="checkbox" checked={assetForm.shared_with.includes(s.id)}
+                            onChange={e => setAssetForm(p => ({ ...p, shared_with: e.target.checked ? [...p.shared_with, s.id] : p.shared_with.filter(x => x !== s.id) }))} />
+                          {s.deceased_name}'s estate
+                        </label>
+                      ))}
+                      <span className="block mt-1 text-gray-400">Joint items are recorded once and counted once in the family roll-up.</span>
+                    </div>
+                  )}
                   <p className="text-xs text-gray-500">A linked "Decide: keep, sell, or transfer" task will be created automatically.</p>
                   <div className="flex gap-2">
                     <button onClick={addAsset} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add asset</button>
@@ -285,6 +306,19 @@ export default function Finances() {
                     <input type="checkbox" checked={finForm.is_private} onChange={e => setFinForm(p => ({ ...p, is_private: e.target.checked }))} />
                     Private — hide from heirs' transparency report
                   </label>
+                  {siblings.length > 0 && (
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      <span className="block mb-1 font-medium">Shared / joint with:</span>
+                      {siblings.map(s => (
+                        <label key={s.id} className="flex items-center gap-2 mb-0.5">
+                          <input type="checkbox" checked={finForm.shared_with.includes(s.id)}
+                            onChange={e => setFinForm(p => ({ ...p, shared_with: e.target.checked ? [...p.shared_with, s.id] : p.shared_with.filter(x => x !== s.id) }))} />
+                          {s.deceased_name}'s estate
+                        </label>
+                      ))}
+                      <span className="block mt-1 text-gray-400">Joint items are recorded once and counted once in the family roll-up.</span>
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <button onClick={() => addFinancial(cat.key)} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Add</button>
                     <button onClick={() => setAddingCategory(null)} className="px-3 py-1.5 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
@@ -308,6 +342,12 @@ export default function Finances() {
                           <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_BADGE[row.status] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
                             {row.status.replace(/_/g, ' ')}
                           </span>
+                        )}
+                        {row.shared_with?.length > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 shrink-0">↔ joint</span>
+                        )}
+                        {row.estate_id !== currentEstate.id && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 shrink-0">{estateName(row.estate_id)}</span>
                         )}
                       </div>
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0 ml-4">{amountDisplay(row)}</span>
@@ -355,6 +395,18 @@ export default function Finances() {
                               <input type="checkbox" checked={!!editData.is_private} onChange={e => setEditData(p => ({ ...p, is_private: e.target.checked }))} />
                               Private — hide from heirs' transparency report
                             </label>
+                            {siblings.length > 0 && (
+                              <div className="text-xs text-gray-600 dark:text-gray-400">
+                                <span className="block mb-1 font-medium">Shared / joint with:</span>
+                                {siblings.map(s => (
+                                  <label key={s.id} className="flex items-center gap-2 mb-0.5">
+                                    <input type="checkbox" checked={(editData.shared_with ?? []).includes(s.id)}
+                                      onChange={e => setEditData(p => ({ ...p, shared_with: e.target.checked ? [...(p.shared_with ?? []), s.id] : (p.shared_with ?? []).filter(x => x !== s.id) }))} />
+                                    {s.deceased_name}'s estate
+                                  </label>
+                                ))}
+                              </div>
+                            )}
                             <div className="flex gap-2">
                               <button onClick={saveEdit} className="px-3 py-1 bg-gray-900 text-white rounded-lg text-xs">Save</button>
                               <button onClick={() => setEditing(null)} className="px-3 py-1 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:bg-gray-800">Cancel</button>
@@ -362,7 +414,7 @@ export default function Finances() {
                           </div>
                         ) : (
                           <button
-                            onClick={() => { setEditing(row.id); setEditData({ name: row.name ?? '', amount: row.amount ?? null, lender: row.lender ?? '', status: row.status ?? '', notes: row.notes ?? '', is_private: !!row.is_private }) }}
+                            onClick={() => { setEditing(row.id); setEditData({ name: row.name ?? '', amount: row.amount ?? null, lender: row.lender ?? '', status: row.status ?? '', notes: row.notes ?? '', is_private: !!row.is_private, shared_with: row.shared_with ?? [] }) }}
                             className="text-xs text-blue-600 hover:underline pt-1"
                           >
                             Edit
