@@ -176,6 +176,13 @@ export default function Finances() {
     setEditing(null)
   }
 
+  // One-click private toggle, no edit form needed.
+  async function togglePrivate(row) {
+    const next = !row.is_private
+    setFinancials(prev => prev.map(f => f.id === row.id ? { ...f, is_private: next } : f))
+    await supabase.from('estate_financials').update({ is_private: next, updated_at: new Date().toISOString() }).eq('id', row.id)
+  }
+
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
   const byCategory = Object.fromEntries(CATEGORIES.map(c => [c.key, financials.filter(f => f.category === c.key && (canSeePrivate || !f.is_private))]))
@@ -332,26 +339,37 @@ export default function Finances() {
               <div className="divide-y divide-gray-100">
                 {items.map(row => (
                   <div key={row.id}>
-                    <button
-                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 dark:bg-gray-800"
-                      onClick={() => setExpanded(p => ({ ...p, [row.id]: !p[row.id] }))}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-sm text-gray-800 dark:text-white truncate">{row.name}</span>
-                        {row.status && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_BADGE[row.status] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
-                            {row.status.replace(/_/g, ' ')}
-                          </span>
-                        )}
-                        {row.shared_with?.length > 0 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 shrink-0">↔ joint</span>
-                        )}
-                        {row.estate_id !== currentEstate.id && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 shrink-0">{estateName(row.estate_id)}</span>
-                        )}
-                      </div>
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0 ml-4">{amountDisplay(row)}</span>
-                    </button>
+                    <div className="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <button
+                        className="flex-1 flex items-center justify-between text-left min-w-0"
+                        onClick={() => setExpanded(p => ({ ...p, [row.id]: !p[row.id] }))}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-sm text-gray-800 dark:text-white truncate">{row.name}</span>
+                          {row.status && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_BADGE[row.status] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                              {row.status.replace(/_/g, ' ')}
+                            </span>
+                          )}
+                          {row.shared_with?.length > 0 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 shrink-0">↔ joint</span>
+                          )}
+                          {row.estate_id !== currentEstate.id && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 shrink-0">{estateName(row.estate_id)}</span>
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0 ml-4">{amountDisplay(row)}</span>
+                      </button>
+                      {canSeePrivate && (
+                        <button
+                          onClick={() => togglePrivate(row)}
+                          title={row.is_private ? 'Private — hidden from heirs. Click to make visible.' : 'Visible to heirs. Click to make private.'}
+                          className={`shrink-0 text-[11px] px-2 py-1 rounded font-medium ${row.is_private ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        >
+                          {row.is_private ? '🔒 Private' : '👁 Visible'}
+                        </button>
+                      )}
+                    </div>
 
                     {expanded[row.id] && (
                       <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-800 text-sm space-y-2">
