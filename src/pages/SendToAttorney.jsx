@@ -14,6 +14,8 @@ export default function SendToAttorney() {
   const [attorneys, setAttorneys] = useState([])
   const [selected, setSelected] = useState({}) // { [docId]: true }
   const [recipient, setRecipient] = useState('')
+  const [cc, setCc] = useState('')
+  const [bcc, setBcc] = useState('')
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -28,20 +30,26 @@ export default function SendToAttorney() {
     setLoading(true)
     const [docsRes, contactsRes] = await Promise.all([
       supabase.from('estate_documents').select('*').eq('estate_id', currentEstate.id).eq('have', true).order('name'),
-      supabase.from('estate_contacts').select('name, role, emails')
+      supabase.from('estate_contacts').select('name, role, emails, email_labels')
         .or(`estate_id.eq.${currentEstate.id},shared_with.cs.{${currentEstate.id}}`)
         .eq('role', 'attorney'),
     ])
     setDocs(docsRes.data ?? [])
-    // Flatten attorney contacts to one entry per email address.
+    // Flatten attorney contacts to one entry per email address, and collect any
+    // "Assistant"-labeled emails to default into the CC line.
     const opts = []
+    const assistants = []
     for (const c of contactsRes.data ?? []) {
-      for (const email of c.emails ?? []) {
-        if (email?.trim()) opts.push({ email: email.trim(), name: c.name })
-      }
+      ;(c.emails ?? []).forEach((email, i) => {
+        const e = email?.trim()
+        if (!e) return
+        if ((c.email_labels?.[i] || '').toLowerCase() === 'assistant') assistants.push(e)
+        else opts.push({ email: e, name: c.name })
+      })
     }
     setAttorneys(opts)
     if (opts.length) setRecipient(opts[0].email)
+    if (assistants.length) setCc([...new Set(assistants)].join(', '))
     setLoading(false)
   }
 
@@ -89,7 +97,10 @@ export default function SendToAttorney() {
       const body = await buildBody()
       const subject = encodeURIComponent(`Documents — ${currentEstate.deceased_name} Estate`)
       const to = encodeURIComponent(recipient || '')
-      window.location.href = `mailto:${to}?subject=${subject}&body=${encodeURIComponent(body)}`
+      const params = [`subject=${subject}`, `body=${encodeURIComponent(body)}`]
+      if (cc.trim()) params.unshift(`cc=${encodeURIComponent(cc.trim())}`)
+      if (bcc.trim()) params.unshift(`bcc=${encodeURIComponent(bcc.trim())}`)
+      window.location.href = `mailto:${to}?${params.join('&')}`
     } catch (e) {
       alert(`Couldn't generate the document links: ${e.message}`)
     }
@@ -142,6 +153,28 @@ export default function SendToAttorney() {
           placeholder="attorney@example.com"
           className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
         />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">CC</label>
+            <input
+              value={cc}
+              onChange={e => setCc(e.target.value)}
+              placeholder="assistant@example.com"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">BCC</label>
+            <input
+              value={bcc}
+              onChange={e => setBcc(e.target.value)}
+              placeholder="(optional)"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-2">Separate multiple addresses with commas. CC is pre-filled from any attorney assistant in Contacts.</p>
       </div>
 
       {/* Document picker */}
