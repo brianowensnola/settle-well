@@ -3,6 +3,10 @@
 // property is occupied and only stop once it's vacated/sold.
 export const ACTIVE_OBLIGATION_STATUSES = ['active', 'unknown', 'cancel_on_vacate']
 
+// Asset dispositions that mean the asset has left the estate — excluded from
+// asset value totals (it's been converted to cash / handed out).
+export const DISPOSED_ASSET_STATUSES = ['sold', 'distributed']
+
 export const SECTION_COLORS = {
   red:    { bg: '#FCEBEB', text: '#A32D2D', border: '#f5c6c6' },
   orange: { bg: '#FAEEDA', text: '#854F0B', border: '#f0d4a0' },

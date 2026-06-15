@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
-import { ACTIVE_OBLIGATION_STATUSES } from '../lib/constants'
+import { ACTIVE_OBLIGATION_STATUSES, DISPOSED_ASSET_STATUSES } from '../lib/constants'
 
 const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
@@ -14,8 +14,9 @@ function totalsFor(rows) {
     balance: cat('account').reduce((s, a) => s + (a.amount ?? 0), 0),
     monthly: cat('obligation').filter(o => ACTIVE_OBLIGATION_STATUSES.includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0),
     liabilities: cat('liability').reduce((s, l) => s + (l.amount ?? 0), 0),
-    assets: cat('asset').reduce((s, a) => s + (a.amount ?? 0), 0),
-    assetCount: cat('asset').length,
+    // Sold/distributed assets have left the estate — excluded from the total/count.
+    assets: cat('asset').filter(a => !DISPOSED_ASSET_STATUSES.includes(a.status)).reduce((s, a) => s + (a.amount ?? 0), 0),
+    assetCount: cat('asset').filter(a => !DISPOSED_ASSET_STATUSES.includes(a.status)).length,
   }
 }
 
@@ -88,6 +89,7 @@ export default function FamilyFinances() {
     { label: 'Monthly Obligations', value: fmt(combined.monthly) },
     { label: 'Liabilities', value: combined.liabilities > 0 ? fmt(combined.liabilities) : '—' },
     { label: 'Assets', value: assetDisplay(combined) },
+    { label: 'Net (Assets − Liab.)', value: fmt(combined.assets - combined.liabilities), neg: (combined.assets - combined.liabilities) < 0 },
     { label: 'Ledger Balance', value: fmt(combinedLedger), neg: combinedLedger < 0 },
   ]
 
@@ -105,7 +107,7 @@ export default function FamilyFinances() {
       </div>
 
       {/* Combined summary */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {SUMMARY.map(s => (
           <div key={s.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
             <div className="text-xs text-gray-500 mb-1">{s.label}</div>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
-import { ACTIVE_OBLIGATION_STATUSES } from '../lib/constants'
+import { ACTIVE_OBLIGATION_STATUSES, DISPOSED_ASSET_STATUSES } from '../lib/constants'
 
 const CATEGORIES = [
   { key: 'account',              label: 'Accounts' },
@@ -196,7 +196,9 @@ export default function Finances() {
   const totalBalance = accounts.reduce((s, a) => s + (a.amount ?? 0), 0)
   const monthlyBurn = obligations.filter(o => ACTIVE_OBLIGATION_STATUSES.includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0)
   const totalLiabilities = liabilities.reduce((s, l) => s + (l.amount ?? 0), 0)
-  const totalAssets = assets.reduce((s, a) => s + (a.amount ?? 0), 0)
+  // Exclude sold/distributed assets — they've left the estate.
+  const totalAssets = assets.filter(a => !DISPOSED_ASSET_STATUSES.includes(a.status)).reduce((s, a) => s + (a.amount ?? 0), 0)
+  const netAssetsLiabilities = totalAssets - totalLiabilities
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
@@ -206,16 +208,17 @@ export default function Finances() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
         {[
           { label: 'Account Balance', value: fmt(totalBalance) },
           { label: 'Monthly Obligations', value: fmt(monthlyBurn) },
           { label: 'Known Liabilities', value: totalLiabilities > 0 ? fmt(totalLiabilities) : '—' },
           { label: 'Known Assets', value: totalAssets > 0 ? fmt(totalAssets) : '—' },
+          { label: 'Net (Assets − Liab.)', value: fmt(netAssetsLiabilities), neg: netAssetsLiabilities < 0 },
         ].map(s => (
           <div key={s.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
             <div className="text-xs text-gray-500 mb-1">{s.label}</div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">{s.value}</div>
+            <div className={`text-lg font-semibold ${s.neg ? 'text-red-700' : 'text-gray-900 dark:text-white'}`}>{s.value}</div>
           </div>
         ))}
         {/* Transaction-ledger summary */}
