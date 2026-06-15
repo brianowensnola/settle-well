@@ -14,7 +14,6 @@ import MultiEstateSettings from './pages/MultiEstateSettings'
 import IntakeReview from './pages/IntakeReview'
 import QuickEstateSetup from './pages/QuickEstateSetup'
 import SendToAttorney from './pages/SendToAttorney'
-import SendDocumentsToAttorney from './pages/SendDocumentsToAttorney'
 import Dashboard from './pages/Dashboard'
 import HeirDashboard from './pages/HeirDashboard'
 import ObserverDashboard from './pages/ObserverDashboard'
@@ -80,7 +79,6 @@ function AppRoutes() {
         <Route path="/death-notices" element={<DeathNotifications />} />
         <Route path="/intake-review" element={<IntakeReview />} />
         <Route path="/send-to-attorney" element={<SendToAttorney />} />
-        <Route path="/send-documents" element={<SendDocumentsToAttorney />} />
         <Route path="/dashboard" element={<DashboardRouter />} />
         <Route path="/assistant" element={<Assistant />} />
         <Route path="/activity" element={<Activity />} />
