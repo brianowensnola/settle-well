@@ -85,6 +85,7 @@ export default function Finances() {
   const [assetForm, setAssetForm] = useState({ name: '', type: 'real_estate', value: '', status: 'undecided', notes: '' })
   const [finForm, setFinForm] = useState({ name: '', amount: '', lender: '', status: '', is_private: false, notes: '' })
   const [linkedTasks, setLinkedTasks] = useState({}) // financial_id -> [tasks]
+  const [ledger, setLedger] = useState({ net: 0, count: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -95,6 +96,9 @@ export default function Finances() {
   async function load() {
     const { data } = await supabase.from('estate_financials').select('*').eq('estate_id', currentEstate.id).order('sort_order')
     setFinancials(data ?? [])
+    // Transaction-ledger summary (running balance = money in minus out)
+    const { data: txns } = await supabase.from('estate_transactions').select('amount').eq('estate_id', currentEstate.id)
+    setLedger({ net: (txns ?? []).reduce((s, t) => s + (t.amount ?? 0), 0), count: (txns ?? []).length })
     // Tasks linked to an asset, so each asset can show its related tasks
     const { data: tdata } = await supabase
       .from('estate_tasks')
@@ -186,7 +190,7 @@ export default function Finances() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         {[
           { label: 'Account Balance', value: fmt(totalBalance) },
           { label: 'Monthly Obligations', value: fmt(monthlyBurn) },
@@ -198,6 +202,14 @@ export default function Finances() {
             <div className="text-lg font-semibold text-gray-900 dark:text-white">{s.value}</div>
           </div>
         ))}
+        {/* Transaction-ledger summary */}
+        <Link to="/transactions" className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 hover:shadow-md transition-shadow block">
+          <div className="text-xs text-gray-500 mb-1">Ledger Balance</div>
+          <div className={`text-lg font-semibold ${ledger.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            {ledger.net < 0 ? '-' : ''}{fmt(Math.abs(ledger.net))}
+          </div>
+          <div className="text-[11px] text-gray-400 mt-0.5">{ledger.count} transaction{ledger.count !== 1 ? 's' : ''}</div>
+        </Link>
       </div>
 
       <div className="space-y-5">
