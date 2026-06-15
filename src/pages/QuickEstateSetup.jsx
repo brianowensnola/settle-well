@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useUser } from '../lib/AuthContext'
 import { useEstate } from '../lib/EstateContext'
@@ -8,8 +8,14 @@ import { buildTaskRows } from '../lib/tasksTemplate'
 
 export default function QuickEstateSetup() {
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useUser()
   const { reload } = useEstate()
+  // Adding a member to an existing family estate vs. starting a new family.
+  const addToGroupId = location.state?.groupId ?? null
+  const isMember = !!addToGroupId
+  const intoFamilyName = location.state?.familyName ?? ''
+  const [familyName, setFamilyName] = useState('')
   const [form, setForm] = useState({
     deceased_name: '',
     deceased_dod: '',
@@ -30,6 +36,16 @@ export default function QuickEstateSetup() {
     setError('')
 
     try {
+      // Resolve the family group: add to an existing one, or create a new one
+      // if the user named a new family estate.
+      let groupId = addToGroupId
+      if (!isMember && familyName.trim()) {
+        const { data: grp, error: grpErr } = await supabase
+          .from('estate_groups').insert({ name: familyName.trim() }).select().single()
+        if (grpErr) throw grpErr
+        groupId = grp.id
+      }
+
       // Always create a new estate (QuickEstateSetup is for creation only)
       const { data: estate, error: estateError } = await supabase
         .from('estates')
@@ -43,6 +59,7 @@ export default function QuickEstateSetup() {
           status: 'active',
           intake_complete: false,
           intake_answers: {},
+          group_id: groupId,
         })
         .select()
         .single()
@@ -153,14 +170,36 @@ export default function QuickEstateSetup() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-white dark:bg-gray-950">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Quick Estate Setup</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create a new estate in seconds</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            {isMember ? 'Add a family member' : 'New family estate'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {isMember
+              ? `Add another decedent to ${intoFamilyName || 'this family estate'}.`
+              : 'Start a new family estate and add its first decedent.'}
+          </p>
         </div>
 
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 shadow-sm space-y-4">
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
               {error}
+            </div>
+          )}
+
+          {!isMember && (
+            <div>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                Family estate name
+              </label>
+              <input
+                type="text"
+                value={familyName}
+                onChange={e => setFamilyName(e.target.value)}
+                placeholder="e.g., Bryant Family Estate"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">Groups related decedents (e.g. a married couple). Leave blank for a standalone estate.</p>
             </div>
           )}
 

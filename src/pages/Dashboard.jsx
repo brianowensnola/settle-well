@@ -82,10 +82,10 @@ export default function Dashboard() {
           <div className="text-xs sm:text-sm text-gray-500 mt-0.5">Executor: {currentEstate.administrator_name}</div>
         </div>
         <button
-          onClick={() => navigate('/quick-estate')}
+          onClick={() => navigate('/quick-estate', currentEstate.group_id ? { state: { groupId: currentEstate.group_id } } : { state: { newFamily: true } })}
           className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700 dark:hover:bg-gray-600 whitespace-nowrap"
         >
-          + Add Estate
+          {currentEstate.group_id ? '+ Add family member' : '+ Add estate'}
         </button>
       </div>
 

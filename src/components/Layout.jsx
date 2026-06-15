@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
@@ -15,9 +15,9 @@ const MOBILE_NAV = [
   { to: '/contacts',    label: '👥', icon: 'Contacts' },
 ]
 
-// Multi-estate section links (filtered per role at render).
+// Family-estate child links (filtered per role at render). The family-estate
+// name itself is the parent and links to /all-estates.
 const MULTI_NAV = [
-  { to: '/all-estates', label: 'All Estates' },
   { to: '/all-tasks',   label: 'All Tasks' },
   { to: '/family-finances', label: 'Family Finances' },
   { to: '/mail',        label: 'Mail Intake' },
@@ -56,7 +56,19 @@ export default function Layout() {
   const { isDark, setIsDark } = useDarkMode()
   const [expandedEstate, setExpandedEstate] = useState(currentEstate?.id)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [familyName, setFamilyName] = useState('')
   const closeMobile = () => setMobileNavOpen(false)
+
+  // The current estate's family-estate name (heads the Multi-Estate section).
+  useEffect(() => {
+    let off = false
+    ;(async () => {
+      if (!currentEstate?.group_id) { setFamilyName(''); return }
+      const { data } = await supabase.from('estate_groups').select('name').eq('id', currentEstate.group_id).maybeSingle()
+      if (!off) setFamilyName(data?.name ?? '')
+    })()
+    return () => { off = true }
+  }, [currentEstate?.group_id])
 
   async function signOut() {
     await supabase.auth.signOut()
@@ -95,12 +107,17 @@ export default function Layout() {
       {(() => {
         const links = MULTI_NAV.filter(({ to }) => canAccess(to, role))
         const showExec = isFullAccess(role) && currentEstate
-        if (links.length === 0 && !showExec) return null
+        const showParent = canAccess('/all-estates', role)
+        if (links.length === 0 && !showExec && !showParent) return null
         return (
           <>
             <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
-            {links.map(({ to, label }) => renderNavLink(to, label))}
-            {showExec && renderNavLink('/executor', 'Executor Tools')}
+            {/* The family estate name heads the section and links to the family overview */}
+            {showParent && renderNavLink('/all-estates', familyName || 'All Estates')}
+            <div className="ml-2 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
+              {links.map(({ to, label }) => renderNavLink(to, label))}
+              {showExec && renderNavLink('/executor', 'Executor Tools')}
+            </div>
           </>
         )
       })()}

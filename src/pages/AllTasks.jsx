@@ -7,8 +7,9 @@ import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
 export default function AllTasks() {
   const { estates } = useEstate()
   const [allTasks, setAllTasks] = useState({})
+  const [sectionMap, setSectionMap] = useState({}) // section_id -> { label, order }
   const [filter, setFilter] = useState('open')
-  const [groupBy, setGroupBy] = useState('estate') // 'estate' | 'assignee'
+  const [groupBy, setGroupBy] = useState('estate') // 'estate' | 'assignee' | 'phase'
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -19,6 +20,7 @@ export default function AllTasks() {
 
   async function loadAllTasks() {
     const tasksByEstate = {}
+    const secMap = {}
 
     for (const estate of estates) {
       const { data } = await supabase
@@ -34,7 +36,15 @@ export default function AllTasks() {
       }
     }
 
+    // Section labels (phases) across all estates, for the by-phase grouping.
+    const { data: sections } = await supabase
+      .from('estate_sections')
+      .select('id, label, sort_order')
+      .in('estate_id', estates.map(e => e.id))
+    for (const s of sections ?? []) secMap[s.id] = { label: s.label, order: s.sort_order ?? 99 }
+
     setAllTasks(tasksByEstate)
+    setSectionMap(secMap)
     setLoading(false)
   }
 
@@ -68,6 +78,18 @@ export default function AllTasks() {
   const assigneeNames = Object.keys(byAssignee).sort((a, b) =>
     a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b)
   )
+
+  // Group by phase (section label) across estates, ordered by phase sort_order.
+  const byPhase = {}
+  const phaseOrder = {}
+  for (const t of flatTasks.filter(matchesFilters)) {
+    const sec = sectionMap[t.section_id]
+    const label = sec?.label || 'No phase'
+    phaseOrder[label] = sec?.order ?? 99
+    if (!byPhase[label]) byPhase[label] = []
+    byPhase[label].push(t)
+  }
+  const phaseNames = Object.keys(byPhase).sort((a, b) => (phaseOrder[a] ?? 99) - (phaseOrder[b] ?? 99))
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto w-full">
@@ -104,7 +126,7 @@ export default function AllTasks() {
       {/* Group by */}
       <div className="flex items-center gap-2 mb-6">
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Group by:</span>
-        {[['estate', 'Estate'], ['assignee', 'Assignee']].map(([key, label]) => (
+        {[['estate', 'Estate'], ['assignee', 'Assignee'], ['phase', 'Phase']].map(([key, label]) => (
           <button
             key={key}
             onClick={() => setGroupBy(key)}
@@ -207,6 +229,54 @@ export default function AllTasks() {
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{who}</h2>
                 <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
                   {personTasks.length} task{personTasks.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {sorted.map(task => {
+                  const status = task.status || 'pending'
+                  return (
+                    <Link
+                      key={task.id}
+                      to={`/tasks/${task.id}`}
+                      state={{ estateId: task._estateId }}
+                      className="flex items-start gap-3 p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg hover:shadow-md transition-shadow group"
+                    >
+                      <span className={`shrink-0 mt-0.5 text-xs px-2 py-1 rounded font-medium ${STATUS_STYLES[status]}`}>
+                        {STATUS_LABELS[status]}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white leading-snug flex-1">
+                        {task.text}
+                      </span>
+                      <span className="shrink-0 mt-0.5 text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded">
+                        {task._estateName}
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      )}
+
+      {/* Tasks grouped by phase (across all estates) */}
+      {groupBy === 'phase' && (
+      <div className="space-y-8">
+        {phaseNames.length === 0 && (
+          <p className="text-sm text-gray-400">No tasks match the current filter.</p>
+        )}
+        {phaseNames.map(phase => {
+          const phaseTasks = byPhase[phase]
+          const sorted = [...phaseTasks].sort(
+            (a, b) => (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99)
+          )
+          return (
+            <div key={phase}>
+              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{phase}</h2>
+                <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
+                  {phaseTasks.length} task{phaseTasks.length !== 1 ? 's' : ''}
                 </span>
               </div>
               <div className="space-y-2">
