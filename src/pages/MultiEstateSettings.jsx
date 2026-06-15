@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
@@ -9,6 +9,60 @@ export default function MultiEstateSettings() {
   const [deleting, setDeleting] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(null)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
+
+  // Family-estate grouping
+  const [groups, setGroups] = useState([])
+  const [familyName, setFamilyName] = useState('')
+  const [memberIds, setMemberIds] = useState([])
+  const [activeGroupId, setActiveGroupId] = useState(null)
+  const [savingGroup, setSavingGroup] = useState(false)
+
+  useEffect(() => { loadGroups() }, [estates])
+
+  async function loadGroups() {
+    const { data } = await supabase.from('estate_groups').select('*')
+    setGroups(data ?? [])
+    // Pre-fill from the first group any of the user's estates already belongs to.
+    const existing = estates.find(e => e.group_id)?.group_id ?? null
+    setActiveGroupId(existing)
+    if (existing) {
+      setFamilyName((data ?? []).find(g => g.id === existing)?.name ?? '')
+      setMemberIds(estates.filter(e => e.group_id === existing).map(e => e.id))
+    } else {
+      setFamilyName('')
+      setMemberIds([])
+    }
+  }
+
+  function toggleMember(id) {
+    setMemberIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  async function saveGroup() {
+    if (!familyName.trim()) { alert('Give the family estate a name.'); return }
+    if (memberIds.length < 1) { alert('Select at least one estate for the family.'); return }
+    setSavingGroup(true)
+    try {
+      let groupId = activeGroupId
+      if (groupId) {
+        await supabase.from('estate_groups').update({ name: familyName.trim() }).eq('id', groupId)
+      } else {
+        const { data, error } = await supabase.from('estate_groups').insert({ name: familyName.trim() }).select().single()
+        if (error) throw error
+        groupId = data.id
+      }
+      // Assign checked estates; clear estates that were in this group but are now unchecked.
+      const toClear = estates.filter(e => e.group_id === groupId && !memberIds.includes(e.id)).map(e => e.id)
+      for (const id of memberIds) await supabase.from('estates').update({ group_id: groupId }).eq('id', id)
+      for (const id of toClear) await supabase.from('estates').update({ group_id: null }).eq('id', id)
+      await reload() // re-runs loadGroups via the estates effect
+      alert('Family estate saved.')
+    } catch (e) {
+      alert(`Couldn't save the family group: ${e.message}`)
+    } finally {
+      setSavingGroup(false)
+    }
+  }
 
   async function handleDelete(estateId, estateName) {
     if (deleteConfirmText !== estateName) {
@@ -52,6 +106,37 @@ export default function MultiEstateSettings() {
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white">Estate Management</h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">Manage {estates.length} estate{estates.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Family estate grouping */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-8">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Family estate</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Group related estates (e.g. a married couple) into one family estate so their finances can roll up together. Each estate is still worked individually; unrelated estates left unchecked stay separate.
+        </p>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Family estate name</label>
+        <input
+          value={familyName}
+          onChange={e => setFamilyName(e.target.value)}
+          placeholder="e.g. Bryant Family Estate"
+          className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none mb-3"
+        />
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">Estates in this family</label>
+        <div className="space-y-1.5 mb-4">
+          {estates.map(e => (
+            <label key={e.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input type="checkbox" checked={memberIds.includes(e.id)} onChange={() => toggleMember(e.id)} />
+              {e.deceased_name}
+              {e.group_id && e.group_id !== activeGroupId && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">in another family</span>
+              )}
+            </label>
+          ))}
+        </div>
+        <button onClick={saveGroup} disabled={savingGroup}
+          className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
+          {savingGroup ? 'Saving…' : activeGroupId ? 'Update family estate' : 'Create family estate'}
+        </button>
       </div>
 
       <div className="space-y-4">
