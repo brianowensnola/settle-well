@@ -33,10 +33,10 @@ Items graduate into the structured backlog below when it's time to do them.
   executor, present a disclaimer explaining their legal/fiduciary obligations
   (act in the estate's best interest, keep records, not legal advice, etc.) and
   require them to acknowledge it before proceeding.
-- **(2026-06-14)** Confirm/connect the Anthropic account to the app — verify the
-  Anthropic API key in Netlify env is set and on a plan with the features we
-  use (esp. the web-search tool for death-notification address lookup). If web
-  search isn't enabled, enable it or the lookup falls back to a placeholder.
+- ✅ **RESOLVED (2026-06-15)** Confirm/connect the Anthropic account to the app —
+  verified live: the death-notice draft for SSA returned correct, looked-up
+  guidance (report by phone), which requires the web-search tool, so the
+  Anthropic key + web-search plan are confirmed active in Netlify.
 - **(2026-06-14)** Help-desk / support view for the finished app — a way for end
   users to get help (FAQ, guided help, contact/support) once the app ships.
 - **(2026-06-14)** Path-scope storage policies — the estate-documents bucket
