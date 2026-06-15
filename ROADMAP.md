@@ -18,6 +18,17 @@ Items graduate into the structured backlog below when it's time to do them.
   surface for years), but move it out of the active view so the executor can take
   on a new, unrelated estate without clutter. Pairs with the "unrelated estate =
   separate account" idea in the Vision.
+- **(2026-06-15)** Work out the Multi-Estate vs Single-Estate model — define
+  what "multi-estate" actually means and how it differs from separate single
+  estates. Concrete example: the current project is the Dan & Traci Bryant
+  estate — each person is a separate estate that must be worked individually
+  (own assets, own filings), but they're intertwined and belong together as one
+  "Bryant" family unit. Contrast with a wholly *unrelated* estate the executor
+  might take on that shares nothing with the Bryants. Need to decide: how are
+  related estates grouped/linked (a family/group container?) vs how unrelated
+  estates are kept fully separate (separate account? separate workspace?), what
+  shows where, and how this interacts with archiving (above) and the
+  shared-contacts mechanism we already built. Explore the model before building.
 - **(2026-06-14)** Executor sign-up disclaimer — when someone signs up as the
   executor, present a disclaimer explaining their legal/fiduciary obligations
   (act in the estate's best interest, keep records, not legal advice, etc.) and
