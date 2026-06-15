@@ -14,8 +14,16 @@ function totalsFor(rows) {
     monthly: cat('obligation').filter(o => ['active', 'unknown'].includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0),
     liabilities: cat('liability').reduce((s, l) => s + (l.amount ?? 0), 0),
     assets: cat('asset').reduce((s, a) => s + (a.amount ?? 0), 0),
+    assetCount: cat('asset').length,
   }
 }
+
+// Assets often have no dollar value entered yet — show the count so they're not
+// invisible. Shows "$value (n)" when valued, "n items" when not, else "—".
+const assetDisplay = t =>
+  t.assets > 0
+    ? `${fmt(t.assets)}${t.assetCount > 0 ? ` (${t.assetCount})` : ''}`
+    : t.assetCount > 0 ? `${t.assetCount} item${t.assetCount !== 1 ? 's' : ''}` : '—'
 
 export default function FamilyFinances() {
   const { currentEstate, role, estates } = useEstate()
@@ -78,7 +86,7 @@ export default function FamilyFinances() {
     { label: 'Account Balance', value: fmt(combined.balance) },
     { label: 'Monthly Obligations', value: fmt(combined.monthly) },
     { label: 'Liabilities', value: combined.liabilities > 0 ? fmt(combined.liabilities) : '—' },
-    { label: 'Assets', value: combined.assets > 0 ? fmt(combined.assets) : '—' },
+    { label: 'Assets', value: assetDisplay(combined) },
     { label: 'Ledger Balance', value: fmt(combinedLedger), neg: combinedLedger < 0 },
   ]
 
@@ -132,7 +140,7 @@ export default function FamilyFinances() {
                   <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{fmt(b.t.balance)}</td>
                   <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{fmt(b.t.monthly)}</td>
                   <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{b.t.liabilities > 0 ? fmt(b.t.liabilities) : '—'}</td>
-                  <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{b.t.assets > 0 ? fmt(b.t.assets) : '—'}</td>
+                  <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{assetDisplay(b.t)}</td>
                   <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-300">{b.ledger == null ? '—' : fmt(b.ledger)}</td>
                 </tr>
               ))}
@@ -141,7 +149,7 @@ export default function FamilyFinances() {
                 <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{fmt(combined.balance)}</td>
                 <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{fmt(combined.monthly)}</td>
                 <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{combined.liabilities > 0 ? fmt(combined.liabilities) : '—'}</td>
-                <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{combined.assets > 0 ? fmt(combined.assets) : '—'}</td>
+                <td className="px-4 py-3 text-right text-gray-900 dark:text-white">{assetDisplay(combined)}</td>
                 <td className={`px-4 py-3 text-right ${combinedLedger < 0 ? 'text-red-700' : 'text-gray-900 dark:text-white'}`}>{fmt(combinedLedger)}</td>
               </tr>
             </tbody>
