@@ -27,6 +27,19 @@ export default function Assistant() {
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [files, setFiles] = useState([])
+  const [agentEnabled, setAgentEnabled] = useState(true)
+
+  useEffect(() => {
+    if (!currentEstate) return
+    supabase.from('estate_ai_agent_state').select('enabled').eq('estate_id', currentEstate.id).maybeSingle()
+      .then(({ data }) => setAgentEnabled(data?.enabled ?? true))
+  }, [currentEstate])
+
+  async function toggleAgent() {
+    const next = !agentEnabled
+    setAgentEnabled(next)
+    await supabase.from('estate_ai_agent_state').upsert({ estate_id: currentEstate.id, enabled: next }, { onConflict: 'estate_id' })
+  }
 
   useEffect(() => {
     if (!currentEstate) return
@@ -117,6 +130,22 @@ export default function Assistant() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white mb-1">AI Assistant</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Suggestions only — you accept what's right. Assistance, not legal advice.</p>
+
+      {/* Background agent control */}
+      <div className="flex items-center justify-between gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-gray-800 dark:text-white">Background agent {agentEnabled ? '· on' : '· off'}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">Automatically reviews this estate when its data changes (about every 30 minutes) and posts suggestions below. You still accept or dismiss each one.</div>
+        </div>
+        <button
+          onClick={toggleAgent}
+          className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${agentEnabled ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+          aria-pressed={agentEnabled}
+          title={agentEnabled ? 'Turn the background agent off for this estate' : 'Turn the background agent on for this estate'}
+        >
+          <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${agentEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        </button>
+      </div>
 
       {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
       {progress && <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg text-sm mb-4">{progress}</div>}

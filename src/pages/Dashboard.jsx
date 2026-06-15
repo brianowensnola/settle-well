@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [logs, setLogs] = useState([])
   const [financials, setFinancials] = useState([])
   const [mailPending, setMailPending] = useState(0)
+  const [aiPending, setAiPending] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,11 +31,13 @@ export default function Dashboard() {
       supabase.from('estate_task_logs').select('*, estate_tasks(text)').eq('estate_id', currentEstate.id).order('created_at', { ascending: false }).limit(5),
       supabase.from('estate_financials').select('*').eq('estate_id', currentEstate.id),
       supabase.from('family_mail').select('id').eq('status', 'pending'),
-    ]).then(([t, l, f, m]) => {
+      supabase.from('estate_ai_suggestions').select('id').eq('estate_id', currentEstate.id).eq('status', 'pending'),
+    ]).then(([t, l, f, m, a]) => {
       setTasks(t.data ?? [])
       setLogs(l.data ?? [])
       setFinancials(f.data ?? [])
       setMailPending((m.data ?? []).length)
+      setAiPending((a.data ?? []).length)
       setLoading(false)
     })
   }, [currentEstate])
@@ -46,7 +49,7 @@ export default function Dashboard() {
   const done = tasks.filter(t => t.status === 'done').length
   const pct = total ? Math.round((done / total) * 100) : 0
   const submittedCount = tasks.filter(t => t.status === 'submitted').length
-  const needsReview = submittedCount + mailPending
+  const needsReview = submittedCount + mailPending + aiPending
 
   const urgent = tasks
     .filter(t => t.status !== 'done')
@@ -96,6 +99,7 @@ export default function Dashboard() {
           <div className="flex gap-4 text-sm">
             {submittedCount > 0 && <Link to="/tasks" className="text-purple-700 dark:text-purple-300 hover:underline">{submittedCount} task{submittedCount === 1 ? '' : 's'} awaiting approval →</Link>}
             {mailPending > 0 && <Link to="/mail" className="text-purple-700 dark:text-purple-300 hover:underline">{mailPending} mail item{mailPending === 1 ? '' : 's'} to review →</Link>}
+            {aiPending > 0 && <Link to="/assistant" className="text-purple-700 dark:text-purple-300 hover:underline">{aiPending} AI suggestion{aiPending === 1 ? '' : 's'} to review →</Link>}
           </div>
         </div>
       )}
