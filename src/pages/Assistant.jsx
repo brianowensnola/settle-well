@@ -12,18 +12,44 @@ const FIN_CATEGORY_LABEL = {
 }
 const fmtMoney = n => n == null ? null : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
+// Auto-run the "what am I missing?" review at most this often per estate (per
+// device). Dedup on the server keeps repeats from piling up; this just limits
+// how often we spend an Opus call.
+const AUTO_REVIEW_THROTTLE_MS = 6 * 60 * 60 * 1000
+const lastAutoKey = id => `sw_last_auto_review_${id}`
+
 export default function Assistant() {
   const { currentEstate, role } = useEstate()
   const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
+  const [autoRunning, setAutoRunning] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [files, setFiles] = useState([])
 
   useEffect(() => {
     if (!currentEstate) return
-    loadSuggestions(currentEstate.id).then(s => { setSuggestions(s); setLoading(false) })
+    let cancelled = false
+    ;(async () => {
+      const initial = await loadSuggestions(currentEstate.id)
+      if (cancelled) return
+      setSuggestions(initial)
+      setLoading(false)
+      // Auto-run the review in the background (executor only), throttled.
+      if (!isFullAccess(role)) return
+      const key = lastAutoKey(currentEstate.id)
+      const last = Number(localStorage.getItem(key) || 0)
+      if (Date.now() - last < AUTO_REVIEW_THROTTLE_MS) return
+      localStorage.setItem(key, String(Date.now()))
+      setAutoRunning(true)
+      try {
+        await runAdvisor(currentEstate.id, 'review')
+        if (!cancelled) await refresh()
+      } catch { /* auto-run is best-effort; the manual button is still there */ }
+      finally { if (!cancelled) setAutoRunning(false) }
+    })()
+    return () => { cancelled = true }
   }, [currentEstate])
 
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
@@ -35,6 +61,8 @@ export default function Assistant() {
 
   async function review() {
     setRunning(true); setError(''); setProgress('Reviewing the estate — this can take a minute…')
+    // A manual run resets the auto-run throttle so we don't immediately re-run.
+    localStorage.setItem(lastAutoKey(currentEstate.id), String(Date.now()))
     try {
       await runAdvisor(currentEstate.id, 'review')
       await refresh()
@@ -92,6 +120,12 @@ export default function Assistant() {
 
       {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm mb-4">{error}</div>}
       {progress && <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg text-sm mb-4">{progress}</div>}
+      {autoRunning && !progress && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <span className="inline-block h-3 w-3 rounded-full border-2 border-gray-300 border-t-gray-600 animate-spin" />
+          Checking for anything you've missed…
+        </div>
+      )}
 
       {/* What am I missing */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
@@ -128,7 +162,7 @@ export default function Assistant() {
       {loading ? (
         <div className="text-gray-400 text-sm">Loading…</div>
       ) : suggestions.length === 0 ? (
-        <div className="text-gray-400 text-sm">No pending suggestions. Run a review or forensic audit above.</div>
+        <div className="text-gray-400 text-sm">{autoRunning ? 'Reviewing the estate…' : 'No pending suggestions. Run a review or forensic audit above.'}</div>
       ) : (
         <div className="space-y-5">
           {[['Financial entries → Finances', finSugs], ['Suggested tasks', reviewSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (

@@ -28,18 +28,22 @@ function jsonFrom(text) {
 // "What am I missing?" — review the whole estate and propose missing tasks/gaps
 async function runReview(estate) {
   const estateId = estate.id;
-  const [tasksRes, notesRes, docsRes, finRes, secRes] = await Promise.all([
+  const [tasksRes, notesRes, docsRes, finRes, secRes, sugRes] = await Promise.all([
     supabase.from("estate_tasks").select("text, status, section_id, tag").eq("estate_id", estateId),
     supabase.from("estate_daily_notes").select("content, note_date").eq("estate_id", estateId).order("note_date", { ascending: false }).limit(30),
     supabase.from("estate_documents").select("name, have, requested").eq("estate_id", estateId),
     supabase.from("estate_financials").select("name, category, status").eq("estate_id", estateId),
     supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
+    // Already-suggested items (still pending, or previously dismissed) so we
+    // don't re-propose them on repeat/auto runs.
+    supabase.from("estate_ai_suggestions").select("title, status").eq("estate_id", estateId).eq("kind", "review").in("status", ["pending", "dismissed"]),
   ]);
   const secLabel = Object.fromEntries((secRes.data ?? []).map(s => [s.id, s.label]));
   const tasks = (tasksRes.data ?? []).map(t => `[${secLabel[t.section_id] ?? "?"}] ${t.text} (${t.status})`);
   const notes = (notesRes.data ?? []).map(n => `${n.note_date}: ${n.content}`);
   const docs = (docsRes.data ?? []).map(d => `${d.name} (${d.have ? "have" : d.requested ? "requested" : "needed"})`);
   const assets = (finRes.data ?? []).filter(f => f.category === "asset").map(f => f.name);
+  const priorSuggestions = (sugRes.data ?? []).map(s => s.title);
 
   const prompt = `You are an expert estate-administration advisor helping an executor who has never closed an estate before. Your job: review the CURRENT STATE of this estate and identify TASKS the executor likely needs but does NOT already have, and gaps worth flagging. Be forward-thinking and specific — surface things a first-timer wouldn't know to worry about.
 
@@ -50,6 +54,9 @@ INTAKE ANSWERS: ${JSON.stringify(estate.intake_answers || {})}
 
 EXISTING TASKS (do NOT duplicate these):
 ${tasks.join("\n") || "(none)"}
+
+ALREADY SUGGESTED — pending review or previously dismissed by the executor (do NOT propose these again, even reworded):
+${priorSuggestions.join("\n") || "(none)"}
 
 DOCUMENTS:
 ${docs.join("\n") || "(none)"}
