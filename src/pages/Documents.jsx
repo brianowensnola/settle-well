@@ -5,10 +5,11 @@ import { isFullAccess } from '../lib/roles'
 import { DOC_TYPES } from '../lib/constants'
 
 export default function Documents() {
-  const { currentEstate, role } = useEstate()
+  const { currentEstate, role, estates } = useEstate()
   const canDelete = isFullAccess(role)
   // Executor + collaborator can rename; heirs/observers can't (matches RLS).
   const canEdit = isFullAccess(role) || role === 'collaborator'
+  const otherEstates = (estates ?? []).filter(e => e.id !== currentEstate?.id)
   const [docs, setDocs] = useState([])
   const [tab, setTab] = useState('have')
   const [adding, setAdding] = useState(false)
@@ -17,6 +18,7 @@ export default function Documents() {
   const [uploading, setUploading] = useState(null)
   const [renaming, setRenaming] = useState(null)   // doc id being renamed
   const [renameVal, setRenameVal] = useState('')
+  const [movingDoc, setMovingDoc] = useState(null) // doc id being moved
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -94,6 +96,23 @@ export default function Documents() {
     if (!doc.file_path) return
     const { data } = await supabase.storage.from('estate-documents').createSignedUrl(doc.file_path, 3600)
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  // Move a document to another estate. The stored file stays where it is (View
+  // uses its path directly), but its estate ownership and any task links here
+  // are cleared so it cleanly belongs to the target estate.
+  async function moveDoc(doc, targetEstateId) {
+    if (!targetEstateId) return
+    const { error } = await supabase.from('estate_documents')
+      .update({ estate_id: targetEstateId, linked_task_id: null })
+      .eq('id', doc.id)
+    if (error) { alert(`Couldn't move: ${error.message}`); return }
+    // Drop any task links in the old estate (tasks don't move with the doc).
+    try { await supabase.from('estate_task_documents').delete().eq('document_id', doc.id) } catch { /* ignore */ }
+    setDocs(prev => prev.filter(d => d.id !== doc.id))
+    setMovingDoc(null)
+    const name = otherEstates.find(e => e.id === targetEstateId)?.deceased_name ?? 'the other estate'
+    alert(`Moved "${doc.name}" to ${name}.`)
   }
 
   async function deleteDoc(doc) {
@@ -203,10 +222,27 @@ export default function Documents() {
                   </div>
                 )}
                 {doc.notes && <div className="text-xs text-gray-500 mt-0.5">{doc.notes}</div>}
+                {movingDoc === doc.id && (
+                  <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                    <span className="text-xs text-gray-500">Move to:</span>
+                    <select
+                      defaultValue=""
+                      onChange={e => moveDoc(doc, e.target.value)}
+                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-xs focus:outline-none"
+                    >
+                      <option value="" disabled>Choose an estate…</option>
+                      {otherEstates.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
+                    </select>
+                    <button onClick={() => setMovingDoc(null)} className="text-xs px-2 py-1 text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {canEdit && renaming !== doc.id && (
                   <button onClick={() => startRename(doc)} className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:underline">Rename</button>
+                )}
+                {canDelete && renaming !== doc.id && movingDoc !== doc.id && otherEstates.length > 0 && (
+                  <button onClick={() => setMovingDoc(doc.id)} className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:underline">Move</button>
                 )}
                 {doc.have && doc.file_path && (
                   <button onClick={() => getUrl(doc)} className="text-xs text-blue-600 hover:underline">View</button>
