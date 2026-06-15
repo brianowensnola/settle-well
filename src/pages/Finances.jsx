@@ -90,6 +90,7 @@ export default function Finances() {
   const [finForm, setFinForm] = useState({ name: '', amount: '', lender: '', status: '', is_private: false, notes: '', shared_with: [] })
   const [linkedTasks, setLinkedTasks] = useState({}) // financial_id -> [tasks]
   const [ledger, setLedger] = useState({ net: 0, count: 0 })
+  const [ledgerByAccount, setLedgerByAccount] = useState({}) // account_id -> net
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -103,9 +104,12 @@ export default function Finances() {
       .or(`estate_id.eq.${currentEstate.id},shared_with.cs.{${currentEstate.id}}`)
       .order('sort_order')
     setFinancials(data ?? [])
-    // Transaction-ledger summary (running balance = money in minus out)
-    const { data: txns } = await supabase.from('estate_transactions').select('amount').eq('estate_id', currentEstate.id)
+    // Ledger summary + per-account activity (so account balances = opening + ledger).
+    const { data: txns } = await supabase.from('estate_transactions').select('amount, account_id').eq('estate_id', currentEstate.id)
     setLedger({ net: (txns ?? []).reduce((s, t) => s + (t.amount ?? 0), 0), count: (txns ?? []).length })
+    const byAcct = {}
+    for (const t of txns ?? []) if (t.account_id) byAcct[t.account_id] = (byAcct[t.account_id] ?? 0) + (t.amount ?? 0)
+    setLedgerByAccount(byAcct)
     // Tasks linked to an asset, so each asset can show its related tasks
     const { data: tdata } = await supabase
       .from('estate_tasks')
@@ -193,7 +197,9 @@ export default function Finances() {
   const liabilities = byCategory.liability
   const assets = byCategory.asset
 
-  const totalBalance = accounts.reduce((s, a) => s + (a.amount ?? 0), 0)
+  // An account's live balance = opening balance + its ledger activity.
+  const acctCurrent = a => (a.amount ?? 0) + (ledgerByAccount[a.id] ?? 0)
+  const totalBalance = accounts.reduce((s, a) => s + acctCurrent(a), 0)
   const monthlyBurn = obligations.filter(o => ACTIVE_OBLIGATION_STATUSES.includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0)
   const totalLiabilities = liabilities.reduce((s, l) => s + (l.amount ?? 0), 0)
   // Exclude sold/distributed assets — they've left the estate.
@@ -364,7 +370,7 @@ export default function Finances() {
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 shrink-0">{estateName(row.estate_id)}</span>
                           )}
                         </div>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0 ml-4">{amountDisplay(row)}</span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 shrink-0 ml-4">{cat.key === 'account' ? fmt(acctCurrent(row)) : amountDisplay(row)}</span>
                       </button>
                       {canSeePrivate && (
                         <button

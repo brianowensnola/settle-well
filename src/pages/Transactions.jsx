@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 
 function fmt(n) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Math.abs(n))
 }
+const signed = n => `${n < 0 ? '-' : ''}${fmt(n)}`
 
 export default function Transactions() {
   const navigate = useNavigate()
   const { currentEstate } = useEstate()
   const [txns, setTxns] = useState([])
+  const [accounts, setAccounts] = useState([])
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', category: 'other', notes: '' })
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: '', notes: '' })
   const [receiptFile, setReceiptFile] = useState(null)
-  const [uploading, setUploading] = useState(null) // txn id being uploaded to, or 'new'
+  const [uploading, setUploading] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -23,18 +25,27 @@ export default function Transactions() {
   }, [currentEstate])
 
   async function load() {
-    const { data } = await supabase.from('estate_transactions').select('*').eq('estate_id', currentEstate.id).order('date', { ascending: false })
-    setTxns(data ?? [])
+    const [txnRes, acctRes] = await Promise.all([
+      supabase.from('estate_transactions').select('*').eq('estate_id', currentEstate.id).order('date', { ascending: false }),
+      supabase.from('estate_financials').select('id, name, amount').eq('estate_id', currentEstate.id).eq('category', 'account').order('name'),
+    ])
+    setTxns(txnRes.data ?? [])
+    setAccounts(acctRes.data ?? [])
     setLoading(false)
   }
 
-  // Upload a receipt file to the estate-documents bucket; returns its storage path.
   async function uploadReceipt(file) {
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const path = `${currentEstate.id}/receipts/${Date.now()}_${safe}`
     const { error } = await supabase.storage.from('estate-documents').upload(path, file)
     if (error) throw error
     return path
+  }
+
+  function openAdd() {
+    setForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: accounts[0]?.id ?? '', notes: '' })
+    setReceiptFile(null)
+    setAdding(true)
   }
 
   async function save() {
@@ -52,17 +63,15 @@ export default function Transactions() {
       date: form.date,
       description: form.description,
       amount: amt,
-      category: form.category,
+      account_id: form.account_id || null,
       notes: form.notes,
       receipt_path,
     }).select().single()
     if (data) setTxns(prev => [data, ...prev])
     setAdding(false)
     setReceiptFile(null)
-    setForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', category: 'other', notes: '' })
   }
 
-  // Attach (or replace) a receipt on an existing ledger entry.
   async function attachReceipt(txn, file) {
     if (!file) return
     setUploading(txn.id)
@@ -84,26 +93,37 @@ export default function Transactions() {
 
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
-  const balance = txns.reduce((s, t) => s + t.amount, 0)
+  const acctName = id => accounts.find(a => a.id === id)?.name ?? null
+  // Live balance per account = opening balance + its ledger activity.
+  const acctCurrent = id => (accounts.find(a => a.id === id)?.amount ?? 0) +
+    txns.filter(t => t.account_id === id).reduce((s, t) => s + (t.amount ?? 0), 0)
+  const unassigned = txns.filter(t => !t.account_id)
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/finances')} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-            ← Back
-          </button>
+          <button onClick={() => navigate('/finances')} className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">← Back</button>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Transaction Ledger</h1>
         </div>
-        <button onClick={() => setAdding(true)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add transaction</button>
+        <button onClick={openAdd} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">+ Add transaction</button>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4 flex justify-between items-center">
-        <span className="text-sm text-gray-500">Running balance</span>
-        <span className={`text-lg font-semibold ${balance >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-          {balance >= 0 ? '' : '-'}{fmt(balance)}
-        </span>
-      </div>
+      {/* Per-account live balances */}
+      {accounts.length === 0 ? (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-xl p-4 mb-4 text-sm">
+          No estate account yet. Add one in <Link to="/finances" className="underline font-medium">Finances → Accounts</Link> (with its opening balance), then post deposits/payments here and the balance will track automatically.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          {accounts.map(a => (
+            <div key={a.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex justify-between items-center">
+              <span className="text-sm text-gray-600 dark:text-gray-400 truncate">{a.name}</span>
+              <span className={`text-lg font-semibold ${acctCurrent(a.id) >= 0 ? 'text-green-700' : 'text-red-700'}`}>{signed(acctCurrent(a.id))}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {adding && (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4 space-y-3">
@@ -114,11 +134,19 @@ export default function Transactions() {
                 className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Amount (+ in / - out)</label>
+              <label className="text-xs text-gray-500 block mb-1">Amount (+ deposit / − payment)</label>
               <input type="number" step="0.01" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
-                placeholder="e.g. -1500 or 67000"
+                placeholder="e.g. -1500 or 5000"
                 className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
             </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Account</label>
+            <select value={form.account_id} onChange={e => setForm(p => ({ ...p, account_id: e.target.value }))}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+              <option value="">(no account)</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
           </div>
           <div>
             <label className="text-xs text-gray-500 block mb-1">Description</label>
@@ -142,11 +170,15 @@ export default function Transactions() {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
         {txns.length === 0 && <div className="p-6 text-sm text-gray-400">No transactions yet.</div>}
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 dark:divide-gray-800">
           {txns.map(t => (
             <div key={t.id} className="flex items-center gap-3 px-4 py-3">
               <span className="text-xs text-gray-400 w-24 shrink-0">{t.date}</span>
-              <span className="flex-1 text-sm text-gray-800 dark:text-white">{t.description}</span>
+              <span className="flex-1 min-w-0">
+                <span className="text-sm text-gray-800 dark:text-white">{t.description}</span>
+                {acctName(t.account_id) && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{acctName(t.account_id)}</span>}
+                {!t.account_id && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">no account</span>}
+              </span>
               {t.receipt_path ? (
                 <button onClick={() => viewReceipt(t)} className="text-xs text-blue-600 hover:underline shrink-0">📎 Receipt</button>
               ) : (
@@ -163,6 +195,9 @@ export default function Transactions() {
           ))}
         </div>
       </div>
+      {unassigned.length > 0 && accounts.length > 0 && (
+        <p className="text-xs text-gray-400 mt-3">{unassigned.length} transaction{unassigned.length !== 1 ? 's' : ''} aren't assigned to an account, so they don't affect any account balance. Edit them to assign an account.</p>
+      )}
     </div>
   )
 }

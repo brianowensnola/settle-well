@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
@@ -8,10 +8,11 @@ import { ACTIVE_OBLIGATION_STATUSES, DISPOSED_ASSET_STATUSES } from '../lib/cons
 const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
 // Roll-up math, mirroring the single-estate Finances page so totals match.
-function totalsFor(rows) {
+// Account balance = opening balance + its ledger activity.
+function totalsFor(rows, ledgerByAccount = {}) {
   const cat = c => rows.filter(r => r.category === c)
   return {
-    balance: cat('account').reduce((s, a) => s + (a.amount ?? 0), 0),
+    balance: cat('account').reduce((s, a) => s + (a.amount ?? 0) + (ledgerByAccount[a.id] ?? 0), 0),
     monthly: cat('obligation').filter(o => ACTIVE_OBLIGATION_STATUSES.includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0),
     liabilities: cat('liability').reduce((s, l) => s + (l.amount ?? 0), 0),
     // Sold/distributed assets have left the estate — excluded from the total/count.
@@ -28,11 +29,16 @@ const assetDisplay = t =>
     : t.assetCount > 0 ? `${t.assetCount} item${t.assetCount !== 1 ? 's' : ''}` : '—'
 
 export default function FamilyFinances() {
-  const { currentEstate, role, estates } = useEstate()
+  const navigate = useNavigate()
+  const { currentEstate, role, estates, switchEstate } = useEstate()
   const [groupName, setGroupName] = useState('')
   const [financials, setFinancials] = useState([])
   const [ledgerByEstate, setLedgerByEstate] = useState({})
+  const [ledgerByAccount, setLedgerByAccount] = useState({})
   const [loading, setLoading] = useState(true)
+
+  // Switch to an estate and open its ledger for a quick entry.
+  function openLedger(estate) { switchEstate(estate); navigate('/transactions') }
 
   const groupId = currentEstate?.group_id ?? null
   const members = (estates ?? []).filter(e => groupId && e.group_id === groupId)
@@ -48,13 +54,17 @@ export default function FamilyFinances() {
     const memberIds = members.map(e => e.id)
     const [finRes, txnRes, grpRes] = await Promise.all([
       supabase.from('estate_financials').select('*').in('estate_id', memberIds),
-      supabase.from('estate_transactions').select('estate_id, amount').in('estate_id', memberIds),
+      supabase.from('estate_transactions').select('estate_id, account_id, amount').in('estate_id', memberIds),
       supabase.from('estate_groups').select('name').eq('id', groupId).maybeSingle(),
     ])
     setFinancials(finRes.data ?? [])
-    const led = {}
-    for (const t of txnRes.data ?? []) led[t.estate_id] = (led[t.estate_id] ?? 0) + (t.amount ?? 0)
+    const led = {}, byAcct = {}
+    for (const t of txnRes.data ?? []) {
+      led[t.estate_id] = (led[t.estate_id] ?? 0) + (t.amount ?? 0)
+      if (t.account_id) byAcct[t.account_id] = (byAcct[t.account_id] ?? 0) + (t.amount ?? 0)
+    }
     setLedgerByEstate(led)
+    setLedgerByAccount(byAcct)
     setGroupName(grpRes.data?.name ?? 'Family Estate')
     setLoading(false)
   }
@@ -81,7 +91,7 @@ export default function FamilyFinances() {
   const sharedRows = financials.filter(f => f.shared_with?.length > 0)
   const ownRowsFor = id => financials.filter(f => f.estate_id === id && !(f.shared_with?.length > 0))
 
-  const combined = totalsFor(financials)
+  const combined = totalsFor(financials, ledgerByAccount)
   const combinedLedger = Object.values(ledgerByEstate).reduce((s, v) => s + v, 0)
 
   const SUMMARY = [
@@ -96,8 +106,8 @@ export default function FamilyFinances() {
 
   // Breakdown rows: each member (own items), then Shared/joint, then Combined.
   const breakdown = [
-    ...members.map(e => ({ key: e.id, label: e.deceased_name, t: totalsFor(ownRowsFor(e.id)), ledger: ledgerByEstate[e.id] ?? 0 })),
-    { key: 'shared', label: 'Shared / joint', t: totalsFor(sharedRows), ledger: null },
+    ...members.map(e => ({ key: e.id, label: e.deceased_name, t: totalsFor(ownRowsFor(e.id), ledgerByAccount), ledger: ledgerByEstate[e.id] ?? 0 })),
+    { key: 'shared', label: 'Shared / joint', t: totalsFor(sharedRows, ledgerByAccount), ledger: null },
   ]
 
   return (
@@ -115,6 +125,19 @@ export default function FamilyFinances() {
             <div className={`text-lg font-semibold ${s.neg ? 'text-red-700' : 'text-gray-900 dark:text-white'}`}>{s.value}</div>
           </div>
         ))}
+      </div>
+
+      {/* Quick ledger access — jump straight into each estate's ledger */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6">
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick ledger entry</div>
+        <div className="flex flex-wrap gap-2">
+          {members.map(e => (
+            <button key={e.id} onClick={() => openLedger(e)}
+              className="px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700">
+              + {e.deceased_name}'s ledger
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Per-member breakdown */}
