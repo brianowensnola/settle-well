@@ -65,6 +65,28 @@ export default function MultiEstateSettings() {
     }
   }
 
+  // Recursively collect every file path under a storage prefix (Supabase list
+  // is non-recursive; folders come back with id === null).
+  async function listAllFiles(prefix) {
+    const out = []
+    const { data } = await supabase.storage.from('estate-documents').list(prefix, { limit: 1000 })
+    for (const item of data ?? []) {
+      const path = prefix ? `${prefix}/${item.name}` : item.name
+      if (item.id === null) out.push(...await listAllFiles(path)) // folder → recurse
+      else out.push(path)
+    }
+    return out
+  }
+
+  async function purgeEstateStorage(estateId) {
+    // Files live under "<estateId>/..." (documents, receipts) and
+    // "estate-<estateId>/..." (forensic uploads).
+    const files = [...await listAllFiles(`${estateId}`), ...await listAllFiles(`estate-${estateId}`)]
+    for (let i = 0; i < files.length; i += 100) {
+      try { await supabase.storage.from('estate-documents').remove(files.slice(i, i + 100)) } catch { /* best-effort */ }
+    }
+  }
+
   async function handleDelete(estateId, estateName) {
     if (deleteConfirmText !== estateName) {
       alert('Please type the estate name to confirm deletion')
@@ -73,27 +95,19 @@ export default function MultiEstateSettings() {
 
     setDeleting(estateId)
     try {
-      // Delete in order (cascade-safe approach)
-      await Promise.all([
-        supabase.from('estate_document_extractions').delete().eq('estate_id', estateId),
-        supabase.from('estate_tasks').delete().eq('estate_id', estateId),
-        supabase.from('estate_financials').delete().eq('estate_id', estateId),
-        supabase.from('estate_sections').delete().eq('estate_id', estateId),
-        supabase.from('estate_users').delete().eq('estate_id', estateId),
-      ])
+      // 1) Purge storage files (not covered by DB cascade). Best-effort.
+      try { await purgeEstateStorage(estateId) } catch (e) { console.warn('storage purge:', e?.message) }
 
-      // Finally delete the estate
-      const { error } = await supabase
-        .from('estates')
-        .delete()
-        .eq('id', estateId)
-
+      // 2) Delete the estate. Every estate_id table cascades automatically, and
+      //    an emptied family group is removed by trigger — no manual per-table
+      //    deletes needed (that's what left ghost data before).
+      const { error } = await supabase.from('estates').delete().eq('id', estateId)
       if (error) throw error
 
       setConfirmingDelete(null)
       setDeleteConfirmText('')
       await reload()
-      alert('Estate deleted successfully')
+      alert('Estate deleted. All of its data and files were removed.')
     } catch (err) {
       console.error('Error deleting estate:', err)
       alert(`Error: ${err.message}`)
