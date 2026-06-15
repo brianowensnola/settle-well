@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
+import { ACTIVE_OBLIGATION_STATUSES } from '../lib/constants'
 
 const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
@@ -11,7 +12,7 @@ function totalsFor(rows) {
   const cat = c => rows.filter(r => r.category === c)
   return {
     balance: cat('account').reduce((s, a) => s + (a.amount ?? 0), 0),
-    monthly: cat('obligation').filter(o => ['active', 'unknown'].includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0),
+    monthly: cat('obligation').filter(o => ACTIVE_OBLIGATION_STATUSES.includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0),
     liabilities: cat('liability').reduce((s, l) => s + (l.amount ?? 0), 0),
     assets: cat('asset').reduce((s, a) => s + (a.amount ?? 0), 0),
     assetCount: cat('asset').length,

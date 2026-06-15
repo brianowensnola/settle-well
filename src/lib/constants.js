@@ -1,3 +1,8 @@
+// Obligation statuses that still cost money each month right now. Includes
+// "cancel_on_vacate" — those bills (utilities, etc.) keep being paid while the
+// property is occupied and only stop once it's vacated/sold.
+export const ACTIVE_OBLIGATION_STATUSES = ['active', 'unknown', 'cancel_on_vacate']
+
 export const SECTION_COLORS = {
   red:    { bg: '#FCEBEB', text: '#A32D2D', border: '#f5c6c6' },
   orange: { bg: '#FAEEDA', text: '#854F0B', border: '#f0d4a0' },

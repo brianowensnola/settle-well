@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
+import { ACTIVE_OBLIGATION_STATUSES } from '../lib/constants'
 
 const CATEGORIES = [
   { key: 'account',              label: 'Accounts' },
@@ -193,7 +194,7 @@ export default function Finances() {
   const assets = byCategory.asset
 
   const totalBalance = accounts.reduce((s, a) => s + (a.amount ?? 0), 0)
-  const monthlyBurn = obligations.filter(o => ['active', 'unknown'].includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0)
+  const monthlyBurn = obligations.filter(o => ACTIVE_OBLIGATION_STATUSES.includes(o.status)).reduce((s, o) => s + (o.amount ?? o.amount_max ?? o.amount_min ?? 0), 0)
   const totalLiabilities = liabilities.reduce((s, l) => s + (l.amount ?? 0), 0)
   const totalAssets = assets.reduce((s, a) => s + (a.amount ?? 0), 0)
 

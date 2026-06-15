@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
-import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
+import { STATUS_STYLES, STATUS_LABELS, ACTIVE_OBLIGATION_STATUSES } from '../lib/constants'
 
 function daysSince(dod) {
   const diff = new Date() - new Date(dod)
@@ -65,7 +65,7 @@ export default function Dashboard() {
 
   const totalBalance = accounts.reduce((s, a) => s + (a.amount ?? 0), 0)
   const monthlyBurn = obligations
-    .filter(o => ['active', 'unknown'].includes(o.status))
+    .filter(o => ACTIVE_OBLIGATION_STATUSES.includes(o.status))
     .reduce((s, o) => s + (o.amount_max ?? o.amount_min ?? 0), 0)
   const runway = monthlyBurn > 0 ? (totalBalance / monthlyBurn).toFixed(1) : '—'
   const totalLiabilities = liabilities.reduce((s, l) => s + (l.amount ?? 0), 0)

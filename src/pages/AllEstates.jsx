@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
-import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
+import { STATUS_STYLES, STATUS_LABELS, ACTIVE_OBLIGATION_STATUSES } from '../lib/constants'
 
 function daysSince(dod) {
   const diff = new Date() - new Date(dod)
@@ -53,7 +53,7 @@ export default function AllEstates() {
       const inProgress = tasks.filter(t => t.status === 'in_progress').length
 
       const accounts = financials.filter(f => f.category === 'account')
-      const obligations = financials.filter(f => f.category === 'obligation' && ['active', 'unknown'].includes(f.status))
+      const obligations = financials.filter(f => f.category === 'obligation' && ACTIVE_OBLIGATION_STATUSES.includes(f.status))
       const totalBalance = accounts.reduce((s, a) => s + (a.amount ?? 0), 0)
       const monthlyBurn = obligations.reduce((s, o) => s + (o.amount ?? 0), 0)
 
