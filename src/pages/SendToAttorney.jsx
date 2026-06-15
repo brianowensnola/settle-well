@@ -19,6 +19,7 @@ export default function SendToAttorney() {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,13 +29,15 @@ export default function SendToAttorney() {
 
   async function load() {
     setLoading(true)
-    const [docsRes, contactsRes] = await Promise.all([
+    const [docsRes, contactsRes, historyRes] = await Promise.all([
       supabase.from('estate_documents').select('*').eq('estate_id', currentEstate.id).eq('have', true).order('name'),
       supabase.from('estate_contacts').select('name, role, emails, email_labels')
         .or(`estate_id.eq.${currentEstate.id},shared_with.cs.{${currentEstate.id}}`)
         .eq('role', 'attorney'),
+      supabase.from('attorney_document_sends').select('*').eq('estate_id', currentEstate.id).order('sent_at', { ascending: false }),
     ])
     setDocs(docsRes.data ?? [])
+    setHistory(historyRes.data ?? [])
     // Flatten attorney contacts to one entry per email address, and collect any
     // "Assistant"-labeled emails to default into the CC line.
     const opts = []
@@ -90,6 +93,24 @@ export default function SendToAttorney() {
     return lines.join('\n')
   }
 
+  // Records that documents were sent. Logs the intent (we can't confirm the
+  // email actually left your mail client). Best-effort: a logging failure
+  // doesn't block the send.
+  async function logSend() {
+    const row = {
+      estate_id: currentEstate.id,
+      document_ids: selectedDocs.map(d => d.id),
+      document_count: selectedDocs.length,
+      document_names: selectedDocs.map(d => d.name).join(', '),
+      sent_at: new Date().toISOString(),
+      recipient_name: recipient || null,
+      recipient_cc: cc.trim() || null,
+      recipient_bcc: bcc.trim() || null,
+    }
+    const { data } = await supabase.from('attorney_document_sends').insert(row).select().single()
+    if (data) setHistory(prev => [data, ...prev])
+  }
+
   async function handleEmail() {
     if (!selectedDocs.length) return
     setBusy(true)
@@ -100,6 +121,7 @@ export default function SendToAttorney() {
       const params = [`subject=${subject}`, `body=${encodeURIComponent(body)}`]
       if (cc.trim()) params.unshift(`cc=${encodeURIComponent(cc.trim())}`)
       if (bcc.trim()) params.unshift(`bcc=${encodeURIComponent(bcc.trim())}`)
+      try { await logSend() } catch { /* logging is best-effort */ }
       window.location.href = `mailto:${to}?${params.join('&')}`
     } catch (e) {
       alert(`Couldn't generate the document links: ${e.message}`)
@@ -113,6 +135,7 @@ export default function SendToAttorney() {
     try {
       const body = await buildBody()
       await navigator.clipboard.writeText(body)
+      try { await logSend() } catch { /* logging is best-effort */ }
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch (e) {
@@ -244,6 +267,35 @@ export default function SendToAttorney() {
       <p className="text-xs text-gray-400 mt-3">
         Email opens your mail app with the recipient, subject, and download links filled in. Secure links expire in 7 days.
       </p>
+
+      {/* Send history */}
+      {history.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mt-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Send history</h2>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            {history.map(h => (
+              <div key={h.id} className="py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-gray-800 dark:text-white">
+                    {h.document_count} document{h.document_count !== 1 ? 's' : ''} → {h.recipient_name || 'recipient'}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+                    {new Date(h.sent_at).toLocaleDateString()} {new Date(h.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                {(h.recipient_cc || h.recipient_bcc) && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {h.recipient_cc && <span>cc: {h.recipient_cc}</span>}
+                    {h.recipient_cc && h.recipient_bcc && <span> · </span>}
+                    {h.recipient_bcc && <span>bcc: {h.recipient_bcc}</span>}
+                  </p>
+                )}
+                {h.document_names && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{h.document_names}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

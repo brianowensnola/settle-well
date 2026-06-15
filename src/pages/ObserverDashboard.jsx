@@ -10,6 +10,7 @@ export default function ObserverDashboard() {
   const { currentEstate } = useEstate()
   const [tasks, setTasks] = useState([])
   const [documents, setDocuments] = useState([])
+  const [sends, setSends] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -17,9 +18,11 @@ export default function ObserverDashboard() {
     Promise.all([
       supabase.from('estate_tasks').select('status').eq('estate_id', currentEstate.id),
       supabase.from('estate_documents').select('id, name, created_at').eq('estate_id', currentEstate.id).in('doc_type', ['legal', 'property']),
-    ]).then(([tasksRes, docsRes]) => {
+      supabase.from('attorney_document_sends').select('id, document_count, document_names, recipient_name, sent_at').eq('estate_id', currentEstate.id).order('sent_at', { ascending: false }),
+    ]).then(([tasksRes, docsRes, sendsRes]) => {
       setTasks(tasksRes.data ?? [])
       setDocuments(docsRes.data ?? [])
+      setSends(sendsRes.data ?? [])
       setLoading(false)
     })
   }, [currentEstate])
@@ -72,9 +75,28 @@ export default function ObserverDashboard() {
         </div>
       )}
 
+      {sends.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Documents sent to attorney</h2>
+          <div className="space-y-2">
+            {sends.map(s => (
+              <div key={s.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-gray-900 dark:text-white">
+                    {s.document_count} document{s.document_count !== 1 ? 's' : ''} → {s.recipient_name || 'attorney'}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{new Date(s.sent_at).toLocaleDateString()}</span>
+                </div>
+                {s.document_names && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{s.document_names}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-lg">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          You have read-only observer access: estate status, progress, and court documents. Financial detail is shown to beneficiaries.
+          You have read-only observer access: estate status, progress, court documents, and documents sent to the attorney. Financial detail is shown to beneficiaries.
         </p>
       </div>
     </div>

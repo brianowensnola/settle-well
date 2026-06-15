@@ -10,6 +10,7 @@ export default function HeirDashboard() {
   const [tasks, setTasks] = useState([])
   const [summary, setSummary] = useState(null) // safe accounting aggregates (RPC)
   const [documents, setDocuments] = useState([])
+  const [sends, setSends] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -18,15 +19,17 @@ export default function HeirDashboard() {
   }, [currentEstate])
 
   async function loadData() {
-    const [tasksRes, sumRes, docsRes] = await Promise.all([
+    const [tasksRes, sumRes, docsRes, sendsRes] = await Promise.all([
       supabase.from('estate_tasks').select('*').eq('estate_id', currentEstate.id),
       supabase.rpc('estate_transparency', { p_estate_id: currentEstate.id }),
       supabase.from('estate_documents').select('*').eq('estate_id', currentEstate.id).in('doc_type', ['legal', 'property']),
+      supabase.from('attorney_document_sends').select('id, document_count, document_names, recipient_name, sent_at').eq('estate_id', currentEstate.id).order('sent_at', { ascending: false }),
     ])
 
     setTasks(tasksRes.data ?? [])
     setSummary(sumRes.data ?? null)
     setDocuments(docsRes.data ?? [])
+    setSends(sendsRes.data ?? [])
     setLoading(false)
   }
 
@@ -129,9 +132,29 @@ export default function HeirDashboard() {
         </div>
       )}
 
+      {/* Documents sent to attorney */}
+      {sends.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Documents sent to attorney</h2>
+          <div className="space-y-2">
+            {sends.map(s => (
+              <div key={s.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-gray-900 dark:text-white">
+                    {s.document_count} document{s.document_count !== 1 ? 's' : ''} → {s.recipient_name || 'attorney'}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{new Date(s.sent_at).toLocaleDateString()}</span>
+                </div>
+                {s.document_names && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{s.document_names}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <p className="text-sm text-blue-900 dark:text-blue-300">
-          📋 This Transparency Report shows estate status, assets, expenses, and court documents.
+          📋 This Transparency Report shows estate status, assets, expenses, court documents, and what's been sent to the attorney.
         </p>
       </div>
     </div>
