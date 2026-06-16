@@ -9,6 +9,7 @@ export default function Contacts() {
   const { currentEstate, estates, role } = useEstate()
   const canManage = isFullAccess(role)  // only the executor adds/edits contacts
   const [contacts, setContacts] = useState([])
+  const [appUserEmails, setAppUserEmails] = useState(new Set())
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', website: '', notes: '', shared_with: [] })
@@ -25,7 +26,19 @@ export default function Contacts() {
       .or(`estate_id.eq.${currentEstate.id},shared_with.cs.{${currentEstate.id}}`)
       .order('name')
     setContacts(data ?? [])
+
+    // Which contacts correspond to people who actually have app access (a login
+    // or pending invite on this estate) — matched by email.
+    const { data: users } = await supabase.from('estate_users').select('email').eq('estate_id', currentEstate.id)
+    setAppUserEmails(new Set((users ?? []).map(u => (u.email || '').toLowerCase()).filter(Boolean)))
+
     setLoading(false)
+  }
+
+  // True if this contact's email matches someone with access to the estate.
+  function hasAppAccess(c) {
+    const emails = [c.email, ...(c.emails ?? [])].map(e => (e || '').toLowerCase()).filter(Boolean)
+    return emails.some(e => appUserEmails.has(e))
   }
 
   async function save() {
@@ -264,6 +277,9 @@ export default function Contacts() {
                         {c.name}
                         {(c.shared_with?.length > 0 || c.estate_id !== currentEstate.id) && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">↔ shared</span>
+                        )}
+                        {hasAppAccess(c) && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300">app access</span>
                         )}
                       </div>
                       {c.company && <div className="text-xs text-gray-500 dark:text-gray-400">{c.company}</div>}
