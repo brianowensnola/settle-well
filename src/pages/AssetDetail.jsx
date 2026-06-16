@@ -25,6 +25,8 @@ export default function AssetDetail() {
   const [edit, setEdit] = useState({})
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(null)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiNote, setAiNote] = useState(null) // last AI extraction result for the review banner
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [id])
@@ -110,8 +112,36 @@ export default function AssetDetail() {
     if (!error) {
       await supabase.from('estate_documents').update({ file_path: path, have: true }).eq('id', doc.id)
       setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, file_path: path, have: true } : d))
+      setUploading(null)
+      aiExtract({ ...doc, file_path: path }) // auto-read the document with AI
+      return
     }
     setUploading(null)
+  }
+
+  // Read a document with AI and pre-fill blank asset fields (review before saving).
+  async function aiExtract(doc) {
+    if (!doc.file_path) return
+    setAiBusy(true); setAiNote(null)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const resp = await fetch('/.netlify/functions/extract-asset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess?.session?.access_token}` },
+        body: JSON.stringify({ estateId: asset.estate_id, filePath: doc.file_path, assetType: edit.asset_type }),
+      })
+      if (!resp.ok) throw new Error('extract failed')
+      const f = await resp.json()
+      setEdit(p => ({
+        ...p,
+        vin_serial: p.vin_serial || f.vin_serial || '',
+        amount: (p.amount === '' || p.amount == null) && f.amount != null ? f.amount : p.amount,
+        // Only replace the name if it's empty or a placeholder.
+        name: (!p.name || /tbd|#\d|unknown/i.test(p.name)) && f.name ? f.name : p.name,
+      }))
+      setAiNote(f)
+    } catch { /* best-effort */ }
+    setAiBusy(false)
   }
 
   async function viewDoc(doc) {
@@ -132,6 +162,13 @@ export default function AssetDetail() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <button onClick={() => navigate('/assets')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3">← All assets</button>
       <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white mb-4">{asset.name}</h1>
+
+      {(aiBusy || aiNote) && (
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 rounded-lg p-3 mb-3 text-sm">
+          {aiBusy ? '✨ Reading the document…'
+            : `✨ AI read ${aiNote?.doc_kind || 'the document'}${aiNote?.name ? ` — “${aiNote.name}”` : ''}. Filled blank fields below — review and Save.`}
+        </div>
+      )}
 
       {/* Details */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4 space-y-3">
@@ -232,6 +269,7 @@ export default function AssetDetail() {
                 <span className="truncate text-gray-700 dark:text-gray-300">{d.name}</span>
               </span>
               <span className="flex items-center gap-3 shrink-0">
+                {d.file_path && <button onClick={() => aiExtract(d)} disabled={aiBusy} className="text-xs text-purple-600 hover:underline disabled:opacity-50">✨ AI fill</button>}
                 {d.have && d.file_path ? <button onClick={() => viewDoc(d)} className="text-xs text-blue-600 hover:underline">View</button>
                   : <label className="text-xs text-blue-600 hover:underline cursor-pointer">{uploading === d.id ? 'Uploading…' : 'Upload'}<input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.docx" onChange={e => uploadFile(d, e.target.files[0])} /></label>}
                 <button onClick={() => unlink(d)} className="text-xs text-gray-400 hover:text-red-500 hover:underline">Unlink</button>
