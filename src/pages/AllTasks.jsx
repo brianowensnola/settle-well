@@ -79,24 +79,30 @@ export default function AllTasks() {
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
   const q = search.toLowerCase()
-  const matchesFilters = t => {
-    if (filter !== 'all') {
-      if (filter === 'open') { if (t.status === 'done') return false }
-      else if (t.status !== filter) return false
-    }
-    if (q && !t.text.toLowerCase().includes(q) && !(t.tag ?? '').toLowerCase().includes(q)) return false
-    return true
+  const matchesStatus = t => {
+    if (filter === 'all') return true
+    if (filter === 'open') return t.status !== 'done'
+    return t.status === filter
   }
+  const matchesText = t => !q || t.text.toLowerCase().includes(q) || (t.tag ?? '').toLowerCase().includes(q)
 
   const topLevel = tasks.filter(t => !t.parent_task_id)
   const subtasksOf = id => tasks.filter(t => t.parent_task_id === id)
+  // Search also looks inside sub-tasks: a parent passes if it matches the text,
+  // or any of its sub-tasks do. When only a sub-task matches, show just those.
+  const matchesFilters = t => matchesStatus(t) && (matchesText(t) || subtasksOf(t.id).some(matchesText))
+  const visibleSubtasks = t => {
+    const subs = subtasksOf(t.id)
+    if (!q || matchesText(t)) return subs
+    return subs.filter(matchesText)
+  }
   const logsOf = id => logs.filter(l => l.task_id === id)
   const sortByStatus = arr => [...arr].sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9))
 
   // Shared props for an interactive row.
   const rowProps = task => ({
     task,
-    subtasks: subtasksOf(task.id),
+    subtasks: visibleSubtasks(task),
     logs: logsOf(task.id),
     onCycle: () => cycleStatus(task),
     canApprove: isExec,
