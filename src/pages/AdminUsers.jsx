@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess, roleLabel, INVITE_ROLES } from '../lib/roles'
-import { loadPeople, updateRole, removeMembership, addMembership, updateDemographics, resetPassword } from '../lib/adminUsers'
+import { loadPeople, updateRole, removeMembership, addMembership, updateDemographics, resetPassword, sendInvite } from '../lib/adminUsers'
 
-const BLANK_INVITE = { name: '', email: '', relationship: '', role: 'heir', estates: [] }
+const BLANK_INVITE = { name: '', email: '', phone: '', relationship: '', role: 'heir', estates: [] }
 
 export default function AdminUsers() {
   const { estates } = useEstate()
@@ -53,6 +53,25 @@ export default function AdminUsers() {
     setMsg(`Invite link copied — send it to ${person.name || person.email}. They open it, create a password, and they're connected.`)
   }
 
+  // Send the invitation (email + optional text) and report what went out.
+  async function fireInvite({ email, name, phone, estateName }) {
+    try {
+      const r = await sendInvite({ email, name, phone, estateName })
+      const parts = []
+      parts.push(r.email?.sent ? 'email sent' : `email failed (${r.email?.error || 'unknown'})`)
+      if (r.sms) parts.push(r.sms.sent ? 'text sent' : `text failed (${r.sms.error || 'unknown'})`)
+      setMsg(`Invite to ${name || email}: ${parts.join(' · ')}.`)
+    } catch (e) {
+      setMsg(`Invite to ${name || email} failed: ${e.message}`)
+    }
+  }
+
+  async function sendInviteToPerson(p) {
+    setBusy(true); setMsg('')
+    try { await fireInvite({ email: p.email, name: p.name, phone: p.phone, estateName: estateName(p.memberships[0]?.estate_id) }) }
+    finally { setBusy(false) }
+  }
+
   async function doReset(person) {
     if (!person.auth_user_id) { alert("This person hasn't created a login yet, so there's no password to reset."); return }
     const pw = prompt(`Set a new password for ${person.name || person.email} (min 6 characters):`)
@@ -69,11 +88,14 @@ export default function AdminUsers() {
     if (!invite.email.trim() || invite.estates.length === 0) { alert('Enter an email and pick at least one estate.'); return }
     setBusy(true)
     try {
+      const email = invite.email.toLowerCase().trim()
       for (const eid of invite.estates) {
-        await addMembership(eid, { name: invite.name, email: invite.email.toLowerCase().trim(), relationship: invite.relationship }, invite.role)
+        await addMembership(eid, { name: invite.name, email, phone: invite.phone, relationship: invite.relationship }, invite.role)
       }
-      setInvite(BLANK_INVITE); await refresh()
-      setMsg('Person added. They get access when they sign up with that email (or immediately if they already have a login).')
+      await refresh()
+      // Send the sign-up invitation (email + text) right away.
+      await fireInvite({ email, name: invite.name, phone: invite.phone, estateName: estateName(invite.estates[0]) })
+      setInvite(BLANK_INVITE)
     } finally { setBusy(false) }
   }
 
@@ -124,7 +146,10 @@ export default function AdminUsers() {
                     <div className="flex gap-2 shrink-0">
                       <button onClick={() => startEdit(p)} className="text-xs text-blue-600 hover:underline">Edit</button>
                       {!p.auth_user_id && p.email
-                        ? <button onClick={() => copyInvite(p)} className="text-xs text-blue-600 hover:underline">Copy invite link</button>
+                        ? <>
+                            <button onClick={() => sendInviteToPerson(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">Send invite</button>
+                            <button onClick={() => copyInvite(p)} className="text-xs text-gray-400 hover:underline">Copy link</button>
+                          </>
                         : <button onClick={() => doReset(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">Reset password</button>}
                     </div>
                   </div>
@@ -168,6 +193,8 @@ export default function AdminUsers() {
             className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
           <input value={invite.email} onChange={e => setInvite(v => ({ ...v, email: e.target.value }))} placeholder="Email" type="email"
             className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          <input value={invite.phone} onChange={e => setInvite(v => ({ ...v, phone: e.target.value }))} placeholder="Phone (for text invite, optional)" type="tel"
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
           <input value={invite.relationship} onChange={e => setInvite(v => ({ ...v, relationship: e.target.value }))} placeholder="Relationship (optional)"
             className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
           <select value={invite.role} onChange={e => setInvite(v => ({ ...v, role: e.target.value }))}
@@ -190,7 +217,7 @@ export default function AdminUsers() {
         <button type="submit" disabled={busy} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
           {busy ? 'Working…' : 'Add person'}
         </button>
-        <p className="text-xs text-gray-400 mt-2">They get access when they sign up with that email (or immediately if they already have a login). Set their password with “Reset password” above once their login exists.</p>
+        <p className="text-xs text-gray-400 mt-2">Adding a person emails them a sign-up link (and texts it too, if you enter a phone). They get access once they create their login. You can also re-send anytime with “Send invite” above.</p>
       </form>
     </div>
   )
