@@ -16,6 +16,7 @@ export default function ContactDetail() {
   const [logForm, setLogForm] = useState({ direction: 'outbound', summary: '' })
   const [meetingForm, setMeetingForm] = useState({ scheduled_at: '', meeting_type: 'initial', notes: '' })
   const [prepBusy, setPrepBusy] = useState(null)
+  const [editMtg, setEditMtg] = useState(null) // { id, at } for rescheduling a meeting
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [loading, setLoading] = useState(true)
@@ -36,14 +37,17 @@ export default function ContactDetail() {
 
   async function scheduleMeeting() {
     if (!meetingForm.scheduled_at) return
+    // datetime-local gives local wall-time; store the exact instant (ISO+tz)
+    // so it round-trips back to the same clock time the user picked.
+    const iso = new Date(meetingForm.scheduled_at).toISOString()
     const { data: m } = await supabase.from('estate_meetings').insert({
       estate_id: currentEstate.id, contact_id: id, contact_name: contact.name,
-      meeting_type: meetingForm.meeting_type, scheduled_at: meetingForm.scheduled_at,
+      meeting_type: meetingForm.meeting_type, scheduled_at: iso,
       notes: meetingForm.notes || null, status: 'scheduled',
     }).select().single()
     if (m) {
       // Track the meeting as a task so progress shows on the board.
-      const when = new Date(meetingForm.scheduled_at).toLocaleString()
+      const when = new Date(iso).toLocaleString()
       const { data: sec } = await supabase.from('estate_sections').select('id').eq('estate_id', currentEstate.id).eq('label', 'Phase 2 — First Week').maybeSingle()
       const { data: task } = await supabase.from('estate_tasks').insert({
         estate_id: currentEstate.id, section_id: sec?.id ?? null,
@@ -81,6 +85,30 @@ export default function ContactDetail() {
     const prep = (meeting.prep_questions ?? []).map((p, i) => i === idx ? { ...p, checked: !p.checked } : p)
     setMeetings(prev => prev.map(x => x.id === meeting.id ? { ...x, prep_questions: prep } : x))
     await supabase.from('estate_meetings').update({ prep_questions: prep }).eq('id', meeting.id)
+  }
+
+  // Convert a stored ISO timestamp to the value a datetime-local input wants
+  // (local wall-time, "YYYY-MM-DDTHH:mm").
+  function toLocalInput(iso) {
+    if (!iso) return ''
+    const d = new Date(iso)
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  }
+
+  async function saveMeetingTime(meeting) {
+    if (!editMtg?.at) { setEditMtg(null); return }
+    const iso = new Date(editMtg.at).toISOString()
+    await supabase.from('estate_meetings').update({ scheduled_at: iso }).eq('id', meeting.id)
+    // Keep the linked task's label in sync with the new time.
+    if (meeting.linked_task_id) {
+      const when = new Date(iso).toLocaleString()
+      await supabase.from('estate_tasks').update({
+        text: `Meeting: ${contact.name} (${meeting.meeting_type.replace('_', ' ')}) — ${when}`,
+        updated_at: new Date().toISOString(),
+      }).eq('id', meeting.linked_task_id)
+    }
+    setMeetings(prev => prev.map(x => x.id === meeting.id ? { ...x, scheduled_at: iso } : x))
+    setEditMtg(null)
   }
 
   async function setMeetingStatus(meeting, status) {
@@ -331,7 +359,16 @@ export default function ContactDetail() {
               <div key={m.id} className={`border border-gray-200 dark:border-gray-800 rounded-lg p-3 ${m.status === 'completed' ? 'bg-green-50 dark:bg-green-900/10' : m.status === 'cancelled' ? 'opacity-60' : ''}`}>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="text-sm font-medium text-gray-800 dark:text-white capitalize">
-                    {m.meeting_type.replace('_', ' ')} · {m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : 'unscheduled'}
+                    {m.meeting_type.replace('_', ' ')} · {editMtg?.id === m.id ? (
+                      <span className="inline-flex items-center gap-2 align-middle">
+                        <input type="datetime-local" value={editMtg.at} onChange={e => setEditMtg(s => ({ ...s, at: e.target.value }))}
+                          className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-xs focus:outline-none" />
+                        <button onClick={() => saveMeetingTime(m)} className="text-xs text-green-700 hover:underline">Save</button>
+                        <button onClick={() => setEditMtg(null)} className="text-xs text-gray-400 hover:underline">cancel</button>
+                      </span>
+                    ) : (
+                      <span className="normal-case">{m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : 'unscheduled'}</span>
+                    )}
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${m.status === 'completed' ? 'bg-green-100 text-green-700' : m.status === 'cancelled' ? 'bg-gray-100 dark:bg-gray-800 text-gray-500' : 'bg-blue-100 text-blue-700'}`}>{m.status}</span>
                 </div>
@@ -360,6 +397,7 @@ export default function ContactDetail() {
 
                 {/* Actions */}
                 <div className="mt-2 flex items-center gap-3">
+                  {m.status === 'scheduled' && editMtg?.id !== m.id && <button onClick={() => setEditMtg({ id: m.id, at: toLocalInput(m.scheduled_at) })} className="text-xs text-blue-600 hover:underline">Edit time</button>}
                   {m.status === 'scheduled' && <button onClick={() => setMeetingStatus(m, 'completed')} className="text-xs text-green-700 hover:underline">Mark completed</button>}
                   {m.status === 'scheduled' && <button onClick={() => setMeetingStatus(m, 'cancelled')} className="text-xs text-gray-400 hover:text-red-500 hover:underline">Cancel</button>}
                   {m.linked_task_id && <Link to={`/tasks/${m.linked_task_id}`} className="text-xs text-blue-600 hover:underline">View task →</Link>}
