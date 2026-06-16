@@ -30,7 +30,10 @@ export function EstateProvider({ children }) {
 
     const list = euRows.map(r => ({ ...r.estates, _role: r.role }))
     setEstates(list)
-    const active = list.find(e => e.status === 'active') ?? list[0]
+    // Restore the last-selected estate so it doesn't snap back to the first one.
+    let savedId = null
+    try { savedId = localStorage.getItem('sw_current_estate') } catch { /* ignore */ }
+    const active = list.find(e => e.id === savedId) ?? list.find(e => e.status === 'active') ?? list[0]
     setCurrentEstate(active)
     setRole(euRows.find(r => r.estate_id === active.id)?.role ?? null)
     setLoading(false)
@@ -40,6 +43,7 @@ export function EstateProvider({ children }) {
     const eu = estates.find(e => e.id === estate.id)
     setCurrentEstate(estate)
     setRole(eu?._role ?? null)
+    try { localStorage.setItem('sw_current_estate', estate.id) } catch { /* ignore */ }
   }
 
   return (

@@ -53,6 +53,15 @@ function DashboardRouter() {
   return <HeirDashboard />
 }
 
+// Landing page: executors in a multi-estate family land on the Family Estate
+// overview; everyone else on their dashboard.
+function Home() {
+  const { role, estates, loading } = useEstate()
+  if (loading) return null
+  if (isFullAccess(role) && (estates?.length ?? 0) > 1) return <Navigate to="/all-estates" replace />
+  return <Navigate to="/dashboard" replace />
+}
+
 function AppRoutes() {
   const user = useUser()
   if (user === undefined) return (
@@ -67,11 +76,11 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth/confirm" element={<ConfirmEmail />} />
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/invite" element={user ? <Navigate to="/dashboard" replace /> : <Invite />} />
+      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/invite" element={user ? <Navigate to="/" replace /> : <Invite />} />
       <Route path="/new-estate" element={user ? <NewEstate /> : <Navigate to="/login" replace />} />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route element={<RequireAuth><EstateProvider><Layout /></EstateProvider></RequireAuth>}>
+        <Route index element={<Home />} />
         <Route path="/quick-estate" element={<QuickEstateSetup />} />
         <Route path="/all-estates" element={<AllEstates />} />
         <Route path="/all-tasks" element={<AllTasks />} />
