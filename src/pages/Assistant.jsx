@@ -28,6 +28,7 @@ export default function Assistant() {
   const [error, setError] = useState('')
   const [files, setFiles] = useState([])
   const [agentEnabled, setAgentEnabled] = useState(true)
+  const [busyIds, setBusyIds] = useState(new Set())
 
   useEffect(() => {
     if (!currentEstate) return
@@ -122,12 +123,26 @@ export default function Assistant() {
   }
 
   async function accept(s) {
+    setBusyIds(prev => new Set(prev).add(s.id))
     await acceptSuggestion(s)
     setSuggestions(prev => prev.filter(x => x.id !== s.id))
   }
   async function dismiss(s) {
+    setBusyIds(prev => new Set(prev).add(s.id))
     await dismissSuggestion(s.id)
     setSuggestions(prev => prev.filter(x => x.id !== s.id))
+  }
+  async function acceptAll(list) {
+    const ids = new Set(list.map(s => s.id))
+    setBusyIds(prev => new Set([...prev, ...ids]))
+    for (const s of list) await acceptSuggestion(s)
+    setSuggestions(prev => prev.filter(x => !ids.has(x.id)))
+  }
+  async function dismissAll(list) {
+    const ids = new Set(list.map(s => s.id))
+    setBusyIds(prev => new Set([...prev, ...ids]))
+    for (const s of list) await dismissSuggestion(s.id)
+    setSuggestions(prev => prev.filter(x => !ids.has(x.id)))
   }
 
   const reviewSugs = suggestions.filter(s => s.kind === 'review')
@@ -166,59 +181,30 @@ export default function Assistant() {
         </div>
       )}
 
-      {/* What am I missing */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">What am I missing?</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Reviews your intake, tasks, notes, documents, and assets and proposes tasks or gaps you may have missed.</p>
-        <button onClick={review} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
-          {running ? 'Working…' : 'Review the estate'}
-        </button>
-      </div>
-
-      {/* Match documents to tasks */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Match documents to tasks</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks at your uploaded documents and the tasks they satisfy — e.g. a death certificate or obituary — and proposes linking them and checking the task off. Bank statements, loan papers, and insurance policies also propose a Finances entry.</p>
-        <button onClick={matchDocuments} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
-          {running ? 'Working…' : 'Match documents'}
-        </button>
-      </div>
-
-      {/* State probate guidance */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">State probate guidance</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks up the probate steps, deadlines, and filing options specific to <strong>{currentEstate.state_of_residence || "the estate's state"}</strong> and proposes tasks. General guidance — always verify specifics with the probate court or your attorney.</p>
-        <button onClick={stateLaw} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
-          {running ? 'Working…' : `Get ${currentEstate.state_of_residence || 'state'} guidance`}
-        </button>
-      </div>
-
-      {/* Forensic audit */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-6">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Forensic financial audit</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Upload bank/financial statements. Concrete records (accounts, loans, recurring obligations, insurance) become private Finances entries; anything that needs investigating (unknown transfers, large deposits) becomes a private task.</p>
-        <label className="block border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 mb-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400">{files.length > 0 ? `${files.length} file(s) selected` : 'Click to add financial statements (PDF/images)'}</span>
-          <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setFiles(Array.from(e.target.files || []))} />
-        </label>
-        <button onClick={forensic} disabled={running || files.length === 0} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
-          {running ? 'Working…' : 'Run forensic audit'}
-        </button>
-      </div>
-
-      {/* Suggestions */}
+      {/* Pending findings — the review focus, shown first */}
       {loading ? (
-        <div className="text-gray-400 text-sm">Loading…</div>
+        <div className="text-gray-400 text-sm mb-6">Loading…</div>
       ) : suggestions.length === 0 ? (
-        <div className="text-gray-400 text-sm">{autoRunning ? 'Reviewing the estate…' : 'No pending suggestions. Run a review or forensic audit above.'}</div>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-6 text-sm text-gray-500 dark:text-gray-400">
+          {autoRunning ? 'Reviewing the estate…' : '✓ All caught up — no suggestions to review right now.'}
+        </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-5 mb-6">
+          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            {suggestions.length} suggestion{suggestions.length === 1 ? '' : 's'} to review
+          </div>
           {[['Financial entries → Finances', finSugs], ['Suggested tasks', reviewSugs], ['State probate guidance (verify — not legal advice)', stateLawSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
             <div key={label}>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</h3>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label} · {list.length}</h3>
+                <div className="flex gap-3 shrink-0">
+                  <button onClick={() => acceptAll(list)} className="text-xs text-green-700 dark:text-green-400 hover:underline">Accept all</button>
+                  <button onClick={() => dismissAll(list)} className="text-xs text-gray-400 hover:text-red-500 hover:underline">Dismiss all</button>
+                </div>
+              </div>
               <div className="space-y-2">
                 {list.map(s => (
-                  <div key={s.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+                  <div key={s.id} className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 ${busyIds.has(s.id) ? 'opacity-50' : ''}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900 dark:text-white">{s.title}</div>
@@ -235,8 +221,8 @@ export default function Assistant() {
                         )}
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button onClick={() => accept(s)} className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700">Accept</button>
-                        <button onClick={() => dismiss(s)} className="text-xs px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200">Dismiss</button>
+                        <button onClick={() => accept(s)} disabled={busyIds.has(s.id)} className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">Accept</button>
+                        <button onClick={() => dismiss(s)} disabled={busyIds.has(s.id)} className="text-xs px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 disabled:opacity-50">Dismiss</button>
                       </div>
                     </div>
                   </div>
@@ -250,6 +236,52 @@ export default function Assistant() {
           </div>
         </div>
       )}
+
+      {/* Run a new analysis — secondary to reviewing findings, so collapsed */}
+      <details className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl mb-4">
+        <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-gray-800 dark:text-white">
+          ▸ Run a new analysis
+          <span className="font-normal text-gray-400"> — review the estate, match documents, state probate guidance, or a forensic audit</span>
+        </summary>
+        <div className="px-5 pb-5 space-y-4">
+          {/* What am I missing */}
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">What am I missing?</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Reviews your intake, tasks, notes, documents, and assets and proposes tasks or gaps you may have missed.</p>
+            <button onClick={review} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
+              {running ? 'Working…' : 'Review the estate'}
+            </button>
+          </div>
+          {/* Match documents to tasks */}
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Match documents to tasks</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks at your uploaded documents and the tasks they satisfy — e.g. a death certificate or obituary — and proposes linking them and checking the task off. Bank statements, loan papers, and insurance policies also propose a Finances entry.</p>
+            <button onClick={matchDocuments} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
+              {running ? 'Working…' : 'Match documents'}
+            </button>
+          </div>
+          {/* State probate guidance */}
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">State probate guidance</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks up the probate steps, deadlines, and filing options specific to <strong>{currentEstate.state_of_residence || "the estate's state"}</strong> and proposes tasks. General guidance — always verify specifics with the probate court or your attorney.</p>
+            <button onClick={stateLaw} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
+              {running ? 'Working…' : `Get ${currentEstate.state_of_residence || 'state'} guidance`}
+            </button>
+          </div>
+          {/* Forensic audit */}
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Forensic financial audit</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Upload bank/financial statements. Concrete records (accounts, loans, recurring obligations, insurance) become private Finances entries; anything that needs investigating (unknown transfers, large deposits) becomes a private task.</p>
+            <label className="block border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 mb-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">{files.length > 0 ? `${files.length} file(s) selected` : 'Click to add financial statements (PDF/images)'}</span>
+              <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setFiles(Array.from(e.target.files || []))} />
+            </label>
+            <button onClick={forensic} disabled={running || files.length === 0} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
+              {running ? 'Working…' : 'Run forensic audit'}
+            </button>
+          </div>
+        </div>
+      </details>
 
       <LegalDisclaimer className="mt-8 border-t border-gray-100 dark:border-gray-800 pt-4" />
     </div>
