@@ -43,6 +43,7 @@ export const CONTACT_ROLES = {
   government:  'Government',
   medical:     'Medical',
   business:    'Business',
+  executor:    'Executor',
   family:      'Family',
   other:       'Other',
 }

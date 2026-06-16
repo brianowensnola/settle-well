@@ -13,6 +13,16 @@ finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
 "add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
 Items graduate into the structured backlog below when it's time to do them.
 
+- **(2026-06-16) ⭐ Brian wants this soon** Text (SMS) messaging — make texting
+  actually work: be able to **send** texts to people, and send **meeting
+  reminders**. Code is already built (send-invite sends SMS via Brevo, adapts
+  wording), but US carriers reject Brevo texts until a **toll-free number (TFN)
+  is registered + verified** and US SMS compliance is enabled (a multi-day
+  carrier-approval process; see Brevo "register for a toll-free number"). Once the
+  TFN is approved, point `BREVO_SMS_SENDER` at it and texts flow. Then add a
+  meeting-reminder job (a scheduled function that texts the executor/attendees
+  ahead of `estate_meetings.scheduled_at`). No US SMS provider avoids the
+  registration step. Revisit as soon as the TFN can be set up.
 - **(2026-06-16)** Family tree / heirship function — a family-tree-type tool to
   help determine heirship (who inherits and in what shares). End-of-app-work item.
 - **(2026-06-16)** Anthropic billing safeguard — turn on auto-reload and/or a
