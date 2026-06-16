@@ -1,0 +1,45 @@
+-- Add covering indexes for all foreign keys flagged by the Supabase
+-- performance advisor (unindexed_foreign_keys). Safe/additive; speeds up
+-- joins and estate-scoped filters as data grows.
+create index if not exists idx_attorney_document_sends_recipient_id on public.attorney_document_sends (recipient_id);
+create index if not exists idx_estate_ai_suggestions_created_financial_id on public.estate_ai_suggestions (created_financial_id);
+create index if not exists idx_estate_ai_suggestions_created_task_id on public.estate_ai_suggestions (created_task_id);
+create index if not exists idx_estate_ai_suggestions_link_document_id on public.estate_ai_suggestions (link_document_id);
+create index if not exists idx_estate_ai_suggestions_link_task_id on public.estate_ai_suggestions (link_task_id);
+create index if not exists idx_estate_contact_interactions_contact_id on public.estate_contact_interactions (contact_id);
+create index if not exists idx_estate_contact_interactions_estate_id on public.estate_contact_interactions (estate_id);
+create index if not exists idx_estate_contact_interactions_linked_task_id on public.estate_contact_interactions (linked_task_id);
+create index if not exists idx_estate_contacts_estate_id on public.estate_contacts (estate_id);
+create index if not exists idx_estate_credentials_estate_id on public.estate_credentials (estate_id);
+create index if not exists idx_estate_credentials_linked_contact_id on public.estate_credentials (linked_contact_id);
+create index if not exists idx_estate_credentials_linked_financial_id on public.estate_credentials (linked_financial_id);
+create index if not exists idx_estate_credentials_log_credential_id on public.estate_credentials_log (credential_id);
+create index if not exists idx_estate_credentials_log_estate_id on public.estate_credentials_log (estate_id);
+create index if not exists idx_estate_daily_notes_created_by on public.estate_daily_notes (created_by);
+create index if not exists idx_estate_documents_asset_id on public.estate_documents (asset_id);
+create index if not exists idx_estate_documents_estate_id on public.estate_documents (estate_id);
+create index if not exists idx_estate_documents_linked_contact_id on public.estate_documents (linked_contact_id);
+create index if not exists idx_estate_documents_linked_financial_id on public.estate_documents (linked_financial_id);
+create index if not exists idx_estate_documents_linked_task_id on public.estate_documents (linked_task_id);
+create index if not exists idx_estate_financials_estate_id on public.estate_financials (estate_id);
+create index if not exists idx_estate_heir_todos_estate_id on public.estate_heir_todos (estate_id);
+create index if not exists idx_estate_meetings_contact_id on public.estate_meetings (contact_id);
+create index if not exists idx_estate_meetings_estate_id on public.estate_meetings (estate_id);
+create index if not exists idx_estate_meetings_linked_task_id on public.estate_meetings (linked_task_id);
+create index if not exists idx_estate_sections_estate_id on public.estate_sections (estate_id);
+create index if not exists idx_estate_task_documents_estate_id on public.estate_task_documents (estate_id);
+create index if not exists idx_estate_task_logs_estate_id on public.estate_task_logs (estate_id);
+create index if not exists idx_estate_task_logs_spawned_task_id on public.estate_task_logs (spawned_task_id);
+create index if not exists idx_estate_task_logs_task_id on public.estate_task_logs (task_id);
+create index if not exists idx_estate_tasks_estate_id on public.estate_tasks (estate_id);
+create index if not exists idx_estate_tasks_linked_financial_id on public.estate_tasks (linked_financial_id);
+create index if not exists idx_estate_tasks_parent_task_id on public.estate_tasks (parent_task_id);
+create index if not exists idx_estate_tasks_section_id on public.estate_tasks (section_id);
+create index if not exists idx_estate_transactions_account_id on public.estate_transactions (account_id);
+create index if not exists idx_estate_transactions_estate_id on public.estate_transactions (estate_id);
+create index if not exists idx_estate_users_auth_user_id on public.estate_users (auth_user_id);
+create index if not exists idx_estate_users_estate_id on public.estate_users (estate_id);
+create index if not exists idx_estates_group_id on public.estates (group_id);
+create index if not exists idx_family_mail_routed_document_id on public.family_mail (routed_document_id);
+create index if not exists idx_family_mail_routed_estate_id on public.family_mail (routed_estate_id);
+create index if not exists idx_family_mail_suggested_estate_id on public.family_mail (suggested_estate_id);
