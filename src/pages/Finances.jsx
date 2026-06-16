@@ -33,6 +33,7 @@ const STATUS_BADGE = {
   keep:             'bg-blue-100 text-blue-700',
   sell:             'bg-amber-100 text-amber-700',
   transfer:         'bg-blue-100 text-blue-700',
+  gift:             'bg-purple-100 text-purple-700',
   sold:             'bg-green-100 text-green-700',
   distributed:      'bg-green-100 text-green-700',
 }
@@ -46,7 +47,7 @@ const ASSET_TYPES = [
   { key: 'financial',   label: 'Financial account',           phase: 'Phase 4 — Financial Accounts' },
   { key: 'other',       label: 'Other',                       phase: 'Phase 11 — Commonly Missed Items' },
 ]
-const DISPOSITIONS = ['undecided', 'keep', 'sell', 'transfer', 'sold', 'distributed']
+const DISPOSITIONS = ['undecided', 'keep', 'sell', 'transfer', 'gift', 'sold', 'distributed']
 
 // Status choices and amount label per (non-asset) category
 const STATUS_OPTIONS = {
