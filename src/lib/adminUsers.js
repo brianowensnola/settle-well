@@ -31,7 +31,16 @@ export async function updateRole(rowId, role) {
 }
 
 export async function removeMembership(rowId) {
-  await supabase.from('estate_users').delete().eq('id', rowId)
+  const { error } = await supabase.from('estate_users').delete().eq('id', rowId)
+  if (error) throw error
+}
+
+// Remove a person from every estate at once (deletes all their membership rows).
+// Does not delete their auth login — that's managed separately.
+export async function removePerson(membershipIds) {
+  if (!membershipIds?.length) return
+  const { error } = await supabase.from('estate_users').delete().in('id', membershipIds)
+  if (error) throw error
 }
 
 // Add a person to an estate. If they already have a login (auth_user_id), link

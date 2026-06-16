@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess, roleLabel, INVITE_ROLES } from '../lib/roles'
-import { loadPeople, updateRole, removeMembership, addMembership, updateDemographics, resetPassword, sendInvite } from '../lib/adminUsers'
+import { loadPeople, updateRole, removeMembership, removePerson, addMembership, updateDemographics, resetPassword, sendInvite } from '../lib/adminUsers'
 
 const BLANK_INVITE = { name: '', email: '', phone: '', relationship: '', role: 'heir', estates: [] }
 
@@ -18,6 +18,7 @@ export default function AdminUsers() {
   const [invite, setInvite] = useState(BLANK_INVITE)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [confirmRemove, setConfirmRemove] = useState(null)
 
   async function refresh() { setPeople(await loadPeople(estateIds)) }
 
@@ -40,8 +41,23 @@ export default function AdminUsers() {
 
   async function changeRole(rowId, role) { await updateRole(rowId, role); await refresh() }
   async function remove(rowId) {
-    if (!confirm('Remove this person from this estate?')) return
-    await removeMembership(rowId); await refresh()
+    setBusy(true); setMsg('')
+    try { await removeMembership(rowId); await refresh() }
+    catch (e) { setMsg(`Could not remove from estate: ${e.message}`) }
+    finally { setBusy(false) }
+  }
+
+  // Remove a person from every estate at once. Two-click confirm (no popup).
+  async function removeEntirely(p) {
+    if (confirmRemove !== p.key) { setConfirmRemove(p.key); return }
+    setConfirmRemove(null); setBusy(true); setMsg('')
+    try {
+      await removePerson(p.memberships.map(m => m.id))
+      await refresh()
+      setMsg(`Removed ${p.name || p.email} from all estates.${p.auth_user_id ? ' Their login still exists — delete it in Supabase → Authentication if you want it fully gone.' : ''}`)
+    } catch (e) {
+      setMsg(`Could not remove ${p.name || p.email}: ${e.message}`)
+    } finally { setBusy(false) }
   }
   async function addTo(person, estateId) {
     const role = person.memberships[0]?.role || 'heir'
@@ -111,6 +127,7 @@ export default function AdminUsers() {
         {people.length === 0 && <p className="text-sm text-gray-400">No people yet. Add someone below.</p>}
         {people.map(p => {
           const missingEstates = adminEstates.filter(e => !p.memberships.some(m => m.estate_id === e.id))
+          const isExec = p.memberships.some(m => m.role === 'administrator' || m.role === 'executor')
           return (
             <div key={p.key} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
               {editKey === p.key ? (
@@ -151,6 +168,14 @@ export default function AdminUsers() {
                             <button onClick={() => copyInvite(p)} className="text-xs text-gray-400 hover:underline">Copy link</button>
                           </>
                         : <button onClick={() => doReset(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">Reset password</button>}
+                      {!isExec && (
+                        confirmRemove === p.key
+                          ? <>
+                              <button onClick={() => removeEntirely(p)} disabled={busy} className="text-xs text-red-600 font-medium hover:underline disabled:opacity-40">Confirm remove</button>
+                              <button onClick={() => setConfirmRemove(null)} className="text-xs text-gray-400 hover:underline">cancel</button>
+                            </>
+                          : <button onClick={() => removeEntirely(p)} disabled={busy} className="text-xs text-red-500 hover:underline disabled:opacity-40">Remove</button>
+                      )}
                     </div>
                   </div>
 
