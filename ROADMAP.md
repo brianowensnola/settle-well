@@ -23,6 +23,13 @@ Items graduate into the structured backlog below when it's time to do them.
   meeting-reminder job (a scheduled function that texts the executor/attendees
   ahead of `estate_meetings.scheduled_at`). No US SMS provider avoids the
   registration step. Revisit as soon as the TFN can be set up.
+- **(2026-06-16)** RLS performance tuning (careful, later) — Supabase performance
+  advisor flags ~90 "multiple permissive policies" and ~17 "auth_rls_initplan"
+  (wrap `auth.uid()` in `(select auth.uid())` so it evaluates once per query, and
+  consolidate overlapping permissive policies). Pure micro-optimization; requires
+  rewriting RLS policies, so do it as a deliberate, well-tested pass — a mistake
+  here can reopen a security hole. Low urgency at current data size. (FK indexes
+  were already added, migration 058.)
 - **(2026-06-16)** Family tree / heirship function — a family-tree-type tool to
   help determine heirship (who inherits and in what shares). End-of-app-work item.
 - **(2026-06-16)** Anthropic billing safeguard — turn on auto-reload and/or a
