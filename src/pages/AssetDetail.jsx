@@ -29,6 +29,7 @@ export default function AssetDetail() {
   const [aiNote, setAiNote] = useState(null) // last AI extraction result for the review banner
   const [photoUrls, setPhotoUrls] = useState({}) // path -> signed url
   const [photoBusy, setPhotoBusy] = useState(false)
+  const [confirmDel, setConfirmDel] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [id])
@@ -101,6 +102,18 @@ export default function AssetDetail() {
     await supabase.from('estate_financials').update(patch).eq('id', id)
     setAsset(prev => ({ ...prev, ...patch }))
     setSaving(false)
+  }
+
+  async function deleteAsset() {
+    setSaving(true)
+    // Keep documents and tasks — just unlink them so nothing is orphaned.
+    await supabase.from('estate_documents').update({ asset_id: null }).eq('asset_id', asset.id)
+    await supabase.from('estate_tasks').update({ linked_financial_id: null }).eq('linked_financial_id', asset.id)
+    if (asset.photo_paths?.length) { try { await supabase.storage.from('estate-documents').remove(asset.photo_paths) } catch { /* best-effort */ } }
+    const { error } = await supabase.from('estate_financials').delete().eq('id', asset.id)
+    setSaving(false)
+    if (error) { alert('Could not delete: ' + error.message); return }
+    navigate('/assets')
   }
 
   // Add a checklist item as a "needed" document linked to this asset + obtain task.
@@ -202,7 +215,17 @@ export default function AssetDetail() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <button onClick={() => navigate('/assets')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3">← All assets</button>
-      <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white mb-3">{asset.name}</h1>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">{asset.name}</h1>
+        {confirmDel ? (
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={deleteAsset} disabled={saving} className="text-xs px-2.5 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">Confirm delete</button>
+            <button onClick={() => setConfirmDel(false)} className="text-xs text-gray-400 hover:underline">cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmDel(true)} className="text-xs text-red-500 hover:underline shrink-0">Delete asset</button>
+        )}
+      </div>
 
       {/* Completeness — required info for this asset */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
