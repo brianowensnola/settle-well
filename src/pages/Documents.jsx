@@ -19,6 +19,7 @@ export default function Documents() {
   const [renaming, setRenaming] = useState(null)   // doc id being renamed
   const [renameVal, setRenameVal] = useState('')
   const [movingDoc, setMovingDoc] = useState(null) // doc id being moved
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -124,11 +125,70 @@ export default function Documents() {
     setDocs(prev => prev.filter(d => d.id !== doc.id))
   }
 
+  // One document row (extracted so it can be reused under each type group).
+  const renderDocRow = doc => (
+    <div key={doc.id} className="px-4 py-3 flex items-start gap-3">
+      <div className="flex-1 min-w-0">
+        {renaming === doc.id ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <input value={renameVal} autoFocus
+              onChange={e => setRenameVal(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveRename(doc); if (e.key === 'Escape') setRenaming(null) }}
+              className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+            <button onClick={() => saveRename(doc)} className="text-xs px-2 py-1 bg-gray-900 text-white rounded-lg">Save</button>
+            <button onClick={() => setRenaming(null)} className="text-xs px-2 py-1 text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-gray-800 dark:text-white">{doc.name}</span>
+            <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">{DOC_TYPES[doc.doc_type] ?? doc.doc_type}</span>
+            {doc.requested && <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Requested from {doc.requested_from}</span>}
+          </div>
+        )}
+        {doc.notes && <div className="text-xs text-gray-500 mt-0.5">{doc.notes}</div>}
+        {movingDoc === doc.id && (
+          <div className="flex items-center gap-2 flex-wrap mt-1.5">
+            <span className="text-xs text-gray-500">Move to:</span>
+            <select defaultValue="" onChange={e => moveDoc(doc, e.target.value)}
+              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-xs focus:outline-none">
+              <option value="" disabled>Choose an estate…</option>
+              {otherEstates.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
+            </select>
+            <button onClick={() => setMovingDoc(null)} className="text-xs px-2 py-1 text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {canEdit && renaming !== doc.id && (
+          <button onClick={() => startRename(doc)} className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:underline">Rename</button>
+        )}
+        {canDelete && renaming !== doc.id && movingDoc !== doc.id && otherEstates.length > 0 && (
+          <button onClick={() => setMovingDoc(doc.id)} className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:underline">Move</button>
+        )}
+        {doc.have && doc.file_path && (
+          <button onClick={() => getUrl(doc)} className="text-xs text-blue-600 hover:underline">View</button>
+        )}
+        {canEdit && !doc.file_path && (
+          <label className="text-xs text-blue-600 hover:underline cursor-pointer">
+            {uploading === doc.id ? 'Uploading...' : 'Upload'}
+            <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.docx"
+              onChange={e => uploadFile(doc, e.target.files[0])} />
+          </label>
+        )}
+        {canDelete && renaming !== doc.id && (
+          <button onClick={() => deleteDoc(doc)} className="text-xs text-red-500 hover:text-red-700 hover:underline">Delete</button>
+        )}
+      </div>
+    </div>
+  )
+
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
   const haveDocs = docs.filter(d => d.have)
   const needDocs = docs.filter(d => !d.have && !d.requested)
   const requestedDocs = docs.filter(d => d.requested)
+  const typeLabel = t => DOC_TYPES[t] ?? (t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Other')
+  const TYPE_ORDER = Object.keys(DOC_TYPES)
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -149,6 +209,13 @@ export default function Documents() {
           </button>
         ))}
       </div>
+
+      <input
+        placeholder="Search documents..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200 mb-4"
+      />
 
       {adding && (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4 space-y-3">
@@ -193,78 +260,39 @@ export default function Documents() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-        {(() => {
-          const tabDocs = tab === 'have' ? haveDocs : tab === 'requested' ? requestedDocs : needDocs
-          return (
-            <>
-              {tabDocs.length === 0 && (
-                <div className="p-6 text-sm text-gray-400">No documents in this category.</div>
-              )}
-              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                {tabDocs.map(doc => (
-            <div key={doc.id} className="px-4 py-3 flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                {renaming === doc.id ? (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <input value={renameVal} autoFocus
-                      onChange={e => setRenameVal(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') saveRename(doc); if (e.key === 'Escape') setRenaming(null) }}
-                      className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
-                    <button onClick={() => saveRename(doc)} className="text-xs px-2 py-1 bg-gray-900 text-white rounded-lg">Save</button>
-                    <button onClick={() => setRenaming(null)} className="text-xs px-2 py-1 text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-gray-800 dark:text-white">{doc.name}</span>
-                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded">{DOC_TYPES[doc.doc_type] ?? doc.doc_type}</span>
-                    {doc.requested && <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Requested from {doc.requested_from}</span>}
-                  </div>
-                )}
-                {doc.notes && <div className="text-xs text-gray-500 mt-0.5">{doc.notes}</div>}
-                {movingDoc === doc.id && (
-                  <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                    <span className="text-xs text-gray-500">Move to:</span>
-                    <select
-                      defaultValue=""
-                      onChange={e => moveDoc(doc, e.target.value)}
-                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-xs focus:outline-none"
-                    >
-                      <option value="" disabled>Choose an estate…</option>
-                      {otherEstates.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
-                    </select>
-                    <button onClick={() => setMovingDoc(null)} className="text-xs px-2 py-1 text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
-                  </div>
-                )}
+      {(() => {
+        const base = tab === 'have' ? haveDocs : tab === 'requested' ? requestedDocs : needDocs
+        const q = search.trim().toLowerCase()
+        const filtered = q
+          ? base.filter(d => d.name.toLowerCase().includes(q) || (d.notes ?? '').toLowerCase().includes(q) || typeLabel(d.doc_type).toLowerCase().includes(q))
+          : base
+        if (filtered.length === 0) {
+          return <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 text-sm text-gray-400">
+            {q ? 'No documents match your search.' : 'No documents in this category.'}
+          </div>
+        }
+        // Group by type, ordered by the canonical type list, unknown types last.
+        const groups = {}
+        for (const d of filtered) (groups[d.doc_type || 'other'] ||= []).push(d)
+        const types = Object.keys(groups).sort((a, b) => {
+          const ia = TYPE_ORDER.indexOf(a), ib = TYPE_ORDER.indexOf(b)
+          return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b)
+        })
+        return (
+          <div className="space-y-4">
+            {types.map(type => (
+              <div key={type} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-800 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {typeLabel(type)} <span className="text-gray-400">({groups[type].length})</span>
+                </div>
+                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {groups[type].map(renderDocRow)}
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {canEdit && renaming !== doc.id && (
-                  <button onClick={() => startRename(doc)} className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:underline">Rename</button>
-                )}
-                {canDelete && renaming !== doc.id && movingDoc !== doc.id && otherEstates.length > 0 && (
-                  <button onClick={() => setMovingDoc(doc.id)} className="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:underline">Move</button>
-                )}
-                {doc.have && doc.file_path && (
-                  <button onClick={() => getUrl(doc)} className="text-xs text-blue-600 hover:underline">View</button>
-                )}
-                {canEdit && !doc.file_path && (
-                  <label className="text-xs text-blue-600 hover:underline cursor-pointer">
-                    {uploading === doc.id ? 'Uploading...' : 'Upload'}
-                    <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic,.docx"
-                      onChange={e => uploadFile(doc, e.target.files[0])} />
-                  </label>
-                )}
-                {canDelete && renaming !== doc.id && (
-                  <button onClick={() => deleteDoc(doc)} className="text-xs text-red-500 hover:text-red-700 hover:underline">Delete</button>
-                )}
-              </div>
-            </div>
-          ))}
-              </div>
-            </>
-          )
-        })()}
-      </div>
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }

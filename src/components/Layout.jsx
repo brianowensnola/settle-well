@@ -38,6 +38,8 @@ const SHARED_NAV = [
 const EXECUTOR_NAV = [
   { to: '/assistant',        label: 'AI Assistant' },
   { to: '/finances',         label: 'Finances' },
+  { to: '/documents',        label: 'Documents' },
+  { to: '/contacts',         label: 'Contacts' },
   { to: '/credentials',      label: 'Credentials' },
   { to: '/documents/upload', label: 'Upload Files' },
   { to: '/death-notices',    label: 'Death Notifications' },
@@ -352,7 +354,7 @@ export default function Layout() {
           </div>
         )}
         {/* Executor-tool banner — makes it unmistakable which estate you're editing */}
-        {currentEstate && EXECUTOR_NAV.some(n => pathname === n.to || pathname.startsWith(n.to + '/')) && (
+        {currentEstate && isFullAccess(role) && EXECUTOR_NAV.some(n => pathname === n.to || pathname.startsWith(n.to + '/')) && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-1.5 text-xs font-medium">
             ⚙️ Executor tool — working in the <strong>{currentEstate.deceased_name}</strong> estate
           </div>

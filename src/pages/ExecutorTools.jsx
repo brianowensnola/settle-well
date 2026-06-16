@@ -7,6 +7,8 @@ import { isFullAccess } from '../lib/roles'
 const TOOLS = [
   { to: '/assistant',        label: 'AI Assistant',     icon: '🤖', desc: 'Review the estate, match documents, run a forensic audit.' },
   { to: '/finances',         label: 'Finances',         icon: '💰', desc: 'Accounts, debts, monthly obligations, insurance, and assets.' },
+  { to: '/documents',        label: 'Documents',        icon: '📁', desc: 'All estate documents, grouped by type — have, requested, and needed.' },
+  { to: '/contacts',         label: 'Contacts',         icon: '👥', desc: 'Attorneys, banks, and other key contacts for this estate.' },
   { to: '/credentials',      label: 'Credentials',      icon: '🔑', desc: 'Account logins and access details for this estate.' },
   { to: '/documents/upload', label: 'Upload Files',     icon: '⬆️', desc: 'Upload documents into this estate.' },
   { to: '/death-notices',    label: 'Death Notifications', icon: '✉️', desc: 'Draft letters notifying agencies, banks, and companies of the death.' },
