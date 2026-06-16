@@ -92,11 +92,15 @@ export default function Inventory() {
             Object.keys(byType).sort().map(type => (
               <div key={type} className="mb-2">
                 <div className="text-xs font-semibold text-gray-500 mt-1 mb-0.5">{ASSET_TYPE_LABELS[type] ?? type}</div>
-                {byType[type].map(a => (
-                  <Row key={a.id} label={a.name}
-                    sub={[a.status && a.status !== 'undecided' ? a.status : null, a.beneficiary || null].filter(Boolean).join(' → ')}
-                    value={fmt(a.amount)} />
-                ))}
+                {byType[type].map(a => {
+                  const disposition = [a.status && a.status !== 'undecided' ? a.status : null, a.beneficiary || null].filter(Boolean).join(' → ')
+                  const sub = [
+                    a.vin_serial ? `VIN/SN ${a.vin_serial}` : null,
+                    a.asset_type === 'real_estate' && a.location ? a.location : null,
+                    disposition || null,
+                  ].filter(Boolean).join(' · ')
+                  return <Row key={a.id} label={a.name} sub={sub} value={fmt(a.amount)} />
+                })}
               </div>
             ))}
           <div className="flex justify-between font-semibold text-sm pt-1"><span>Total assets (excl. sold/distributed)</span><span className="tabular-nums">{fmt(totalAssets)}</span></div>
