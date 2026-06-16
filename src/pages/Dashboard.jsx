@@ -24,6 +24,9 @@ export default function Dashboard() {
   const [aiPending, setAiPending] = useState(0)
   const [meetings, setMeetings] = useState([])
   const [aiLastRun, setAiLastRun] = useState(null)
+  const [docCount, setDocCount] = useState(0)
+  const [userCount, setUserCount] = useState(0)
+  const [gsDismissed, setGsDismissed] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -36,7 +39,9 @@ export default function Dashboard() {
       supabase.from('estate_ai_suggestions').select('id').eq('estate_id', currentEstate.id).eq('status', 'pending'),
       supabase.from('estate_meetings').select('*').in('estate_id', (estates?.length ? estates.map(e => e.id) : [currentEstate.id])).eq('status', 'scheduled').order('scheduled_at'),
       supabase.from('estate_ai_agent_state').select('last_run_at').eq('estate_id', currentEstate.id).maybeSingle(),
-    ]).then(([t, l, f, m, a, mt, ag]) => {
+      supabase.from('estate_documents').select('id').eq('estate_id', currentEstate.id).not('file_path', 'is', null),
+      supabase.from('estate_users').select('id').eq('estate_id', currentEstate.id),
+    ]).then(([t, l, f, m, a, mt, ag, d, u]) => {
       setTasks(t.data ?? [])
       setLogs(l.data ?? [])
       setFinancials(f.data ?? [])
@@ -44,8 +49,11 @@ export default function Dashboard() {
       setAiPending((a.data ?? []).length)
       setMeetings(mt.data ?? [])
       setAiLastRun(ag.data?.last_run_at ?? null)
+      setDocCount((d.data ?? []).length)
+      setUserCount((u.data ?? []).length)
       setLoading(false)
     })
+    try { setGsDismissed(localStorage.getItem(`sw_gs_dismissed_${currentEstate.id}`) === '1') } catch { /* ignore */ }
   }, [currentEstate, estates])
 
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate found.</div>
@@ -76,6 +84,20 @@ export default function Dashboard() {
   const runway = monthlyBurn > 0 ? (totalBalance / monthlyBurn).toFixed(1) : '—'
   const totalLiabilities = liabilities.reduce((s, l) => s + (l.amount ?? 0), 0)
 
+  // Getting-started checklist for a new executor — auto-hides once complete.
+  const gsSteps = [
+    { label: 'Complete the estate intake', done: !!currentEstate.intake_complete, to: '/intake-review' },
+    { label: 'Upload key documents (death certificate, will)', done: docCount > 0, to: '/documents' },
+    { label: 'Record financial accounts', done: accounts.length > 0, to: '/finances' },
+    { label: 'Add family or heirs', done: userCount > 1, to: '/admin' },
+  ]
+  const gsDone = gsSteps.filter(s => s.done).length
+  const showGettingStarted = !gsDismissed && gsDone < gsSteps.length
+  function dismissGettingStarted() {
+    setGsDismissed(true)
+    try { localStorage.setItem(`sw_gs_dismissed_${currentEstate.id}`, '1') } catch { /* ignore */ }
+  }
+
   const dod = currentEstate.deceased_dod
   const days = daysSince(dod)
 
@@ -97,6 +119,28 @@ export default function Dashboard() {
           {currentEstate.group_id ? '+ Add family member' : '+ Add estate'}
         </button>
       </div>
+
+      {/* Getting started — guides a new executor; auto-hides when complete */}
+      {showGettingStarted && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="text-sm font-semibold text-blue-900 dark:text-blue-200">👋 Getting started · {gsDone}/{gsSteps.length}</div>
+            <button onClick={dismissGettingStarted} className="text-xs text-blue-500 dark:text-blue-400 hover:underline shrink-0">Hide</button>
+          </div>
+          <div className="h-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden mb-3">
+            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${Math.round((gsDone / gsSteps.length) * 100)}%` }} />
+          </div>
+          <div className="space-y-1.5">
+            {gsSteps.map(s => (
+              <Link key={s.to} to={s.to} className="flex items-center gap-2 text-sm hover:underline">
+                <span className={s.done ? 'text-green-600' : 'text-gray-400'}>{s.done ? '✓' : '○'}</span>
+                <span className={s.done ? 'text-gray-400 line-through' : 'text-blue-800 dark:text-blue-200'}>{s.label}</span>
+                {!s.done && <span className="text-blue-400 text-xs">→</span>}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Needs review */}
       {needsReview > 0 && (
