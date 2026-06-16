@@ -12,7 +12,10 @@ export default function ContactDetail() {
   const canDelete = isFullAccess(role)
   const [contact, setContact] = useState(null)
   const [interactions, setInteractions] = useState([])
+  const [meetings, setMeetings] = useState([])
   const [logForm, setLogForm] = useState({ direction: 'outbound', summary: '' })
+  const [meetingForm, setMeetingForm] = useState({ scheduled_at: '', meeting_type: 'initial', notes: '' })
+  const [prepBusy, setPrepBusy] = useState(null)
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [loading, setLoading] = useState(true)
@@ -22,12 +25,68 @@ export default function ContactDetail() {
     Promise.all([
       supabase.from('estate_contacts').select('*').eq('id', id).single(),
       supabase.from('estate_contact_interactions').select('*').eq('contact_id', id).order('created_at', { ascending: false }),
-    ]).then(([c, i]) => {
+      supabase.from('estate_meetings').select('*').eq('contact_id', id).order('scheduled_at', { ascending: false }),
+    ]).then(([c, i, m]) => {
       setContact(c.data)
       setInteractions(i.data ?? [])
+      setMeetings(m.data ?? [])
       setLoading(false)
     })
   }, [id])
+
+  async function scheduleMeeting() {
+    if (!meetingForm.scheduled_at) return
+    const { data: m } = await supabase.from('estate_meetings').insert({
+      estate_id: currentEstate.id, contact_id: id, contact_name: contact.name,
+      meeting_type: meetingForm.meeting_type, scheduled_at: meetingForm.scheduled_at,
+      notes: meetingForm.notes || null, status: 'scheduled',
+    }).select().single()
+    if (m) {
+      // Track the meeting as a task so progress shows on the board.
+      const when = new Date(meetingForm.scheduled_at).toLocaleString()
+      const { data: sec } = await supabase.from('estate_sections').select('id').eq('estate_id', currentEstate.id).eq('label', 'Phase 2 — First Week').maybeSingle()
+      const { data: task } = await supabase.from('estate_tasks').insert({
+        estate_id: currentEstate.id, section_id: sec?.id ?? null,
+        text: `Meeting: ${contact.name} (${meetingForm.meeting_type.replace('_', ' ')}) — ${when}`,
+        tag: 'Meeting', status: 'pending',
+      }).select('id').single()
+      if (task) { await supabase.from('estate_meetings').update({ linked_task_id: task.id }).eq('id', m.id); m.linked_task_id = task.id }
+      setMeetings(prev => [m, ...prev])
+    }
+    setMeetingForm({ scheduled_at: '', meeting_type: 'initial', notes: '' })
+  }
+
+  async function generatePrep(meeting) {
+    setPrepBusy(meeting.id)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const resp = await fetch('/.netlify/functions/meeting-prep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess?.session?.access_token}` },
+        body: JSON.stringify({ estateId: currentEstate.id, contactName: contact.name, contactRole: contact.role, meetingType: meeting.meeting_type, notes: meeting.notes }),
+      })
+      if (!resp.ok) throw new Error('prep request failed')
+      const { questions } = await resp.json()
+      const prep = (questions ?? []).map(q => ({ q, checked: false }))
+      await supabase.from('estate_meetings').update({ prep_questions: prep }).eq('id', meeting.id)
+      setMeetings(prev => prev.map(x => x.id === meeting.id ? { ...x, prep_questions: prep } : x))
+    } catch (e) { alert(`Couldn't generate prep questions: ${e.message}`) }
+    setPrepBusy(null)
+  }
+
+  async function togglePrep(meeting, idx) {
+    const prep = (meeting.prep_questions ?? []).map((p, i) => i === idx ? { ...p, checked: !p.checked } : p)
+    setMeetings(prev => prev.map(x => x.id === meeting.id ? { ...x, prep_questions: prep } : x))
+    await supabase.from('estate_meetings').update({ prep_questions: prep }).eq('id', meeting.id)
+  }
+
+  async function setMeetingStatus(meeting, status) {
+    await supabase.from('estate_meetings').update({ status }).eq('id', meeting.id)
+    if (status === 'completed' && meeting.linked_task_id) {
+      await supabase.from('estate_tasks').update({ status: 'done', updated_at: new Date().toISOString() }).eq('id', meeting.linked_task_id)
+    }
+    setMeetings(prev => prev.map(x => x.id === meeting.id ? { ...x, status } : x))
+  }
 
   async function logInteraction() {
     if (!logForm.summary.trim()) return
@@ -236,6 +295,78 @@ export default function ContactDetail() {
           </div>
         )}
       </div>
+
+      {/* Meetings (executor only) */}
+      {canDelete && (
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Meetings</h2>
+
+        {/* Schedule a meeting */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+          <input type="datetime-local" value={meetingForm.scheduled_at}
+            onChange={e => setMeetingForm(p => ({ ...p, scheduled_at: e.target.value }))}
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          <select value={meetingForm.meeting_type} onChange={e => setMeetingForm(p => ({ ...p, meeting_type: e.target.value }))}
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+            <option value="initial">Initial meeting</option>
+            <option value="follow_up">Follow-up</option>
+            <option value="call">Call</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <input value={meetingForm.notes} onChange={e => setMeetingForm(p => ({ ...p, notes: e.target.value }))}
+          placeholder="Purpose / notes (optional)"
+          className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none mb-2" />
+        <button onClick={scheduleMeeting} disabled={!meetingForm.scheduled_at}
+          className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-40">Schedule meeting</button>
+
+        {/* Meeting list */}
+        <div className="mt-4 space-y-3">
+          {meetings.map(m => {
+            const prep = m.prep_questions ?? []
+            return (
+              <div key={m.id} className={`border border-gray-200 dark:border-gray-800 rounded-lg p-3 ${m.status === 'completed' ? 'bg-green-50 dark:bg-green-900/10' : m.status === 'cancelled' ? 'opacity-60' : ''}`}>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="text-sm font-medium text-gray-800 dark:text-white capitalize">
+                    {m.meeting_type.replace('_', ' ')} · {m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : 'unscheduled'}
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${m.status === 'completed' ? 'bg-green-100 text-green-700' : m.status === 'cancelled' ? 'bg-gray-100 dark:bg-gray-800 text-gray-500' : 'bg-blue-100 text-blue-700'}`}>{m.status}</span>
+                </div>
+                {m.notes && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{m.notes}</div>}
+
+                {/* AI prep */}
+                {prep.length === 0 ? (
+                  <button onClick={() => generatePrep(m)} disabled={prepBusy === m.id}
+                    className="mt-2 text-xs px-2.5 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50">
+                    {prepBusy === m.id ? 'Generating…' : '✨ Generate prep questions'}
+                  </button>
+                ) : (
+                  <div className="mt-2">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Prep questions</div>
+                    <div className="space-y-1">
+                      {prep.map((p, i) => (
+                        <label key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                          <input type="checkbox" checked={!!p.checked} onChange={() => togglePrep(m, i)} className="mt-1" />
+                          <span className={p.checked ? 'line-through text-gray-400' : ''}>{p.q}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <button onClick={() => generatePrep(m)} disabled={prepBusy === m.id} className="mt-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">{prepBusy === m.id ? 'Regenerating…' : '↻ Regenerate'}</button>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="mt-2 flex items-center gap-3">
+                  {m.status === 'scheduled' && <button onClick={() => setMeetingStatus(m, 'completed')} className="text-xs text-green-700 hover:underline">Mark completed</button>}
+                  {m.status === 'scheduled' && <button onClick={() => setMeetingStatus(m, 'cancelled')} className="text-xs text-gray-400 hover:text-red-500 hover:underline">Cancel</button>}
+                  {m.linked_task_id && <Link to={`/tasks/${m.linked_task_id}`} className="text-xs text-blue-600 hover:underline">View task →</Link>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      )}
 
       {/* Log interaction (executor only) */}
       {canDelete && (

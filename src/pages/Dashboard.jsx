@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [financials, setFinancials] = useState([])
   const [mailPending, setMailPending] = useState(0)
   const [aiPending, setAiPending] = useState(0)
+  const [meetings, setMeetings] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -32,12 +33,14 @@ export default function Dashboard() {
       supabase.from('estate_financials').select('*').eq('estate_id', currentEstate.id),
       supabase.from('family_mail').select('id').eq('status', 'pending'),
       supabase.from('estate_ai_suggestions').select('id').eq('estate_id', currentEstate.id).eq('status', 'pending'),
-    ]).then(([t, l, f, m, a]) => {
+      supabase.from('estate_meetings').select('*').eq('estate_id', currentEstate.id).eq('status', 'scheduled').order('scheduled_at'),
+    ]).then(([t, l, f, m, a, mt]) => {
       setTasks(t.data ?? [])
       setLogs(l.data ?? [])
       setFinancials(f.data ?? [])
       setMailPending((m.data ?? []).length)
       setAiPending((a.data ?? []).length)
+      setMeetings(mt.data ?? [])
       setLoading(false)
     })
   }, [currentEstate])
@@ -100,6 +103,23 @@ export default function Dashboard() {
             {submittedCount > 0 && <Link to="/tasks" className="text-purple-700 dark:text-purple-300 hover:underline">{submittedCount} task{submittedCount === 1 ? '' : 's'} awaiting approval →</Link>}
             {mailPending > 0 && <Link to="/mail" className="text-purple-700 dark:text-purple-300 hover:underline">{mailPending} mail item{mailPending === 1 ? '' : 's'} to review →</Link>}
             {aiPending > 0 && <Link to="/assistant" className="text-purple-700 dark:text-purple-300 hover:underline">{aiPending} AI suggestion{aiPending === 1 ? '' : 's'} to review →</Link>}
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming meetings */}
+      {meetings.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
+          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📅 Upcoming meetings</div>
+          <div className="space-y-1.5">
+            {meetings.map(m => (
+              <Link key={m.id} to={m.contact_id ? `/contacts/${m.contact_id}` : '/contacts'} className="flex items-center justify-between gap-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1 -mx-2">
+                <span className="text-gray-800 dark:text-white truncate">
+                  {m.contact_name || 'Meeting'} <span className="text-gray-400 capitalize">· {m.meeting_type.replace('_', ' ')}</span>
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{m.scheduled_at ? new Date(m.scheduled_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+              </Link>
+            ))}
           </div>
         </div>
       )}
