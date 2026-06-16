@@ -16,6 +16,7 @@ export default function QuickEstateSetup() {
   const isMember = !!addToGroupId
   const intoFamilyName = location.state?.familyName ?? ''
   const [familyName, setFamilyName] = useState('')
+  const [acknowledged, setAcknowledged] = useState(false)
   const [form, setForm] = useState({
     deceased_name: '',
     deceased_dod: '',
@@ -244,9 +245,21 @@ export default function QuickEstateSetup() {
             />
           </div>
 
+          {!isMember && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <p className="text-xs text-amber-900 dark:text-amber-300 mb-2">
+                <strong>Executor acknowledgement.</strong> As executor/administrator you take on a fiduciary duty: act in the estate's and beneficiaries' best interest, keep accurate records, keep estate funds separate, and meet court/tax deadlines. SettleWell helps you organize and track this — it is <strong>not legal or tax advice</strong>, and does not replace your attorney or accountant.
+              </p>
+              <label className="flex items-start gap-2 text-xs text-amber-900 dark:text-amber-300">
+                <input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} className="mt-0.5" />
+                I understand my responsibilities as executor.
+              </label>
+            </div>
+          )}
+
           <button
             onClick={createEstate}
-            disabled={saving}
+            disabled={saving || (!isMember && !acknowledged)}
             className="w-full bg-gray-900 dark:bg-gray-700 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
           >
             {saving ? 'Creating...' : 'Create Estate'}
