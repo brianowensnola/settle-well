@@ -27,6 +27,8 @@ export default function AssetDetail() {
   const [uploading, setUploading] = useState(null)
   const [aiBusy, setAiBusy] = useState(false)
   const [aiNote, setAiNote] = useState(null) // last AI extraction result for the review banner
+  const [photoUrls, setPhotoUrls] = useState({}) // path -> signed url
+  const [photoBusy, setPhotoBusy] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { load() }, [id])
@@ -51,8 +53,41 @@ export default function AssetDetail() {
       setDocs(docRes.data ?? [])
       setTasks(taskRes.data ?? [])
       setAvailable(availRes.data ?? [])
+      refreshPhotoUrls(a.photo_paths ?? [])
     }
     setLoading(false)
+  }
+
+  async function refreshPhotoUrls(paths) {
+    if (!paths || paths.length === 0) { setPhotoUrls({}); return }
+    const { data } = await supabase.storage.from('estate-documents').createSignedUrls(paths, 3600)
+    setPhotoUrls(Object.fromEntries((data ?? []).map(r => [r.path, r.signedUrl])))
+  }
+
+  async function uploadPhotos(files) {
+    if (!files?.length) return
+    setPhotoBusy(true)
+    const added = []
+    for (const file of files) {
+      const path = `${asset.estate_id}/asset-photos/${asset.id}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+      const { error } = await supabase.storage.from('estate-documents').upload(path, file)
+      if (!error) added.push(path)
+    }
+    if (added.length) {
+      const next = [...(asset.photo_paths ?? []), ...added]
+      await supabase.from('estate_financials').update({ photo_paths: next }).eq('id', asset.id)
+      setAsset(prev => ({ ...prev, photo_paths: next }))
+      refreshPhotoUrls(next)
+    }
+    setPhotoBusy(false)
+  }
+
+  async function removePhoto(path) {
+    const next = (asset.photo_paths ?? []).filter(p => p !== path)
+    await supabase.from('estate_financials').update({ photo_paths: next }).eq('id', asset.id)
+    setAsset(prev => ({ ...prev, photo_paths: next }))
+    try { await supabase.storage.from('estate-documents').remove([path]) } catch { /* best-effort */ }
+    setPhotoUrls(prev => { const c = { ...prev }; delete c[path]; return c })
   }
 
   async function save() {
@@ -233,6 +268,32 @@ export default function AssetDetail() {
         <button onClick={save} disabled={saving} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
           {saving ? 'Saving…' : 'Save'}
         </button>
+      </div>
+
+      {/* Photos */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Photos</h2>
+          <label className="text-xs text-blue-600 hover:underline cursor-pointer">
+            {photoBusy ? 'Uploading…' : '+ Add photos'}
+            <input type="file" multiple accept="image/*" className="hidden" onChange={e => uploadPhotos(Array.from(e.target.files || []))} />
+          </label>
+        </div>
+        {(asset.photo_paths ?? []).length === 0 ? (
+          <div className="text-sm text-gray-400">No photos yet.</div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {(asset.photo_paths ?? []).map(path => (
+              <div key={path} className="relative group">
+                <a href={photoUrls[path]} target="_blank" rel="noopener noreferrer">
+                  <img src={photoUrls[path]} alt="asset" className="w-full h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-800" />
+                </a>
+                <button onClick={() => removePhoto(path)} title="Remove"
+                  className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Document checklist */}

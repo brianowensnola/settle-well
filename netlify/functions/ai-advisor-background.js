@@ -67,9 +67,15 @@ ${assets.join("\n") || "(none)"}
 RECENT NOTES (an action mentioned in a note but with no matching task is a gap worth surfacing):
 ${notes.join("\n") || "(none)"}
 
+QUALITY BAR — make every suggestion earn its place:
+- Be SPECIFIC to THIS estate. Reference the actual asset, account, note, document, or this state's probate process that triggers it (e.g. "File the Goodleap solar lien release once the loan is paid" — not "handle liens").
+- NO generic boilerplate that would apply to any estate (e.g. "stay organized", "keep records", "consult an attorney"), and nothing already implied by an existing task.
+- Favor the non-obvious, anticipatory things a first-time executor would miss (e.g. a vacant house's lawn/insurance, a recurring charge that keeps draining the estate, a deadline tied to date of death).
+- The detail must say WHY it matters or what specifically prompted it — not restate the title.
+- Quality over quantity: 3-10 high-value, distinct suggestions. Fewer great ones beats a long generic list.
+
 Return ONLY JSON:
-{"suggestions":[{"title":"short actionable task","detail":"one sentence on why this matters or what gap it fills","phase":"one of: ${PHASES.join(" | ")}"}]}
-Propose 5-15 of the most valuable, non-duplicative suggestions. If something in the notes implies an action with no task, include it.`;
+{"suggestions":[{"title":"short actionable task","detail":"one sentence: the specific trigger and why it matters","phase":"one of: ${PHASES.join(" | ")}"}]}`;
 
   const resp = await client.messages.create({
     model: ADVISOR_MODEL,
