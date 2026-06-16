@@ -18,6 +18,7 @@ export default function AllEstates() {
   const navigate = useNavigate()
   const { estates, currentEstate, switchEstate } = useEstate()
   const [estateStats, setEstateStats] = useState({})
+  const [meetings, setMeetings] = useState([])
   const [familyName, setFamilyName] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -68,6 +69,17 @@ export default function AllEstates() {
     }
 
     setEstateStats(stats)
+
+    // Upcoming meetings across all of this user's estates (filtered to the
+    // current family in render).
+    const { data: mtgs } = await supabase
+      .from('estate_meetings')
+      .select('*')
+      .in('estate_id', estates.map(e => e.id))
+      .eq('status', 'scheduled')
+      .order('scheduled_at')
+    setMeetings(mtgs ?? [])
+
     setLoading(false)
   }
 
@@ -77,6 +89,9 @@ export default function AllEstates() {
   // Only the current family's estates — other families never show here.
   const familyEstates = estates.filter(e =>
     currentEstate && (currentEstate.group_id ? e.group_id === currentEstate.group_id : e.id === currentEstate.id))
+  const familyEstateIds = new Set(familyEstates.map(e => e.id))
+  const estateName = eid => estates.find(e => e.id === eid)?.deceased_name ?? ''
+  const upcomingMeetings = meetings.filter(m => familyEstateIds.has(m.estate_id))
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto w-full">
@@ -96,6 +111,23 @@ export default function AllEstates() {
           </button>
         )}
       </div>
+
+      {upcomingMeetings.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6">
+          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📅 Upcoming meetings</div>
+          <div className="space-y-1.5">
+            {upcomingMeetings.map(m => (
+              <Link key={m.id} to={m.contact_id ? `/contacts/${m.contact_id}` : '/contacts'} className="flex items-center justify-between gap-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1 -mx-2">
+                <span className="text-gray-800 dark:text-white truncate">
+                  {m.contact_name || 'Meeting'} <span className="text-gray-400 capitalize">· {m.meeting_type.replace('_', ' ')}</span>
+                  {familyEstates.length > 1 && <span className="text-gray-400"> · {estateName(m.estate_id)}</span>}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{m.scheduled_at ? new Date(m.scheduled_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {familyEstates.map(estate => {

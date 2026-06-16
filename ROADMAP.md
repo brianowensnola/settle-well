@@ -15,6 +15,11 @@ Items graduate into the structured backlog below when it's time to do them.
 
 - **(2026-06-16)** Family tree / heirship function — a family-tree-type tool to
   help determine heirship (who inherits and in what shares). End-of-app-work item.
+- **(2026-06-16)** Anthropic billing safeguard — turn on auto-reload and/or a
+  low-balance email alert on the Anthropic account so AI features never silently
+  go dark when credits run out (the empty balance knocked out every AI feature
+  at once on 2026-06-16). App side already shows a friendly "temporarily
+  unavailable" message; this is the account-level prevention.
 - **(2026-06-14)** Archive estates on completion — when an estate is finished,
   archive it (don't delete): keep all data fully accessible long-term (issues
   surface for years), but move it out of the active view so the executor can take

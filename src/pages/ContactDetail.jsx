@@ -359,19 +359,20 @@ export default function ContactDetail() {
               <div key={m.id} className={`border border-gray-200 dark:border-gray-800 rounded-lg p-3 ${m.status === 'completed' ? 'bg-green-50 dark:bg-green-900/10' : m.status === 'cancelled' ? 'opacity-60' : ''}`}>
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="text-sm font-medium text-gray-800 dark:text-white capitalize">
-                    {m.meeting_type.replace('_', ' ')} · {editMtg?.id === m.id ? (
-                      <span className="inline-flex items-center gap-2 align-middle">
-                        <input type="datetime-local" value={editMtg.at} onChange={e => setEditMtg(s => ({ ...s, at: e.target.value }))}
-                          className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-xs focus:outline-none" />
-                        <button onClick={() => saveMeetingTime(m)} className="text-xs text-green-700 hover:underline">Save</button>
-                        <button onClick={() => setEditMtg(null)} className="text-xs text-gray-400 hover:underline">cancel</button>
-                      </span>
-                    ) : (
-                      <span className="normal-case">{m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : 'unscheduled'}</span>
-                    )}
+                    {m.meeting_type.replace('_', ' ')} · <span className="normal-case">{m.scheduled_at ? new Date(m.scheduled_at).toLocaleString() : 'unscheduled'}</span>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${m.status === 'completed' ? 'bg-green-100 text-green-700' : m.status === 'cancelled' ? 'bg-gray-100 dark:bg-gray-800 text-gray-500' : 'bg-blue-100 text-blue-700'}`}>{m.status}</span>
                 </div>
+                {/* Roomy date + time editor */}
+                {editMtg?.id === m.id && (
+                  <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center gap-2 flex-wrap">
+                    <label className="text-xs text-gray-500 dark:text-gray-400">Date &amp; time:</label>
+                    <input type="datetime-local" step="60" value={editMtg.at} onChange={e => setEditMtg(s => ({ ...s, at: e.target.value }))}
+                      className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" />
+                    <button onClick={() => saveMeetingTime(m)} className="px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-xs">Save</button>
+                    <button onClick={() => setEditMtg(null)} className="px-3 py-1.5 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</button>
+                  </div>
+                )}
                 {m.notes && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{m.notes}</div>}
 
                 {/* AI prep */}
