@@ -16,7 +16,7 @@ function fmt(n) {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { currentEstate } = useEstate()
+  const { currentEstate, estates } = useEstate()
   const [tasks, setTasks] = useState([])
   const [logs, setLogs] = useState([])
   const [financials, setFinancials] = useState([])
@@ -33,7 +33,7 @@ export default function Dashboard() {
       supabase.from('estate_financials').select('*').eq('estate_id', currentEstate.id),
       supabase.from('family_mail').select('id').eq('status', 'pending'),
       supabase.from('estate_ai_suggestions').select('id').eq('estate_id', currentEstate.id).eq('status', 'pending'),
-      supabase.from('estate_meetings').select('*').eq('estate_id', currentEstate.id).eq('status', 'scheduled').order('scheduled_at'),
+      supabase.from('estate_meetings').select('*').in('estate_id', (estates?.length ? estates.map(e => e.id) : [currentEstate.id])).eq('status', 'scheduled').order('scheduled_at'),
     ]).then(([t, l, f, m, a, mt]) => {
       setTasks(t.data ?? [])
       setLogs(l.data ?? [])
@@ -43,7 +43,7 @@ export default function Dashboard() {
       setMeetings(mt.data ?? [])
       setLoading(false)
     })
-  }, [currentEstate])
+  }, [currentEstate, estates])
 
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate found.</div>
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
@@ -116,6 +116,9 @@ export default function Dashboard() {
               <Link key={m.id} to={m.contact_id ? `/contacts/${m.contact_id}` : '/contacts'} className="flex items-center justify-between gap-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1 -mx-2">
                 <span className="text-gray-800 dark:text-white truncate">
                   {m.contact_name || 'Meeting'} <span className="text-gray-400 capitalize">· {m.meeting_type.replace('_', ' ')}</span>
+                  {estates?.length > 1 && estates.find(e => e.id === m.estate_id) && (
+                    <span className="text-gray-400"> · {estates.find(e => e.id === m.estate_id).deceased_name}</span>
+                  )}
                 </span>
                 <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{m.scheduled_at ? new Date(m.scheduled_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
               </Link>
