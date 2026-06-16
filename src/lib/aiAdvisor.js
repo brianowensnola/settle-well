@@ -1,4 +1,18 @@
-import { supabase } from './supabase'
+import { supabase, getAccessToken } from './supabase'
+
+// Executor-only: (re)generate the heir-facing progress update for an estate.
+// Returns { digest, at }.
+export async function generateHeirDigest(estateId) {
+  const token = await getAccessToken()
+  const resp = await fetch('/.netlify/functions/heir-digest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ estateId }),
+  })
+  const data = await resp.json().catch(() => ({}))
+  if (!resp.ok) throw new Error(data.error || 'Could not generate the update')
+  return data
+}
 
 // Kick off an advisor run (background function) and poll for the new
 // suggestions it produces. mode: 'review' | 'forensic'.

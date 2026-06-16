@@ -59,6 +59,17 @@ export default function HeirDashboard() {
         <p className="text-gray-600 dark:text-gray-400">Transparency Report</p>
       </div>
 
+      {/* Progress update from the executor */}
+      {currentEstate.heir_digest && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          <div className="flex items-baseline justify-between gap-3 mb-3 flex-wrap">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">📣 Progress update</h2>
+            {currentEstate.heir_digest_at && <span className="text-xs text-gray-400">as of {new Date(currentEstate.heir_digest_at).toLocaleDateString()}</span>}
+          </div>
+          <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{currentEstate.heir_digest}</div>
+        </div>
+      )}
+
       {/* Estate Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
+import { generateHeirDigest } from '../lib/aiAdvisor'
 import { STATUS_STYLES, STATUS_LABELS, ACTIVE_OBLIGATION_STATUSES } from '../lib/constants'
 
 function daysSince(dod) {
@@ -27,6 +28,10 @@ export default function Dashboard() {
   const [docCount, setDocCount] = useState(0)
   const [userCount, setUserCount] = useState(0)
   const [gsDismissed, setGsDismissed] = useState(false)
+  const [heirDigest, setHeirDigest] = useState(null)
+  const [heirDigestAt, setHeirDigestAt] = useState(null)
+  const [digestBusy, setDigestBusy] = useState(false)
+  const [showDigest, setShowDigest] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -41,7 +46,8 @@ export default function Dashboard() {
       supabase.from('estate_ai_agent_state').select('last_run_at').eq('estate_id', currentEstate.id).maybeSingle(),
       supabase.from('estate_documents').select('id').eq('estate_id', currentEstate.id).not('file_path', 'is', null),
       supabase.from('estate_users').select('id').eq('estate_id', currentEstate.id),
-    ]).then(([t, l, f, m, a, mt, ag, d, u]) => {
+      supabase.from('estates').select('heir_digest, heir_digest_at').eq('id', currentEstate.id).single(),
+    ]).then(([t, l, f, m, a, mt, ag, d, u, hd]) => {
       setTasks(t.data ?? [])
       setLogs(l.data ?? [])
       setFinancials(f.data ?? [])
@@ -51,6 +57,8 @@ export default function Dashboard() {
       setAiLastRun(ag.data?.last_run_at ?? null)
       setDocCount((d.data ?? []).length)
       setUserCount((u.data ?? []).length)
+      setHeirDigest(hd.data?.heir_digest ?? null)
+      setHeirDigestAt(hd.data?.heir_digest_at ?? null)
       setLoading(false)
     })
     try { setGsDismissed(localStorage.getItem(`sw_gs_dismissed_${currentEstate.id}`) === '1') } catch { /* ignore */ }
@@ -98,6 +106,15 @@ export default function Dashboard() {
     try { localStorage.setItem(`sw_gs_dismissed_${currentEstate.id}`, '1') } catch { /* ignore */ }
   }
 
+  async function generateDigest() {
+    setDigestBusy(true)
+    try {
+      const r = await generateHeirDigest(currentEstate.id)
+      setHeirDigest(r.digest); setHeirDigestAt(r.at); setShowDigest(true)
+    } catch (e) { alert(e.message || 'Could not generate the update') }
+    finally { setDigestBusy(false) }
+  }
+
   const dod = currentEstate.deceased_dod
   const days = daysSince(dod)
 
@@ -141,6 +158,29 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Heir progress update — executor generates; heirs see it on their dashboard */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-gray-800 dark:text-white">📣 Heir progress update</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {heirDigestAt
+                ? `Heirs currently see an update from ${new Date(heirDigestAt).toLocaleDateString()}. Refresh it after meaningful progress.`
+                : 'No update published yet. Generate a plain-language progress summary for the family (built from non-private activity only).'}
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            {heirDigest && <button onClick={() => setShowDigest(v => !v)} className="text-xs text-blue-600 hover:underline">{showDigest ? 'Hide' : 'Preview'}</button>}
+            <button onClick={generateDigest} disabled={digestBusy} className="text-xs px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white rounded-lg disabled:opacity-50">
+              {digestBusy ? 'Writing…' : heirDigest ? 'Refresh update' : 'Generate update'}
+            </button>
+          </div>
+        </div>
+        {showDigest && heirDigest && (
+          <div className="mt-3 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line border-t border-gray-100 dark:border-gray-800 pt-3">{heirDigest}</div>
+        )}
+      </div>
 
       {/* Needs review */}
       {needsReview > 0 && (
