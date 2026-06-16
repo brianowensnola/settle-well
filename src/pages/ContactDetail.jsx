@@ -65,7 +65,10 @@ export default function ContactDetail() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess?.session?.access_token}` },
         body: JSON.stringify({ estateId: currentEstate.id, contactName: contact.name, contactRole: contact.role, meetingType: meeting.meeting_type, notes: meeting.notes }),
       })
-      if (!resp.ok) throw new Error('prep request failed')
+      if (!resp.ok) {
+        const detail = await resp.json().catch(() => null)
+        throw new Error(detail?.error ? `${detail.error} (${resp.status})` : `server error ${resp.status}`)
+      }
       const { questions } = await resp.json()
       const prep = (questions ?? []).map(q => ({ q, checked: false }))
       await supabase.from('estate_meetings').update({ prep_questions: prep }).eq('id', meeting.id)
