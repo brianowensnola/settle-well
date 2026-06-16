@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
-import { ASSET_TYPE_LABELS, ASSET_DOC_CHECKLIST } from '../lib/assetTypes'
+import { ASSET_TYPE_LABELS, ASSET_DOC_CHECKLIST, assetRequiredItems } from '../lib/assetTypes'
 
 const DISPOSITIONS = ['undecided', 'keep', 'sell', 'transfer', 'gift', 'sold', 'distributed']
 const PHASE_FOR_TYPE = {
@@ -11,7 +11,7 @@ const PHASE_FOR_TYPE = {
   personal: 'Phase 6 — Real Estate & Property', business: 'Phase 8 — Business Interests',
   financial: 'Phase 4 — Financial Accounts', other: 'Phase 11 — Commonly Missed Items',
 }
-const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', currencySign: 'accounting', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 const inputCls = 'w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none'
 
 export default function AssetDetail() {
@@ -193,10 +193,35 @@ export default function AssetDetail() {
   const docByLabel = label => docs.find(d => d.name.toLowerCase() === label.toLowerCase())
   const set = (k, v) => setEdit(p => ({ ...p, [k]: v }))
 
+  // Per-item completeness — the required info for this asset (live as you edit).
+  const required = assetRequiredItems(edit, docs.some(d => d.file_path))
+  const reqDone = required.filter(r => r.done).length
+  const reqPct = Math.round((reqDone / required.length) * 100)
+  const reqColor = reqPct === 100 ? 'bg-green-500' : reqPct >= 50 ? 'bg-amber-500' : 'bg-red-500'
+
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <button onClick={() => navigate('/assets')} className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-3">← All assets</button>
-      <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white mb-4">{asset.name}</h1>
+      <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white mb-3">{asset.name}</h1>
+
+      {/* Completeness — required info for this asset */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Asset completeness</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400 tabular-nums">{reqDone} / {required.length} · {reqPct}%</span>
+        </div>
+        <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+          <div className={`h-full ${reqColor} rounded-full transition-all`} style={{ width: `${reqPct}%` }} />
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {required.map(r => (
+            <span key={r.label} className={`text-[11px] px-2 py-0.5 rounded-full ${r.done ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'}`}>
+              {r.done ? '✓' : '○'} {r.label}
+            </span>
+          ))}
+        </div>
+        {reqPct < 100 && <p className="text-xs text-gray-400 mt-2">Fill the items above (then Save) to complete this asset's record.</p>}
+      </div>
 
       {(aiBusy || aiNote) && (
         <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 rounded-lg p-3 mb-3 text-sm">

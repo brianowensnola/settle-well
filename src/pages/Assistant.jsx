@@ -10,7 +10,7 @@ const FIN_CATEGORY_LABEL = {
   account: 'Account', obligation: 'Monthly Obligation', liability: 'Liability',
   asset: 'Asset', insurance_resolved: 'Insurance — Resolved', insurance_pending: 'Insurance — Pending',
 }
-const fmtMoney = n => n == null ? null : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+const fmtMoney = n => n == null ? null : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', currencySign: 'accounting', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 
 // Auto-run the "what am I missing?" review at most this often per estate (per
 // device). Dedup on the server keeps repeats from piling up; this just limits

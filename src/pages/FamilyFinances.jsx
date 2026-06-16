@@ -5,7 +5,7 @@ import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { ACTIVE_OBLIGATION_STATUSES, DISPOSED_ASSET_STATUSES } from '../lib/constants'
 
-const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', currencySign: 'accounting', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 
 // Roll-up math, mirroring the single-estate Finances page so totals match.
 // Account balance = opening balance + its ledger activity.

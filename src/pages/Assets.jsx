@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
-import { ASSET_TYPE_LABELS } from '../lib/assetTypes'
+import { ASSET_TYPE_LABELS, assetRequiredItems } from '../lib/assetTypes'
 
-const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', currencySign: 'accounting', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 const DISPO_BADGE = {
   undecided: 'bg-gray-100 dark:bg-gray-800 text-gray-500',
   keep: 'bg-blue-100 text-blue-700', sell: 'bg-amber-100 text-amber-700',
@@ -16,6 +16,7 @@ const DISPO_BADGE = {
 export default function Assets() {
   const { currentEstate, role } = useEstate()
   const [assets, setAssets] = useState([])
+  const [docAssetIds, setDocAssetIds] = useState(new Set()) // assets that have a supporting file
   const [typeFilter, setTypeFilter] = useState('all')
   const [dispoFilter, setDispoFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -31,7 +32,19 @@ export default function Assets() {
       .or(`estate_id.eq.${currentEstate.id},shared_with.cs.{${currentEstate.id}}`)
       .eq('category', 'asset').order('name')
     setAssets(data ?? [])
+
+    // Which assets have at least one supporting document with a file.
+    const { data: docs } = await supabase.from('estate_documents')
+      .select('asset_id').eq('estate_id', currentEstate.id).not('asset_id', 'is', null).not('file_path', 'is', null)
+    setDocAssetIds(new Set((docs ?? []).map(d => d.asset_id)))
+
     setLoading(false)
+  }
+
+  function completeness(a) {
+    const items = assetRequiredItems(a, docAssetIds.has(a.id))
+    const done = items.filter(i => i.done).length
+    return Math.round((done / items.length) * 100)
   }
 
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
@@ -97,6 +110,16 @@ export default function Assets() {
                   {a.shared_with?.length > 0 && <span className="text-blue-500">· ↔ joint</span>}
                 </div>
               </div>
+              {(() => {
+                const pct = completeness(a)
+                const color = pct === 100 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                return (
+                  <span className="shrink-0 hidden sm:flex items-center gap-1.5 w-24" title={`${pct}% complete`}>
+                    <span className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden"><span className={`block h-full ${color} rounded-full`} style={{ width: `${pct}%` }} /></span>
+                    <span className="text-[11px] text-gray-400 tabular-nums w-8 text-right">{pct}%</span>
+                  </span>
+                )
+              })()}
               <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium capitalize ${DISPO_BADGE[a.status] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>{a.status || 'undecided'}</span>
               <span className="shrink-0 text-sm font-medium text-gray-700 dark:text-gray-300 w-20 text-right">{fmt(a.amount)}</span>
             </Link>

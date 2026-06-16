@@ -5,7 +5,7 @@ import { isFullAccess } from '../lib/roles'
 import { ASSET_TYPE_LABELS } from '../lib/assetTypes'
 import { DISPOSED_ASSET_STATUSES } from '../lib/constants'
 
-const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+const fmt = n => n == null ? '—' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', currencySign: 'accounting', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 
 export default function Inventory() {
   const { currentEstate, role } = useEstate()

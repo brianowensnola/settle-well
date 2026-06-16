@@ -10,6 +10,23 @@ export const ASSET_TYPE_LABELS = {
   other:       'Other',
 }
 
+// The required information for an asset, used to drive the completeness meter
+// (live on the detail page, compact on the list). `hasDoc` = at least one
+// supporting document with a file is attached. Returns [{label, done}].
+export function assetRequiredItems(a, hasDoc) {
+  const has = v => v != null && String(v).trim() !== ''
+  const items = [
+    { label: 'Estimated value', done: has(a.amount) },
+    { label: 'Valuation source', done: has(a.valuation_source) },
+    { label: 'Disposition decided', done: has(a.status) && a.status !== 'undecided' },
+  ]
+  if (a.asset_type === 'vehicle') items.push({ label: 'VIN / serial #', done: has(a.vin_serial) })
+  if (a.asset_type === 'real_estate') items.push({ label: 'Location / legal description', done: has(a.location) })
+  if (a.status === 'gift' || a.status === 'transfer') items.push({ label: 'Beneficiary', done: has(a.beneficiary) })
+  items.push({ label: 'Supporting document', done: !!hasDoc })
+  return items
+}
+
 // Standard document checklist per asset type. Each entry: label + the doc_type
 // to use when creating a "needed" document for it.
 export const ASSET_DOC_CHECKLIST = {
