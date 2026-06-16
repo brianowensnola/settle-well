@@ -33,35 +33,9 @@ export default function Login() {
   }
 
   async function autoLinkToEstate(user) {
-    // 1. Check if user is the administrator for any estate
-    const { data: estates } = await supabase
-      .from('estates')
-      .select('id, administrator_email')
-
-    if (estates) {
-      for (const estate of estates) {
-        if (estate.administrator_email?.toLowerCase() === user.email?.toLowerCase()) {
-          const { data: existing } = await supabase
-            .from('estate_users')
-            .select('id')
-            .eq('estate_id', estate.id)
-            .eq('auth_user_id', user.id)
-            .single()
-
-          if (!existing) {
-            await supabase.from('estate_users').insert({
-              estate_id: estate.id,
-              auth_user_id: user.id,
-              name: 'Brian Owens',
-              email: user.email,
-              role: 'administrator',
-            })
-          }
-        }
-      }
-    }
-
-    // 2. Check if user was invited as heir/observer (pending estate_users record)
+    // Link any pending invite (estate_users row by email, not yet claimed) to
+    // this login. Estate creation grants admin via the claim_new_estate_admin
+    // RPC, so there's no client-side self-insert here.
     const { data: pending } = await supabase
       .from('estate_users')
       .select('id, estate_id, role')

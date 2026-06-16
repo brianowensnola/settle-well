@@ -107,17 +107,9 @@ export default function NewEstate() {
 
       if (estateError) throw estateError
 
-      // Link user to estate as administrator
-      const { error: linkError } = await supabase
-        .from('estate_users')
-        .insert({
-          estate_id: estate.id,
-          auth_user_id: user.id,
-          name: user?.email?.split('@')[0] || 'Administrator',
-          email: user?.email,
-          role: 'administrator',
-        })
-
+      // Link the creator as administrator — done server-side (SECURITY DEFINER)
+      // so clients can't self-insert membership into arbitrary estates.
+      const { error: linkError } = await supabase.rpc('claim_new_estate_admin', { p_estate_id: estate.id })
       if (linkError) throw linkError
 
       // Create default sections
