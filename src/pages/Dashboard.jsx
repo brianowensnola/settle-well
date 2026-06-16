@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [mailPending, setMailPending] = useState(0)
   const [aiPending, setAiPending] = useState(0)
   const [meetings, setMeetings] = useState([])
+  const [aiLastRun, setAiLastRun] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -34,13 +35,15 @@ export default function Dashboard() {
       supabase.from('family_mail').select('id').eq('status', 'pending'),
       supabase.from('estate_ai_suggestions').select('id').eq('estate_id', currentEstate.id).eq('status', 'pending'),
       supabase.from('estate_meetings').select('*').in('estate_id', (estates?.length ? estates.map(e => e.id) : [currentEstate.id])).eq('status', 'scheduled').order('scheduled_at'),
-    ]).then(([t, l, f, m, a, mt]) => {
+      supabase.from('estate_ai_agent_state').select('last_run_at').eq('estate_id', currentEstate.id).maybeSingle(),
+    ]).then(([t, l, f, m, a, mt, ag]) => {
       setTasks(t.data ?? [])
       setLogs(l.data ?? [])
       setFinancials(f.data ?? [])
       setMailPending((m.data ?? []).length)
       setAiPending((a.data ?? []).length)
       setMeetings(mt.data ?? [])
+      setAiLastRun(ag.data?.last_run_at ?? null)
       setLoading(false)
     })
   }, [currentEstate, estates])
@@ -104,7 +107,11 @@ export default function Dashboard() {
             {mailPending > 0 && <Link to="/mail" className="text-purple-700 dark:text-purple-300 hover:underline">{mailPending} mail item{mailPending === 1 ? '' : 's'} to review →</Link>}
             {aiPending > 0 && <Link to="/assistant" className="text-purple-700 dark:text-purple-300 hover:underline">{aiPending} AI suggestion{aiPending === 1 ? '' : 's'} to review →</Link>}
           </div>
+          {aiLastRun && <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">Assistant last checked {new Date(aiLastRun).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
         </div>
+      )}
+      {needsReview === 0 && aiLastRun && (
+        <div className="text-xs text-gray-400 mb-4">🤖 Assistant last checked {new Date(aiLastRun).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} — nothing new to review.</div>
       )}
 
       {/* Upcoming meetings */}
