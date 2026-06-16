@@ -40,6 +40,7 @@ export default function TaskDetail() {
   const [estateUsers, setEstateUsers] = useState([])
   const [editingAssignment, setEditingAssignment] = useState(false)
   const [newAssignedTo, setNewAssignedTo] = useState('')
+  const [meeting, setMeeting] = useState(null)   // meeting linked to this task (if any)
 
   useEffect(() => {
     if (!id) return
@@ -87,6 +88,14 @@ export default function TaskDetail() {
       .eq('estate_id', t.data?.estate_id)
     setEstateUsers(users ?? [])
     setNewAssignedTo(t.data?.assigned_to || '')
+
+    // If a meeting is tracked by this task, load it so its prep checklist shows here too.
+    const { data: mtg } = await supabase
+      .from('estate_meetings')
+      .select('*')
+      .eq('linked_task_id', id)
+      .maybeSingle()
+    setMeeting(mtg ?? null)
 
     // If this is a mail review task, load mail items and contacts
     if (t.data?.tag === 'mail-review') {
@@ -142,6 +151,14 @@ export default function TaskDetail() {
     }).select().single()
     if (data) setLogs(prev => [...prev, data])
     setNoteText('')
+  }
+
+  // Check off a prep question on the linked meeting (kept in sync with ContactDetail).
+  async function toggleMeetingPrep(idx) {
+    if (!meeting) return
+    const prep = (meeting.prep_questions ?? []).map((p, i) => i === idx ? { ...p, checked: !p.checked } : p)
+    setMeeting(prev => ({ ...prev, prep_questions: prep }))
+    await supabase.from('estate_meetings').update({ prep_questions: prep }).eq('id', meeting.id)
   }
 
   async function saveSubtask() {
@@ -457,6 +474,30 @@ export default function TaskDetail() {
           )}
         </div>
       </div>
+
+      {/* Meeting prep — surfaces the linked meeting's checklist on the task */}
+      {meeting && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              📅 Meeting{meeting.scheduled_at ? ` · ${new Date(meeting.scheduled_at).toLocaleString()}` : ''}
+            </h2>
+            {meeting.contact_id && <Link to={`/contacts/${meeting.contact_id}`} className="text-xs text-blue-600 hover:underline">Open meeting →</Link>}
+          </div>
+          {(meeting.prep_questions?.length ?? 0) === 0 ? (
+            <p className="text-sm text-gray-400">No prep questions yet — generate them from the contact's meeting card.</p>
+          ) : (
+            <div className="space-y-1">
+              {meeting.prep_questions.map((p, i) => (
+                <label key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={!!p.checked} onChange={() => toggleMeetingPrep(i)} className="mt-1" />
+                  <span className={p.checked ? 'line-through text-gray-400' : ''}>{p.q}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Parent task — nest this task under another, or detach it */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
