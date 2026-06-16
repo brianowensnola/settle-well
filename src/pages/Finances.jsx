@@ -129,6 +129,7 @@ export default function Finances() {
       estate_id: currentEstate.id,
       category: 'asset',
       name: assetForm.name.trim(),
+      asset_type: assetForm.type,
       amount: assetForm.value ? Number(assetForm.value) : null,
       status: assetForm.status,
       notes: assetForm.notes,
@@ -386,6 +387,9 @@ export default function Finances() {
 
                     {expanded[row.id] && (
                       <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-800 text-sm space-y-2">
+                        {cat.key === 'asset' && (
+                          <Link to={`/assets/${row.id}`} className="inline-block text-xs text-blue-600 hover:underline font-medium">Open in Asset Manager → (value, titles/docs checklist, disposition)</Link>
+                        )}
                         {row.lender && <div><span className="text-gray-400">Lender: </span>{row.lender}</div>}
                         {row.collateral && <div><span className="text-gray-400">Collateral: </span>{row.collateral}</div>}
                         {row.notes && <div className="text-gray-600 dark:text-gray-400">{row.notes}</div>}

@@ -34,6 +34,7 @@ export const PAGE_ROLES = {
   '/all-estates':      ['administrator'],
   '/all-tasks':        ['administrator', 'collaborator'],
   '/family-finances':  ['administrator'],
+  '/assets':           ['administrator'],
   '/assistant':        ['administrator'],
   '/admin':            ['administrator'],
   '/executor':         ['administrator'],
