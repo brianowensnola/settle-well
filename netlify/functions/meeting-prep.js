@@ -7,6 +7,16 @@ const admin = createClient(
 );
 const client = new Anthropic();
 
+// Map raw AI/API errors to a calm, user-facing message (real error stays in logs).
+function friendlyAiError(e) {
+  const m = (e?.message || String(e) || "").toLowerCase();
+  if (m.includes("credit balance") || m.includes("billing") || m.includes("quota") || m.includes("payment"))
+    return "The AI assistant is temporarily unavailable. Please try again later.";
+  if (m.includes("overloaded") || m.includes("rate limit") || m.includes("429") || m.includes("529"))
+    return "The AI assistant is busy right now. Please try again in a moment.";
+  return "The AI assistant is temporarily unavailable. Please try again shortly.";
+}
+
 // Generate a standard, estate-tailored list of questions/concerns an executor
 // should bring to a meeting (especially an initial meeting) with a given
 // contact. Executor-only. Returns { questions: [...] }.
@@ -53,6 +63,6 @@ Return ONLY JSON: {"questions":["...", "..."]} with 6-12 concise questions.`;
     return { statusCode: 200, body: JSON.stringify({ questions }) };
   } catch (e) {
     console.error("meeting-prep error:", e);
-    return { statusCode: 500, body: JSON.stringify({ error: e.message || "prep failed" }) };
+    return { statusCode: 500, body: JSON.stringify({ error: friendlyAiError(e) }) };
   }
 };

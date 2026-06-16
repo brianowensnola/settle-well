@@ -64,15 +64,20 @@ export default function AdminUsers() {
     await addMembership(estateId, person, role); await refresh()
   }
   function copyInvite(person) {
-    const url = `https://settle-well.netlify.app/invite?email=${encodeURIComponent(person.email)}`
+    // Existing logins get a sign-in link; pending people get the signup link.
+    const url = person.auth_user_id
+      ? `https://settle-well.netlify.app/login`
+      : `https://settle-well.netlify.app/invite?email=${encodeURIComponent(person.email)}`
     navigator.clipboard.writeText(url)
-    setMsg(`Invite link copied — send it to ${person.name || person.email}. They open it, create a password, and they're connected.`)
+    setMsg(person.auth_user_id
+      ? `Sign-in link copied — send it to ${person.name || person.email}.`
+      : `Invite link copied — send it to ${person.name || person.email}. They open it, create a password, and they're connected.`)
   }
 
-  // Send the invitation (email + optional text) and report what went out.
-  async function fireInvite({ email, name, phone, estateName }) {
+  // Send the invitation/access link (email + optional text) and report what went out.
+  async function fireInvite({ email, name, phone, estateName, existing }) {
     try {
-      const r = await sendInvite({ email, name, phone, estateName })
+      const r = await sendInvite({ email, name, phone, estateName, existing })
       const parts = []
       parts.push(r.email?.sent ? 'email sent' : `email failed (${r.email?.error || 'unknown'})`)
       if (r.sms) parts.push(r.sms.sent ? 'text sent' : `text failed (${r.sms.error || 'unknown'})`)
@@ -84,7 +89,7 @@ export default function AdminUsers() {
 
   async function sendInviteToPerson(p) {
     setBusy(true); setMsg('')
-    try { await fireInvite({ email: p.email, name: p.name, phone: p.phone, estateName: estateName(p.memberships[0]?.estate_id) }) }
+    try { await fireInvite({ email: p.email, name: p.name, phone: p.phone, estateName: estateName(p.memberships[0]?.estate_id), existing: !!p.auth_user_id }) }
     finally { setBusy(false) }
   }
 
@@ -162,12 +167,13 @@ export default function AdminUsers() {
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button onClick={() => startEdit(p)} className="text-xs text-blue-600 hover:underline">Edit</button>
-                      {!p.auth_user_id && p.email
-                        ? <>
-                            <button onClick={() => sendInviteToPerson(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">Send invite</button>
-                            <button onClick={() => copyInvite(p)} className="text-xs text-gray-400 hover:underline">Copy link</button>
-                          </>
-                        : <button onClick={() => doReset(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">Reset password</button>}
+                      {p.email && (
+                        <>
+                          <button onClick={() => sendInviteToPerson(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">{p.auth_user_id ? 'Send link' : 'Send invite'}</button>
+                          <button onClick={() => copyInvite(p)} className="text-xs text-gray-400 hover:underline">Copy link</button>
+                        </>
+                      )}
+                      {p.auth_user_id && <button onClick={() => doReset(p)} disabled={busy} className="text-xs text-blue-600 hover:underline disabled:opacity-40">Reset password</button>}
                       {!isExec && (
                         confirmRemove === p.key
                           ? <>

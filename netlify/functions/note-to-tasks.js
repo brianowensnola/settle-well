@@ -7,6 +7,16 @@ const supabase = createClient(
 );
 const client = new Anthropic();
 
+// Map raw AI/API errors to a calm, user-facing message (real error stays in logs).
+function friendlyAiError(e) {
+  const m = (e?.message || String(e) || "").toLowerCase();
+  if (m.includes("credit balance") || m.includes("billing") || m.includes("quota") || m.includes("payment"))
+    return "The AI assistant is temporarily unavailable. Please try again later.";
+  if (m.includes("overloaded") || m.includes("rate limit") || m.includes("429") || m.includes("529"))
+    return "The AI assistant is busy right now. Please try again in a moment.";
+  return "The AI assistant is temporarily unavailable. Please try again shortly.";
+}
+
 const PHASES = [
   "Phase 1 — Immediate", "Phase 2 — First Week", "Phase 3 — Government Notifications",
   "Phase 4 — Financial Accounts", "Phase 5 — Insurance", "Phase 6 — Real Estate & Property",
@@ -73,6 +83,6 @@ Return at most 3 tasks. Prefer zero over a weak guess.`;
   } catch (e) {
     console.error("note-to-tasks error:", e);
     // Non-fatal: saving the note already succeeded; just return no suggestions.
-    return { statusCode: 200, body: JSON.stringify({ tasks: [], error: e.message }) };
+    return { statusCode: 200, body: JSON.stringify({ tasks: [], error: friendlyAiError(e) }) };
   }
 };

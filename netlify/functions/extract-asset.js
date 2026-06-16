@@ -7,6 +7,16 @@ const admin = createClient(
 );
 const client = new Anthropic();
 
+// Map raw AI/API errors to a calm, user-facing message (real error stays in logs).
+function friendlyAiError(e) {
+  const m = (e?.message || String(e) || "").toLowerCase();
+  if (m.includes("credit balance") || m.includes("billing") || m.includes("quota") || m.includes("payment"))
+    return "The AI assistant is temporarily unavailable. Please try again later.";
+  if (m.includes("overloaded") || m.includes("rate limit") || m.includes("429") || m.includes("529"))
+    return "The AI assistant is busy right now. Please try again in a moment.";
+  return "The AI assistant is temporarily unavailable. Please try again shortly.";
+}
+
 // Read an uploaded asset document (title, registration, deed, statement, etc.)
 // and extract structured asset fields to pre-fill the asset record. Executor-only.
 export const handler = async (event) => {
@@ -59,6 +69,6 @@ Return ONLY JSON:
     return { statusCode: 200, body: JSON.stringify(parsed) };
   } catch (e) {
     console.error("extract-asset error:", e);
-    return { statusCode: 500, body: JSON.stringify({ error: e.message || "extract failed" }) };
+    return { statusCode: 500, body: JSON.stringify({ error: friendlyAiError(e) }) };
   }
 };

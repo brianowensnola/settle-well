@@ -29,9 +29,9 @@ function inviteUrl(email) {
 // Executor-only: send a sign-up invitation (email + optional SMS) to a person
 // who has been added to an estate but hasn't created a login yet.
 export const handler = async (event) => {
-  let email, name, phone, estateName;
+  let email, name, phone, estateName, existing;
   try {
-    ({ email, name, phone, estateName } = JSON.parse(event.body));
+    ({ email, name, phone, estateName, existing } = JSON.parse(event.body));
   } catch {
     return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) };
   }
@@ -57,14 +57,26 @@ export const handler = async (event) => {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "BREVO_API_KEY is not configured" }) };
 
-  const url = inviteUrl(email);
+  // Existing logins get a sign-in link; new people get the account-setup link.
+  const url = existing ? `${SITE_URL}/login` : inviteUrl(email);
   const who = name || email;
   const estatePhrase = estateName ? `the ${estateName} estate` : "an estate";
+  const subject = existing ? "Your SettleWell access link" : "You've been invited to SettleWell";
   const result = { email: null, sms: null };
 
-  // 3. Send the invitation email via Brevo's transactional email API
+  // 3. Send the invitation/access email via Brevo's transactional email API
   try {
-    const html = `
+    const html = existing ? `
+      <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#1f2937">
+        <h2 style="color:#111827">Your SettleWell access link</h2>
+        <p>Hi ${who},</p>
+        <p>Here's your link to sign in to <strong>${estatePhrase}</strong> on SettleWell:</p>
+        <p style="margin:24px 0">
+          <a href="${url}" style="background:#111827;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;display:inline-block">Sign in</a>
+        </p>
+        <p style="font-size:13px;color:#6b7280">Or paste this link into your browser:<br><a href="${url}">${url}</a></p>
+        <p style="font-size:13px;color:#6b7280">Sign in with the email and password you already set up. Forgot it? Ask the executor to reset your password.</p>
+      </div>` : `
       <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#1f2937">
         <h2 style="color:#111827">You've been invited to SettleWell</h2>
         <p>Hi ${who},</p>
@@ -82,7 +94,7 @@ export const handler = async (event) => {
       body: JSON.stringify({
         sender: { email: FROM_EMAIL, name: FROM_NAME },
         to: [{ email, name: name || undefined }],
-        subject: "You've been invited to SettleWell",
+        subject,
         htmlContent: html,
       }),
     });
@@ -103,7 +115,9 @@ export const handler = async (event) => {
           type: "transactional",
           sender: SMS_SENDER,
           recipient: e164,
-          content: `You've been invited to ${estateName || "an estate"} on SettleWell. Set up your account: ${url}`,
+          content: existing
+            ? `Your SettleWell sign-in link for ${estateName || "an estate"}: ${url}`
+            : `You've been invited to ${estateName || "an estate"} on SettleWell. Set up your account: ${url}`,
         }),
       });
       if (resp.ok) result.sms = { sent: true };

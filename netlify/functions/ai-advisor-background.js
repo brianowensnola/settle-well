@@ -7,6 +7,16 @@ const supabase = createClient(
 );
 const client = new Anthropic();
 
+// Map raw AI/API errors to a calm, user-facing message (real error stays in logs).
+function friendlyAiError(e) {
+  const m = (e?.message || String(e) || "").toLowerCase();
+  if (m.includes("credit balance") || m.includes("billing") || m.includes("quota") || m.includes("payment"))
+    return "The AI assistant is temporarily unavailable. Please try again later.";
+  if (m.includes("overloaded") || m.includes("rate limit") || m.includes("429") || m.includes("529"))
+    return "The AI assistant is busy right now. Please try again in a moment.";
+  return "The AI assistant is temporarily unavailable. Please try again shortly.";
+}
+
 // Reasoning-heavy passes (estate review, forensic consolidation) use the most
 // capable model for depth; high-volume vision/extraction stays on Sonnet for
 // speed/cost.
@@ -349,6 +359,6 @@ export const handler = async (event) => {
     return { statusCode: 200, body: JSON.stringify({ success: true, count: rows.length }) };
   } catch (e) {
     console.error("AI advisor error:", e);
-    return { statusCode: 500, body: JSON.stringify({ error: e.message || "advisor failed" }) };
+    return { statusCode: 500, body: JSON.stringify({ error: friendlyAiError(e) }) };
   }
 };

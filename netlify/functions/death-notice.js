@@ -7,6 +7,16 @@ const admin = createClient(
 );
 const client = new Anthropic();
 
+// Map raw AI/API errors to a calm, user-facing message (real error stays in logs).
+function friendlyAiError(e) {
+  const m = (e?.message || String(e) || "").toLowerCase();
+  if (m.includes("credit balance") || m.includes("billing") || m.includes("quota") || m.includes("payment"))
+    return "The AI assistant is temporarily unavailable. Please try again later.";
+  if (m.includes("overloaded") || m.includes("rate limit") || m.includes("429") || m.includes("529"))
+    return "The AI assistant is busy right now. Please try again in a moment.";
+  return "The AI assistant is temporarily unavailable. Please try again shortly.";
+}
+
 // Draft a formal death-notification letter for a recipient, pre-filled from the
 // estate's data. Executor-only. Returns the letter text for the executor to
 // review, edit, and send.
@@ -86,6 +96,6 @@ Output the letter text, then on a new line "===SOURCES===" followed by the URL(s
     return { statusCode: 200, body: JSON.stringify({ letter, sources }) };
   } catch (e) {
     console.error("death-notice error:", e);
-    return { statusCode: 500, body: JSON.stringify({ error: e.message || "draft failed" }) };
+    return { statusCode: 500, body: JSON.stringify({ error: friendlyAiError(e) }) };
   }
 };

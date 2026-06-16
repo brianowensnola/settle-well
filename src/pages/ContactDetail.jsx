@@ -71,7 +71,7 @@ export default function ContactDetail() {
       })
       if (!resp.ok) {
         const detail = await resp.json().catch(() => null)
-        throw new Error(detail?.error ? `${detail.error} (${resp.status})` : `server error ${resp.status}`)
+        throw new Error(detail?.error || `Something went wrong (${resp.status}). Please try again.`)
       }
       const { questions } = await resp.json()
       const prep = (questions ?? []).map(q => ({ q, checked: false }))

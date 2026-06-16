@@ -74,12 +74,12 @@ export async function updateDemographics(membershipIds, fields) {
 
 // Executor-only: send a sign-up invitation (email + optional SMS) to a person.
 // Returns { email: {sent, error?}, sms: {sent, error?}|null }.
-export async function sendInvite({ email, name, phone, estateName }) {
+export async function sendInvite({ email, name, phone, estateName, existing }) {
   const token = await getAccessToken()
   const resp = await fetch('/.netlify/functions/send-invite', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ email, name, phone, estateName }),
+    body: JSON.stringify({ email, name, phone, estateName, existing: !!existing }),
   })
   const data = await resp.json().catch(() => ({}))
   if (!resp.ok) throw new Error(data.error || 'Invite failed')
