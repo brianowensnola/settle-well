@@ -13,6 +13,8 @@ finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
 "add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
 Items graduate into the structured backlog below when it's time to do them.
 
+- **(2026-06-16)** Family tree / heirship function — a family-tree-type tool to
+  help determine heirship (who inherits and in what shares). End-of-app-work item.
 - **(2026-06-14)** Archive estates on completion — when an estate is finished,
   archive it (don't delete): keep all data fully accessible long-term (issues
   surface for years), but move it out of the active view so the executor can take

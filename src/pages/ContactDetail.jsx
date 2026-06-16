@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { CONTACT_ROLES } from '../lib/constants'
@@ -59,10 +59,10 @@ export default function ContactDetail() {
   async function generatePrep(meeting) {
     setPrepBusy(meeting.id)
     try {
-      const { data: sess } = await supabase.auth.getSession()
+      const token = await getAccessToken()
       const resp = await fetch('/.netlify/functions/meeting-prep', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess?.session?.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estateId: currentEstate.id, contactName: contact.name, contactRole: contact.role, meetingType: meeting.meeting_type, notes: meeting.notes }),
       })
       if (!resp.ok) {

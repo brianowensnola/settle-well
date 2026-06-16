@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { ASSET_TYPE_LABELS, ASSET_DOC_CHECKLIST } from '../lib/assetTypes'
@@ -159,10 +159,10 @@ export default function AssetDetail() {
     if (!doc.file_path) return
     setAiBusy(true); setAiNote(null)
     try {
-      const { data: sess } = await supabase.auth.getSession()
+      const token = await getAccessToken()
       const resp = await fetch('/.netlify/functions/extract-asset', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess?.session?.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estateId: asset.estate_id, filePath: doc.file_path, assetType: edit.asset_type }),
       })
       if (!resp.ok) throw new Error('extract failed')

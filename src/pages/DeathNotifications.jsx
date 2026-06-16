@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { DEATH_NOTIFICATION_DIRECTORY } from '../lib/deathNotificationDirectory'
@@ -58,10 +58,10 @@ export default function DeathNotifications() {
     if (!form.name.trim()) { setError('Enter who the notice is going to.'); return }
     setBusy(true); reset()
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const token = await getAccessToken()
       const resp = await fetch('/.netlify/functions/death-notice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estateId: currentEstate.id, recipientName: form.name, recipientType: form.type, recipientAddress: form.address, notes: form.notes }),
       })
       const data = await resp.json()

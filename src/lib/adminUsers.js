@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, getAccessToken } from './supabase'
 
 // Load everyone across the given estates, grouped into one entry per person
 // (keyed by email, falling back to name). Each person carries their per-estate
@@ -75,11 +75,10 @@ export async function updateDemographics(membershipIds, fields) {
 // Executor-only: send a sign-up invitation (email + optional SMS) to a person.
 // Returns { email: {sent, error?}, sms: {sent, error?}|null }.
 export async function sendInvite({ email, name, phone, estateName }) {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('Not signed in')
+  const token = await getAccessToken()
   const resp = await fetch('/.netlify/functions/send-invite', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ email, name, phone, estateName }),
   })
   const data = await resp.json().catch(() => ({}))
@@ -89,11 +88,10 @@ export async function sendInvite({ email, name, phone, estateName }) {
 
 // Executor-only password reset via the secured server function.
 export async function resetPassword(targetUserId, newPassword) {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('Not signed in')
+  const token = await getAccessToken()
   const resp = await fetch('/.netlify/functions/admin-set-password', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ targetUserId, newPassword }),
   })
   if (!resp.ok) {
