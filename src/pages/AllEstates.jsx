@@ -19,6 +19,8 @@ export default function AllEstates() {
   const { estates, currentEstate, switchEstate } = useEstate()
   const [estateStats, setEstateStats] = useState({})
   const [meetings, setMeetings] = useState([])
+  const [aiByEstate, setAiByEstate] = useState({})       // estateId -> pending suggestion count
+  const [lastRunByEstate, setLastRunByEstate] = useState({}) // estateId -> last sweep time
   const [familyName, setFamilyName] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -80,6 +82,19 @@ export default function AllEstates() {
       .order('scheduled_at')
     setMeetings(mtgs ?? [])
 
+    // Pending AI findings + when the background agent last ran, per estate.
+    const ids = estates.map(e => e.id)
+    const [sugg, agentState] = await Promise.all([
+      supabase.from('estate_ai_suggestions').select('estate_id').in('estate_id', ids).eq('status', 'pending'),
+      supabase.from('estate_ai_agent_state').select('estate_id, last_run_at').in('estate_id', ids),
+    ])
+    const aiCounts = {}
+    for (const s of (sugg.data ?? [])) aiCounts[s.estate_id] = (aiCounts[s.estate_id] ?? 0) + 1
+    setAiByEstate(aiCounts)
+    const runs = {}
+    for (const r of (agentState.data ?? [])) runs[r.estate_id] = r.last_run_at
+    setLastRunByEstate(runs)
+
     setLoading(false)
   }
 
@@ -92,6 +107,8 @@ export default function AllEstates() {
   const familyEstateIds = new Set(familyEstates.map(e => e.id))
   const estateName = eid => estates.find(e => e.id === eid)?.deceased_name ?? ''
   const upcomingMeetings = meetings.filter(m => familyEstateIds.has(m.estate_id))
+  const aiPending = familyEstates.reduce((s, e) => s + (aiByEstate[e.id] ?? 0), 0)
+  const lastRun = familyEstates.map(e => lastRunByEstate[e.id]).filter(Boolean).sort().pop()
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto w-full">
@@ -111,6 +128,21 @@ export default function AllEstates() {
           </button>
         )}
       </div>
+
+      {/* AI assistant findings */}
+      {aiPending > 0 ? (
+        <Link to="/assistant" className="block bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4 mb-6 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-sm text-purple-900 dark:text-purple-200">
+              🤖 <strong>The assistant reviewed your estate{familyEstates.length !== 1 ? 's' : ''} and flagged {aiPending} item{aiPending !== 1 ? 's' : ''}</strong> to review &amp; approve.
+            </div>
+            <span className="text-xs font-medium text-purple-700 dark:text-purple-300 shrink-0">Review →</span>
+          </div>
+          {lastRun && <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">Last checked {new Date(lastRun).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
+        </Link>
+      ) : lastRun ? (
+        <div className="text-xs text-gray-400 mb-6">🤖 Assistant last checked {new Date(lastRun).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} — nothing new to review.</div>
+      ) : null}
 
       {upcomingMeetings.length > 0 && (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-6">
