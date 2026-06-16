@@ -92,6 +92,15 @@ export default function Assistant() {
     finally { setRunning(false); setProgress('') }
   }
 
+  async function stateLaw() {
+    setRunning(true); setError(''); setProgress(`Looking up ${currentEstate.state_of_residence || 'state'} probate guidance — this can take a minute…`)
+    try {
+      await runAdvisor(currentEstate.id, 'statelaw')
+      await refresh()
+    } catch (e) { setError(e.message || 'State guidance failed') }
+    finally { setRunning(false); setProgress('') }
+  }
+
   async function forensic() {
     if (files.length === 0) { setError('Add at least one financial statement first.'); return }
     setRunning(true); setError(''); setProgress('Uploading…')
@@ -125,6 +134,7 @@ export default function Assistant() {
   const forensicSugs = suggestions.filter(s => s.kind === 'forensic')
   const docSugs = suggestions.filter(s => s.kind === 'documents')
   const finSugs = suggestions.filter(s => s.kind === 'financial')
+  const stateLawSugs = suggestions.filter(s => s.kind === 'statelaw')
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -174,6 +184,15 @@ export default function Assistant() {
         </button>
       </div>
 
+      {/* State probate guidance */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">State probate guidance</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks up the probate steps, deadlines, and filing options specific to <strong>{currentEstate.state_of_residence || "the estate's state"}</strong> and proposes tasks. General guidance — always verify specifics with the probate court or your attorney.</p>
+        <button onClick={stateLaw} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
+          {running ? 'Working…' : `Get ${currentEstate.state_of_residence || 'state'} guidance`}
+        </button>
+      </div>
+
       {/* Forensic audit */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-6">
         <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Forensic financial audit</h2>
@@ -194,7 +213,7 @@ export default function Assistant() {
         <div className="text-gray-400 text-sm">{autoRunning ? 'Reviewing the estate…' : 'No pending suggestions. Run a review or forensic audit above.'}</div>
       ) : (
         <div className="space-y-5">
-          {[['Financial entries → Finances', finSugs], ['Suggested tasks', reviewSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
+          {[['Financial entries → Finances', finSugs], ['Suggested tasks', reviewSugs], ['State probate guidance (verify — not legal advice)', stateLawSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
             <div key={label}>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{label}</h3>
               <div className="space-y-2">

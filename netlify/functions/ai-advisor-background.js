@@ -277,6 +277,55 @@ Return ONLY JSON: {"doc_type":"short label of what this is","task_id":"<task id 
   return rows;
 }
 
+// State-specific probate guidance. Uses web search to ground guidance in the
+// estate's actual state, and is framed as general guidance, not legal advice.
+async function runStateLaw(estate) {
+  const estateId = estate.id;
+  const state = estate.state_of_residence || "the state of residence";
+  const [tasksRes, secRes, sugRes] = await Promise.all([
+    supabase.from("estate_tasks").select("text, section_id").eq("estate_id", estateId),
+    supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
+    supabase.from("estate_ai_suggestions").select("title").eq("estate_id", estateId).eq("kind", "statelaw").in("status", ["pending", "dismissed"]),
+  ]);
+  const tasks = (tasksRes.data ?? []).map(t => t.text);
+  const prior = (sugRes.data ?? []).map(s => s.title);
+
+  const prompt = `You are an expert estate-administration advisor. This estate is administered in ${state}. Identify the STATE-SPECIFIC probate steps, deadlines, required court filings, and options the executor of a first-time, modest family estate should know — tailored to ${state}.
+
+Use web search to verify CURRENT ${state} requirements (probate court process, inventory/appraisement deadline, creditor-notice rules, small-estate / affidavit / muniment-of-title style shortcuts, independent vs dependent administration, homestead/exempt property, tax filing deadlines). Prefer official .gov / court / state-bar sources.
+
+INTAKE: ${JSON.stringify(estate.intake_answers || {}).slice(0, 1500)}
+EXISTING TASKS (don't duplicate): ${tasks.join("; ") || "(none)"}
+ALREADY SUGGESTED (don't repeat): ${prior.join("; ") || "(none)"}
+
+This is GENERAL GUIDANCE, not legal advice. Every item must tell the executor to CONFIRM the specific requirement/deadline with the ${state} probate court or their attorney. Be concrete and ${state}-specific — no generic "consult an attorney" filler on its own.
+
+Return ONLY JSON: {"suggestions":[{"title":"short actionable, ${state}-specific task","detail":"the specific ${state} rule/deadline + 'verify with the court/your attorney'","phase":"one of: ${PHASES.join(" | ")}"}]}
+5-12 items.`;
+
+  let text = "";
+  try {
+    const resp = await client.messages.create({
+      model: ADVISOR_MODEL, max_tokens: 4096,
+      messages: [{ role: "user", content: prompt }],
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
+    });
+    text = (resp.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+  } catch (toolErr) {
+    console.warn("statelaw web search unavailable:", toolErr?.message);
+    const resp = await client.messages.create({
+      model: ADVISOR_MODEL, max_tokens: 4096,
+      messages: [{ role: "user", content: prompt + "\n\n(No web access — rely on general knowledge of " + state + " probate; be clear each item must be verified.)" }],
+    });
+    text = (resp.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+  }
+  const parsed = jsonFrom(text);
+  return (parsed.suggestions || []).map(s => ({
+    estate_id: estateId, kind: "statelaw", title: s.title, detail: s.detail || null,
+    suggested_phase: PHASES.includes(s.phase) ? s.phase : null, is_private: false, status: "pending",
+  }));
+}
+
 export const handler = async (event) => {
   let estateId, mode, filePaths;
   try {
@@ -292,6 +341,7 @@ export const handler = async (event) => {
 
     const rows = mode === "forensic" ? await runForensic(estate, filePaths)
       : mode === "documents" ? await runDocuments(estate)
+      : mode === "statelaw" ? await runStateLaw(estate)
       : await runReview(estate);
     if (rows.length > 0) {
       await supabase.from("estate_ai_suggestions").insert(rows);
