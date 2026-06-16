@@ -8,6 +8,7 @@ const TOOLS = [
   { to: '/assistant',        label: 'AI Assistant',     icon: '🤖', desc: 'Review the estate, match documents, run a forensic audit.' },
   { to: '/finances',         label: 'Finances',         icon: '💰', desc: 'Accounts, debts, monthly obligations, insurance, and assets.' },
   { to: '/assets',           label: 'Assets',           icon: '🏷️', desc: 'Manage each asset: value, title/docs checklist, disposition, beneficiary.' },
+  { to: '/inventory',        label: 'Estate Inventory', icon: '📋', desc: 'Printable inventory: assets, accounts, liabilities, and net worth.' },
   { to: '/documents',        label: 'Documents',        icon: '📁', desc: 'All estate documents, grouped by type — have, requested, and needed.' },
   { to: '/contacts',         label: 'Contacts',         icon: '👥', desc: 'Attorneys, banks, and other key contacts for this estate.' },
   { to: '/credentials',      label: 'Credentials',      icon: '🔑', desc: 'Account logins and access details for this estate.' },

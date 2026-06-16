@@ -52,7 +52,10 @@ export default function Assets() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">Assets</h1>
-        <Link to="/finances" className="text-sm text-blue-600 hover:underline">+ Add in Finances</Link>
+        <div className="flex items-center gap-4">
+          <Link to="/inventory" className="text-sm text-blue-600 hover:underline">Inventory →</Link>
+          <Link to="/finances" className="text-sm text-blue-600 hover:underline">+ Add in Finances</Link>
+        </div>
       </div>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {filtered.length} asset{filtered.length !== 1 ? 's' : ''} · est. value {fmt(totalValue)} (excludes sold/distributed)

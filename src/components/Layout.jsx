@@ -39,6 +39,7 @@ const EXECUTOR_NAV = [
   { to: '/assistant',        label: 'AI Assistant' },
   { to: '/finances',         label: 'Finances' },
   { to: '/assets',           label: 'Assets' },
+  { to: '/inventory',        label: 'Inventory' },
   { to: '/documents',        label: 'Documents' },
   { to: '/contacts',         label: 'Contacts' },
   { to: '/credentials',      label: 'Credentials' },
