@@ -11,11 +11,14 @@ export const supabase = createClient(url, key)
 // token to go stale. Throws if the user isn't signed in.
 export async function getAccessToken() {
   let { data: { session } } = await supabase.auth.getSession()
-  const expiresInMs = session?.expires_at ? session.expires_at * 1000 - Date.now() : -1
-  if (!session || expiresInMs < 60_000) {
+  const expired = s => !s?.expires_at || (s.expires_at * 1000 - Date.now() < 60_000)
+  if (expired(session)) {
     const { data } = await supabase.auth.refreshSession()
-    if (data?.session) session = data.session
+    session = data?.session ?? null
   }
-  if (!session?.access_token) throw new Error('Your session expired — please sign in again.')
+  // Never fall back to a stale token — make the caller surface a clean re-login prompt.
+  if (!session?.access_token || expired(session)) {
+    throw new Error('Your session expired — please sign out and sign back in.')
+  }
   return session.access_token
 }
