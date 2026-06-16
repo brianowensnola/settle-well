@@ -36,6 +36,23 @@ function jsonFrom(text) {
 }
 
 // "What am I missing?" — review the whole estate and propose missing tasks/gaps
+// --- Dedup helpers: catch reworded repeats the LLM instruction misses ---
+const DEDUP_STOP = new Set(['the','a','an','to','of','for','and','or','in','on','with','this','that','estate','please','make','sure','any','all','their','his','her','is','are','be','as','at','by','from','it']);
+const normTitle = s => (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const sigWords = s => new Set(normTitle(s).split(' ').filter(w => w.length > 2 && !DEDUP_STOP.has(w)));
+function tooSimilar(a, b) {
+  if (!a || !b) return false;
+  if (normTitle(a) === normTitle(b)) return true;
+  const A = sigWords(a), B = sigWords(b);
+  if (A.size === 0 || B.size === 0) return false;
+  let inter = 0; for (const w of A) if (B.has(w)) inter++;
+  return inter / (A.size + B.size - inter) >= 0.6; // Jaccard
+}
+// Drop any candidate whose title closely matches something already proposed
+// (any status) or an existing task.
+const dedupAgainst = (candidates, priorTitles) =>
+  candidates.filter(c => !priorTitles.some(p => tooSimilar(c.title, p)));
+
 async function runReview(estate) {
   const estateId = estate.id;
   const [tasksRes, notesRes, docsRes, finRes, secRes, sugRes] = await Promise.all([
@@ -46,7 +63,7 @@ async function runReview(estate) {
     supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
     // Already-suggested items (still pending, or previously dismissed) so we
     // don't re-propose them on repeat/auto runs.
-    supabase.from("estate_ai_suggestions").select("title, status").eq("estate_id", estateId).eq("kind", "review").in("status", ["pending", "dismissed"]),
+    supabase.from("estate_ai_suggestions").select("title, status").eq("estate_id", estateId).eq("kind", "review").in("status", ["pending", "dismissed", "accepted"]),
   ]);
   const secLabel = Object.fromEntries((secRes.data ?? []).map(s => [s.id, s.label]));
   const tasks = (tasksRes.data ?? []).map(t => `[${secLabel[t.section_id] ?? "?"}] ${t.text} (${t.status})`);
@@ -94,10 +111,13 @@ Return ONLY JSON:
   });
   const text = resp.content[0].type === "text" ? resp.content[0].text : "";
   const parsed = jsonFrom(text);
-  return (parsed.suggestions || []).map(s => ({
+  const rows = (parsed.suggestions || []).map(s => ({
     estate_id: estateId, kind: "review", title: s.title, detail: s.detail || null,
     suggested_phase: PHASES.includes(s.phase) ? s.phase : null, is_private: false, status: "pending",
   }));
+  // Final safety net: drop anything that matches a prior suggestion (any
+  // status) or an existing task, even if reworded.
+  return dedupAgainst(rows, [...priorSuggestions, ...(tasksRes.data ?? []).map(t => t.text)]);
 }
 
 const FORENSIC_PROMPT = `You are a forensic financial analyst reviewing ONE of a deceased person's financial statements for an estate. The executor needs TWO things: (1) anything suspicious or unknown to investigate, and (2) EVERY recurring bill, subscription, utility, loan, and insurance payment — because each one keeps draining the estate until it is cancelled or transferred, no matter how small.
