@@ -356,6 +356,72 @@ Return ONLY JSON: {"suggestions":[{"title":"short actionable, ${state}-specific 
   }));
 }
 
+// Audit the task list for duplicate tasks and grouping opportunities. Produces
+// actionable suggestions: 'merge' (keep one, remove the rest) and 'group' (nest
+// children under a parent). All task ids are validated against the real list.
+async function runTaskAudit(estate) {
+  const estateId = estate.id;
+  const [tasksRes, secRes, sugRes] = await Promise.all([
+    supabase.from("estate_tasks").select("id, text, status, parent_task_id, section_id").eq("estate_id", estateId).neq("status", "done"),
+    supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
+    supabase.from("estate_ai_suggestions").select("title").eq("estate_id", estateId).eq("kind", "taskaudit").in("status", ["pending", "dismissed"]),
+  ]);
+  const tasks = tasksRes.data ?? [];
+  if (tasks.length < 2) return [];
+  const byId = Object.fromEntries(tasks.map(t => [t.id, t]));
+  const secLabel = Object.fromEntries((secRes.data ?? []).map(s => [s.id, s.label]));
+  const prior = (sugRes.data ?? []).map(s => s.title);
+  const taskLines = tasks.map(t => `${t.id} | [${secLabel[t.section_id] ?? "?"}]${t.parent_task_id ? " (sub)" : ""} ${t.text} (${t.status})`).join("\n");
+
+  const prompt = `You are helping a first-time executor tidy up an estate task list. Find two things:
+1) DUPLICATES — tasks that are the same work stated differently. For each duplicate set, pick the single best task to KEEP (prefer the clearest/most complete wording, or one already in progress) and list the others to REMOVE.
+2) GROUPS — several distinct tasks that clearly belong under one umbrella, where nesting them under a parent would organize the list (e.g. several "notify <agency>" tasks, or several tasks about one asset). Pick an existing task as the parent and list its children.
+
+Only use task IDs from the list below. Do not invent IDs. Be conservative: only flag real duplicates and genuinely related groups — when unsure, leave it out. A task can appear in at most one merge or one group.
+
+TASKS (id | [phase] text (status)):
+${taskLines}
+
+ALREADY SUGGESTED (don't repeat): ${prior.join("; ") || "(none)"}
+
+Return ONLY JSON:
+{"merges":[{"keep_id":"<id>","remove_ids":["<id>",...],"reason":"why they're the same"}],
+ "groups":[{"parent_id":"<id>","child_ids":["<id>",...],"reason":"the umbrella they share"}]}
+Empty arrays if nothing solid. At most 6 merges and 6 groups.`;
+
+  const resp = await client.messages.create({ model: ADVISOR_MODEL, max_tokens: 4096, messages: [{ role: "user", content: prompt }] });
+  const text = resp.content[0].type === "text" ? resp.content[0].text : "";
+  const parsed = jsonFrom(text);
+  const rows = [];
+  const used = new Set(); // a task id participates in at most one action
+
+  for (const m of (parsed.merges || [])) {
+    const keep = byId[m.keep_id];
+    const removes = (m.remove_ids || []).filter(id => byId[id] && id !== m.keep_id && !used.has(id));
+    if (!keep || used.has(m.keep_id) || removes.length === 0) continue;
+    used.add(m.keep_id); removes.forEach(id => used.add(id));
+    rows.push({
+      estate_id: estateId, kind: "taskaudit", action: "merge",
+      title: `Merge ${removes.length + 1} duplicate task${removes.length ? "s" : ""}: “${keep.text}”`,
+      detail: `${m.reason || "These look like the same task."} Keeps “${keep.text}”, removes: ${removes.map(id => `“${byId[id].text}”`).join(", ")}.`,
+      payload: { keep_id: m.keep_id, remove_ids: removes }, is_private: false, status: "pending",
+    });
+  }
+  for (const g of (parsed.groups || [])) {
+    const parent = byId[g.parent_id];
+    const children = (g.child_ids || []).filter(id => byId[id] && id !== g.parent_id && !used.has(id) && byId[id].parent_task_id !== g.parent_id);
+    if (!parent || used.has(g.parent_id) || children.length < 2) continue;
+    used.add(g.parent_id); children.forEach(id => used.add(id));
+    rows.push({
+      estate_id: estateId, kind: "taskaudit", action: "group",
+      title: `Group ${children.length} tasks under “${parent.text}”`,
+      detail: `${g.reason || "Related tasks."} Nests ${children.map(id => `“${byId[id].text}”`).join(", ")} under “${parent.text}”.`,
+      payload: { parent_id: g.parent_id, child_ids: children }, is_private: false, status: "pending",
+    });
+  }
+  return dedupAgainst(rows, prior);
+}
+
 export const handler = async (event) => {
   let estateId, mode, filePaths;
   try {
@@ -372,6 +438,7 @@ export const handler = async (event) => {
     const rows = mode === "forensic" ? await runForensic(estate, filePaths)
       : mode === "documents" ? await runDocuments(estate)
       : mode === "statelaw" ? await runStateLaw(estate)
+      : mode === "taskaudit" ? await runTaskAudit(estate)
       : await runReview(estate);
     if (rows.length > 0) {
       await supabase.from("estate_ai_suggestions").insert(rows);

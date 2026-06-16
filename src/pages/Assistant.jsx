@@ -102,6 +102,15 @@ export default function Assistant() {
     finally { setRunning(false); setProgress('') }
   }
 
+  async function organizeTasks() {
+    setRunning(true); setError(''); setProgress('Auditing the task list for duplicates and grouping…')
+    try {
+      await runAdvisor(currentEstate.id, 'taskaudit')
+      await refresh()
+    } catch (e) { setError(e.message || 'Task audit failed') }
+    finally { setRunning(false); setProgress('') }
+  }
+
   async function forensic() {
     if (files.length === 0) { setError('Add at least one financial statement first.'); return }
     setRunning(true); setError(''); setProgress('Uploading…')
@@ -150,6 +159,7 @@ export default function Assistant() {
   const docSugs = suggestions.filter(s => s.kind === 'documents')
   const finSugs = suggestions.filter(s => s.kind === 'financial')
   const stateLawSugs = suggestions.filter(s => s.kind === 'statelaw')
+  const auditSugs = suggestions.filter(s => s.kind === 'taskaudit')
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -193,7 +203,7 @@ export default function Assistant() {
           <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
             {suggestions.length} suggestion{suggestions.length === 1 ? '' : 's'} to review
           </div>
-          {[['Financial entries → Finances', finSugs], ['Suggested tasks', reviewSugs], ['State probate guidance (verify — not legal advice)', stateLawSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
+          {[['Task cleanup — duplicates & grouping', auditSugs], ['Financial entries → Finances', finSugs], ['Suggested tasks', reviewSugs], ['State probate guidance (verify — not legal advice)', stateLawSugs], ['Document → task matches', docSugs], ['Forensic findings (private)', forensicSugs]].map(([label, list]) => list.length > 0 && (
             <div key={label}>
               <div className="flex items-center justify-between gap-2 mb-2">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label} · {list.length}</h3>
@@ -258,6 +268,14 @@ export default function Assistant() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Looks at your uploaded documents and the tasks they satisfy — e.g. a death certificate or obituary — and proposes linking them and checking the task off. Bank statements, loan papers, and insurance policies also propose a Finances entry.</p>
             <button onClick={matchDocuments} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
               {running ? 'Working…' : 'Match documents'}
+            </button>
+          </div>
+          {/* Organize tasks */}
+          <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-white mb-1">Organize tasks</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Audits your task list for duplicates and related tasks that could be grouped. Proposes merges (keep one, remove the rest) and groupings (nest tasks under a parent) — you accept each one.</p>
+            <button onClick={organizeTasks} disabled={running} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
+              {running ? 'Working…' : 'Organize tasks'}
             </button>
           </div>
           {/* State probate guidance */}

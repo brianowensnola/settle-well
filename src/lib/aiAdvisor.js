@@ -82,6 +82,24 @@ export async function dismissSuggestion(id) {
 // (and optionally update status); financial suggestions create a Finances entry;
 // review/forensic suggestions create a task.
 export async function acceptSuggestion(s) {
+  // Task audit — merge duplicates or nest a group under a parent.
+  if (s.kind === 'taskaudit') {
+    const p = s.payload || {}
+    if (s.action === 'merge' && p.keep_id && Array.isArray(p.remove_ids) && p.remove_ids.length) {
+      // Preserve anything attached to the duplicates: reparent their sub-tasks,
+      // move notes and the legacy doc link onto the kept task, then delete them.
+      await supabase.from('estate_tasks').update({ parent_task_id: p.keep_id }).in('parent_task_id', p.remove_ids)
+      await supabase.from('estate_task_logs').update({ task_id: p.keep_id }).in('task_id', p.remove_ids)
+      await supabase.from('estate_documents').update({ linked_task_id: p.keep_id }).in('linked_task_id', p.remove_ids)
+      await supabase.from('estate_task_documents').delete().in('task_id', p.remove_ids)
+      await supabase.from('estate_tasks').delete().in('id', p.remove_ids)
+    } else if (s.action === 'group' && p.parent_id && Array.isArray(p.child_ids) && p.child_ids.length) {
+      await supabase.from('estate_tasks').update({ parent_task_id: p.parent_id, updated_at: new Date().toISOString() }).in('id', p.child_ids)
+    }
+    await supabase.from('estate_ai_suggestions').update({ status: 'accepted' }).eq('id', s.id)
+    return null
+  }
+
   if (s.kind === 'financial') {
     const { data: fin } = await supabase.from('estate_financials').insert({
       estate_id: s.estate_id,
