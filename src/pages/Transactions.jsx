@@ -7,6 +7,7 @@ function fmt(n) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Math.abs(n))
 }
 const signed = n => `${n < 0 ? '-' : ''}${fmt(n)}`
+const inputCls = 'w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none'
 
 export default function Transactions() {
   const navigate = useNavigate()
@@ -19,6 +20,9 @@ export default function Transactions() {
   const [uploading, setUploading] = useState(null)
   const [settling, setSettling] = useState(null)   // reimbursement txn id being marked paid
   const [settleAcct, setSettleAcct] = useState('')  // account chosen to pay it from
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [delConfirm, setDelConfirm] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -90,6 +94,26 @@ export default function Transactions() {
     setSettling(null); setSettleAcct('')
   }
 
+  function startEdit(t) {
+    setEditingId(t.id); setDelConfirm(null)
+    setEditForm({ date: t.date, description: t.description, amount: String(t.amount ?? ''), account_id: t.account_id || '', paid_to: t.paid_to || '', paid_by: t.paid_by || '' })
+  }
+  async function saveEdit(t) {
+    let amt = parseFloat(editForm.amount)
+    if (isNaN(amt) || !editForm.description) return
+    if (t.reimburse_status === 'pending') amt = -Math.abs(amt) // a pending reimbursement is always an amount owed
+    const patch = { date: editForm.date, description: editForm.description, amount: amt, account_id: editForm.account_id || null }
+    if (t.reimburse_status) { patch.paid_to = editForm.paid_to || null; patch.paid_by = editForm.paid_by || null }
+    await supabase.from('estate_transactions').update(patch).eq('id', t.id)
+    setTxns(prev => prev.map(x => x.id === t.id ? { ...x, ...patch } : x))
+    setEditingId(null)
+  }
+  async function deleteTxn(t) {
+    await supabase.from('estate_transactions').delete().eq('id', t.id)
+    setTxns(prev => prev.filter(x => x.id !== t.id))
+    setEditingId(null); setDelConfirm(null)
+  }
+
   async function attachReceipt(txn, file) {
     if (!file) return
     setUploading(txn.id)
@@ -121,6 +145,35 @@ export default function Transactions() {
   const acctCurrent = id => (accounts.find(a => a.id === id)?.amount ?? 0) +
     posted.filter(t => t.account_id === id).reduce((s, t) => s + (t.amount ?? 0), 0)
   const unassigned = posted.filter(t => !t.account_id)
+
+  const editPanel = (t) => (
+    <div className="py-3 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <input type="date" value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))} className={inputCls} />
+        <input type="number" step="0.01" value={editForm.amount} onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))} placeholder="Amount (+ / −)" className={inputCls} />
+      </div>
+      <input value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} placeholder="Description" className={inputCls} />
+      {t.reimburse_status ? (
+        <div className="grid grid-cols-2 gap-2">
+          <input value={editForm.paid_to} onChange={e => setEditForm(p => ({ ...p, paid_to: e.target.value }))} placeholder="Paid to (vendor)" className={inputCls} />
+          <input value={editForm.paid_by} onChange={e => setEditForm(p => ({ ...p, paid_by: e.target.value }))} placeholder="Owed to" className={inputCls} />
+        </div>
+      ) : (
+        <select value={editForm.account_id} onChange={e => setEditForm(p => ({ ...p, account_id: e.target.value }))} className={inputCls}>
+          <option value="">(no account)</option>
+          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+      )}
+      <div className="flex gap-2 items-center">
+        <button onClick={() => saveEdit(t)} className="px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-xs">Save</button>
+        <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+        <span className="flex-1" />
+        {delConfirm === t.id
+          ? <button onClick={() => deleteTxn(t)} className="text-xs text-red-600 font-medium hover:underline">Confirm delete</button>
+          : <button onClick={() => setDelConfirm(t.id)} className="text-xs text-red-500 hover:underline">Delete</button>}
+      </div>
+    </div>
+  )
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -220,6 +273,7 @@ export default function Transactions() {
           <div className="divide-y divide-amber-200/60 dark:divide-amber-800/60">
             {pending.map(t => (
               <div key={t.id} className="py-2">
+                {editingId === t.id ? editPanel(t) : (
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500 w-24 shrink-0">{t.date}</span>
                   <span className="flex-1 min-w-0 text-sm text-gray-800 dark:text-white">
@@ -227,12 +281,14 @@ export default function Transactions() {
                     {t.paid_to && <span className="text-gray-500"> · paid to {t.paid_to}</span>}
                     {t.paid_by && <span className="text-gray-500"> · owed to {t.paid_by}</span>}
                   </span>
+                  <button onClick={() => startEdit(t)} className="text-xs text-gray-400 hover:text-blue-600 hover:underline shrink-0">Edit</button>
                   {t.receipt_path && <button onClick={() => viewReceipt(t)} className="text-xs text-blue-600 hover:underline shrink-0">📎</button>}
                   <span className="text-sm font-medium text-amber-800 dark:text-amber-300 shrink-0">{fmt(t.amount)}</span>
                   {settling === t.id
                     ? null
                     : <button onClick={() => { setSettling(t.id); setSettleAcct(accounts[0]?.id ?? '') }} className="text-xs text-green-700 hover:underline shrink-0">Mark reimbursed</button>}
                 </div>
+                )}
                 {settling === t.id && (
                   <div className="flex items-center gap-2 mt-2 ml-24">
                     <span className="text-xs text-gray-500">Paid from:</span>
@@ -256,25 +312,30 @@ export default function Transactions() {
         {posted.length === 0 && <div className="p-6 text-sm text-gray-400">No transactions yet.</div>}
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
           {posted.map(t => (
-            <div key={t.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="text-xs text-gray-400 w-24 shrink-0">{t.date}</span>
-              <span className="flex-1 min-w-0">
-                <span className="text-sm text-gray-800 dark:text-white">{t.description}</span>
-                {acctName(t.account_id) && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{acctName(t.account_id)}</span>}
-                {!t.account_id && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">no account</span>}
-              </span>
-              {t.receipt_path ? (
-                <button onClick={() => viewReceipt(t)} className="text-xs text-blue-600 hover:underline shrink-0">📎 Receipt</button>
-              ) : (
-                <label className="text-xs text-gray-400 hover:text-blue-600 hover:underline cursor-pointer shrink-0">
-                  {uploading === t.id ? 'Uploading…' : '+ Receipt'}
-                  <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic"
-                    onChange={e => attachReceipt(t, e.target.files?.[0])} />
-                </label>
+            <div key={t.id} className="px-4">
+              {editingId === t.id ? editPanel(t) : (
+                <div className="flex items-center gap-3 py-3">
+                  <span className="text-xs text-gray-400 w-24 shrink-0">{t.date}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="text-sm text-gray-800 dark:text-white">{t.description}</span>
+                    {acctName(t.account_id) && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{acctName(t.account_id)}</span>}
+                    {!t.account_id && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">no account</span>}
+                  </span>
+                  <button onClick={() => startEdit(t)} className="text-xs text-gray-400 hover:text-blue-600 hover:underline shrink-0">Edit</button>
+                  {t.receipt_path ? (
+                    <button onClick={() => viewReceipt(t)} className="text-xs text-blue-600 hover:underline shrink-0">📎 Receipt</button>
+                  ) : (
+                    <label className="text-xs text-gray-400 hover:text-blue-600 hover:underline cursor-pointer shrink-0">
+                      {uploading === t.id ? 'Uploading…' : '+ Receipt'}
+                      <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.heic"
+                        onChange={e => attachReceipt(t, e.target.files?.[0])} />
+                    </label>
+                  )}
+                  <span className={`text-sm font-medium shrink-0 ${t.amount >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {t.amount >= 0 ? '+' : '-'}{fmt(t.amount)}
+                  </span>
+                </div>
               )}
-              <span className={`text-sm font-medium shrink-0 ${t.amount >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                {t.amount >= 0 ? '+' : '-'}{fmt(t.amount)}
-              </span>
             </div>
           ))}
         </div>
