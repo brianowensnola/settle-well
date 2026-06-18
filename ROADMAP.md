@@ -13,6 +13,7 @@ finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
 "add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
 Items graduate into the structured backlog below when it's time to do them.
 
+- **(2026-06-18) SMS — TFN submitted, awaiting carrier approval (2–4 wks, ~early-mid July 2026).** Toll-free verification form submitted via Brevo (use case: App Notifications; opt-in screenshot = the Users & Roles SMS-consent checkbox). App side is fully built: `notify-sweep` (dormant), invite/report SMS, and `estate_users.sms_consent` capture. **ACTIVATION when approved: set Netlify env `BREVO_SMS_SENDER` to the approved toll-free number** → everything flips on; then verify a meeting reminder sends.
 - **(2026-06-16) ⭐ Brian wants this soon** Text (SMS) messaging — make texting
   actually work: be able to **send** texts to people, and send **meeting
   reminders**. Code is already built (send-invite sends SMS via Brevo, adapts
