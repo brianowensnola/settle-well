@@ -29,6 +29,7 @@ export default function Assistant() {
   const [files, setFiles] = useState([])
   const [agentEnabled, setAgentEnabled] = useState(true)
   const [busyIds, setBusyIds] = useState(new Set())
+  const [dismissedRecent, setDismissedRecent] = useState([])
 
   useEffect(() => {
     if (!currentEstate) return
@@ -49,6 +50,7 @@ export default function Assistant() {
       const initial = await loadSuggestions(currentEstate.id)
       if (cancelled) return
       setSuggestions(initial)
+      loadDismissed()
       setLoading(false)
       // Auto-run the review in the background (executor only), throttled.
       if (!isFullAccess(role)) return
@@ -69,8 +71,21 @@ export default function Assistant() {
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (!isFullAccess(role)) return <div className="p-8 text-gray-400">The AI Assistant is available to the executor only.</div>
 
+  async function loadDismissed() {
+    const { data } = await supabase.from('estate_ai_suggestions')
+      .select('id, title, kind, created_at').eq('estate_id', currentEstate.id)
+      .eq('status', 'dismissed').order('created_at', { ascending: false }).limit(12)
+    setDismissedRecent(data ?? [])
+  }
+  async function restore(s) {
+    await supabase.from('estate_ai_suggestions').update({ status: 'pending' }).eq('id', s.id)
+    setDismissedRecent(prev => prev.filter(x => x.id !== s.id))
+    refresh()
+  }
+
   async function refresh() {
     setSuggestions(await loadSuggestions(currentEstate.id))
+    loadDismissed()
   }
 
   async function review() {
@@ -140,6 +155,7 @@ export default function Assistant() {
     setBusyIds(prev => new Set(prev).add(s.id))
     await dismissSuggestion(s.id)
     setSuggestions(prev => prev.filter(x => x.id !== s.id))
+    loadDismissed()
   }
   async function acceptAll(list) {
     const ids = new Set(list.map(s => s.id))
@@ -152,6 +168,7 @@ export default function Assistant() {
     setBusyIds(prev => new Set([...prev, ...ids]))
     for (const s of list) await dismissSuggestion(s.id)
     setSuggestions(prev => prev.filter(x => !ids.has(x.id)))
+    loadDismissed()
   }
 
   const reviewSugs = suggestions.filter(s => s.kind === 'review')
@@ -300,6 +317,25 @@ export default function Assistant() {
           </div>
         </div>
       </details>
+
+      {/* Recently dismissed — visibility + undo */}
+      {dismissedRecent.length > 0 && (
+        <details className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl mt-4">
+          <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            ▸ Recently dismissed ({dismissedRecent.length})
+            <span className="font-normal text-gray-400"> — restore one if you dismissed it by mistake</span>
+          </summary>
+          <div className="px-5 pb-4 space-y-2">
+            {dismissedRecent.map(s => (
+              <div key={s.id} className="flex items-center justify-between gap-3 text-sm border-t border-gray-100 dark:border-gray-800 pt-2">
+                <span className="text-gray-600 dark:text-gray-400 line-through truncate">{s.title}</span>
+                <button onClick={() => restore(s)} className="text-xs text-blue-600 hover:underline shrink-0">Restore</button>
+              </div>
+            ))}
+            <p className="text-[11px] text-gray-400 pt-1">Dismissed items won't be re-suggested by the assistant, even if reworded.</p>
+          </div>
+        </details>
+      )}
 
       <LegalDisclaimer className="mt-8 border-t border-gray-100 dark:border-gray-800 pt-4" />
     </div>

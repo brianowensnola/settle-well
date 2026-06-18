@@ -53,6 +53,35 @@ function tooSimilar(a, b) {
 const dedupAgainst = (candidates, priorTitles) =>
   candidates.filter(c => !priorTitles.some(p => tooSimilar(c.title, p)));
 
+// Reworded repeats slip past word-overlap matching. This second pass asks the
+// model to drop any candidate that means the same thing as something already
+// handled (accepted, completed, or dismissed) — by meaning, not wording.
+async function semanticDedupe(candidates, handled) {
+  if (candidates.length === 0 || handled.length === 0) return candidates;
+  try {
+    const list = candidates.map((r, i) => `${i + 1}. ${r.title}${r.detail ? " — " + r.detail : ""}`).join("\n");
+    const handledList = handled.slice(0, 250).map(h => `- ${h}`).join("\n");
+    const resp = await client.messages.create({
+      model: "claude-sonnet-4-6", max_tokens: 500,
+      messages: [{ role: "user", content: `An assistant proposed NEW items for an estate. Some may be the SAME underlying task or issue as something the executor has ALREADY handled — created as a task, completed, or reviewed and dismissed as not applicable — even if worded differently. List the numbers of proposals that are essentially duplicates of an already-handled item. Keep genuinely new items and ones that meaningfully expand on something. When in doubt, keep it.
+
+ALREADY HANDLED:
+${handledList}
+
+NEW PROPOSALS:
+${list}
+
+Return ONLY JSON: {"drop":[numbers]}` }],
+    });
+    const text = resp.content?.[0]?.type === "text" ? resp.content[0].text : "";
+    const drop = new Set((jsonFrom(text).drop || []).map(Number));
+    return candidates.filter((_, i) => !drop.has(i + 1));
+  } catch (e) {
+    console.warn("semantic dedupe skipped:", e?.message);
+    return candidates;
+  }
+}
+
 async function runReview(estate) {
   const estateId = estate.id;
   const [tasksRes, notesRes, docsRes, finRes, secRes, sugRes] = await Promise.all([
@@ -117,7 +146,8 @@ Return ONLY JSON:
   }));
   // Final safety net: drop anything that matches a prior suggestion (any
   // status) or an existing task, even if reworded.
-  return dedupAgainst(rows, [...priorSuggestions, ...(tasksRes.data ?? []).map(t => t.text)]);
+  const handled = [...priorSuggestions, ...(tasksRes.data ?? []).map(t => t.text)];
+  return await semanticDedupe(dedupAgainst(rows, handled), handled);
 }
 
 const FORENSIC_PROMPT = `You are a forensic financial analyst reviewing ONE of a deceased person's financial statements for an estate. The executor needs TWO things: (1) anything suspicious or unknown to investigate, and (2) EVERY recurring bill, subscription, utility, loan, and insurance payment — because each one keeps draining the estate until it is cancelled or transferred, no matter how small.
