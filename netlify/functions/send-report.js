@@ -36,10 +36,17 @@ async function accountBalances(estateId) {
 
 // ---- report builders: each returns { title, sections[] } ----
 const builders = {
-  async assets(estateId) {
-    const { data: assets } = await admin.from("estate_financials").select("*").eq("estate_id", estateId).eq("category", "asset").eq("is_private", false).order("asset_type").order("name");
-    const rows = (assets ?? []).map(a => [a.name, TYPE_LABEL[a.asset_type] || a.asset_type || "", a.vin_serial || "", R(money(a.amount)), a.status && a.status !== "undecided" ? a.status : "", a.beneficiary || "", a.location || "", a.notes || ""]);
-    const total = (assets ?? []).filter(a => !["sold", "distributed"].includes(a.status)).reduce((s, a) => s + (a.amount ?? 0), 0);
+  async assets(estateId, opts = {}) {
+    const show = opts.show || "all";
+    const sort = opts.sort || "type";
+    let { data: assets } = await admin.from("estate_financials").select("*").eq("estate_id", estateId).eq("category", "asset").eq("is_private", false).order("asset_type").order("name");
+    assets = assets ?? [];
+    if (show === "owned") assets = assets.filter(a => !["sold", "distributed"].includes(a.status));
+    else if (show === "sold") assets = assets.filter(a => ["sold", "distributed"].includes(a.status));
+    if (sort === "value") assets = [...assets].sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+    else if (sort === "disposition") assets = [...assets].sort((a, b) => (a.status || "").localeCompare(b.status || ""));
+    const rows = assets.map(a => [a.name, TYPE_LABEL[a.asset_type] || a.asset_type || "", a.vin_serial || "", R(money(a.amount)), a.status && a.status !== "undecided" ? a.status : "", a.beneficiary || "", a.location || "", a.notes || ""]);
+    const total = assets.filter(a => !["sold", "distributed"].includes(a.status)).reduce((s, a) => s + (a.amount ?? 0), 0);
     return { title: "Asset List", sections: [{ columns: ["Asset", "Type", "VIN/Serial", RH("Value"), "Disposition", "Beneficiary", "Location/Legal", "Notes"], rows, total: { label: "Total (excl. sold/distributed)", value: money(total) } }] };
   },
   async inventory(estateId) {
@@ -90,38 +97,60 @@ const builders = {
       ],
     };
   },
-  async reimbursements(estateId) {
+  async reimbursements(estateId, opts = {}) {
+    const show = opts.show || "all";
     const { data: txns } = await admin.from("estate_transactions").select("*").eq("estate_id", estateId).not("reimburse_status", "is", null).order("date", { ascending: false });
     const pending = (txns ?? []).filter(t => t.reimburse_status === "pending");
     const paid = (txns ?? []).filter(t => t.reimburse_status === "reimbursed");
-    return {
-      title: "Reimbursements",
-      sections: [
-        { heading: "Pending (owed, not yet paid)", columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")], rows: pending.map(t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))]), total: { label: "Total owed", value: money(pending.reduce((s, t) => s + Math.abs(t.amount ?? 0), 0)) } },
-        { heading: "Reimbursed", columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")], rows: paid.map(t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))]) },
-      ],
-    };
+    const sections = [];
+    if (show !== "reimbursed") sections.push({ heading: "Pending (owed, not yet paid)", columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")], rows: pending.map(t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))]), total: { label: "Total owed", value: money(pending.reduce((s, t) => s + Math.abs(t.amount ?? 0), 0)) } });
+    if (show !== "pending") sections.push({ heading: "Reimbursed", columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")], rows: paid.map(t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))]) });
+    return { title: "Reimbursements", sections };
   },
-  async contacts(estateId) {
-    const { data: contacts } = await admin.from("estate_contacts").select("*").eq("estate_id", estateId).order("role").order("name");
+  async contacts(estateId, opts = {}) {
+    const q = admin.from("estate_contacts").select("*").eq("estate_id", estateId);
+    const { data: contacts } = opts.sort === "name" ? await q.order("name") : await q.order("role").order("name");
     return {
       title: "Contacts Directory",
       sections: [{ columns: ["Name", "Role", "Company", "Phone", "Email"], rows: (contacts ?? []).map(c => [c.name, c.role || "", c.company || "", c.phone || (c.phones || [])[0] || "", c.email || (c.emails || [])[0] || ""]) }],
     };
   },
-  async tasks(estateId) {
+  async tasks(estateId, opts = {}) {
+    const group = opts.group || "phase";
+    const show = opts.show || "all";
     const [{ data: tasks }, { data: secs }] = await Promise.all([
-      admin.from("estate_tasks").select("text, status, section_id, is_private").eq("estate_id", estateId).eq("is_private", false).is("parent_task_id", null),
+      admin.from("estate_tasks").select("text, status, section_id, assigned_to, is_private").eq("estate_id", estateId).eq("is_private", false).is("parent_task_id", null),
       admin.from("estate_sections").select("id, label, sort_order").eq("estate_id", estateId).order("sort_order"),
     ]);
-    const t = tasks ?? [];
-    const done = t.filter(x => x.status === "done").length;
-    const sections = (secs ?? []).map(s => {
-      const list = t.filter(x => x.section_id === s.id);
-      if (!list.length) return null;
-      return { heading: s.label, columns: ["Task", "Status"], rows: list.map(x => [x.text, x.status]) };
-    }).filter(Boolean);
-    sections.unshift({ heading: "Overall", pairs: [["Tasks complete", `${done} of ${t.length}`], ["Progress", t.length ? `${Math.round((done / t.length) * 100)}%` : "—"]] });
+    const all = tasks ?? [];
+    const done = all.filter(x => x.status === "done").length;
+    const phaseLabel = id => (secs ?? []).find(s => s.id === id)?.label || "Unfiled";
+    let t = all;
+    if (show === "open") t = t.filter(x => x.status !== "done");
+    else if (show === "done") t = t.filter(x => x.status === "done");
+
+    const sections = [{ heading: "Overall", pairs: [["Tasks complete", `${done} of ${all.length}`], ["Progress", all.length ? `${Math.round((done / all.length) * 100)}%` : "—"], ["Showing", show === "all" ? "all tasks" : `${show} only`]] }];
+
+    if (group === "status") {
+      const order = ["in_progress", "waiting", "pending", "submitted", "done"];
+      const g = {}; for (const x of t) (g[x.status] ||= []).push(x);
+      for (const st of [...order, ...Object.keys(g).filter(k => !order.includes(k))]) {
+        if (!g[st]?.length) continue;
+        sections.push({ heading: st.replace(/_/g, " "), columns: ["Task", "Phase"], rows: g[st].map(x => [x.text, phaseLabel(x.section_id)]) });
+      }
+    } else if (group === "assignee") {
+      const g = {}; for (const x of t) (g[x.assigned_to || "Unassigned"] ||= []).push(x);
+      for (const who of Object.keys(g).sort()) {
+        sections.push({ heading: who, columns: ["Task", "Phase", "Status"], rows: g[who].map(x => [x.text, phaseLabel(x.section_id), x.status]) });
+      }
+    } else {
+      for (const s of (secs ?? [])) {
+        const list = t.filter(x => x.section_id === s.id);
+        if (list.length) sections.push({ heading: s.label, columns: ["Task", "Status"], rows: list.map(x => [x.text, x.status]) });
+      }
+      const unfiled = t.filter(x => !x.section_id);
+      if (unfiled.length) sections.push({ heading: "Unfiled", columns: ["Task", "Status"], rows: unfiled.map(x => [x.text, x.status]) });
+    }
     return { title: "Task & Progress Report", sections };
   },
 };
@@ -158,8 +187,8 @@ function reportHtml(estate, report) {
 }
 
 export const handler = async (event) => {
-  let estateId, reportType, recipientId, cc, bcc;
-  try { ({ estateId, reportType = "assets", recipientId, cc, bcc } = JSON.parse(event.body)); }
+  let estateId, reportType, recipientId, cc, bcc, options;
+  try { ({ estateId, reportType = "assets", recipientId, cc, bcc, options = {} } = JSON.parse(event.body)); }
   catch { return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) }; }
   if (!estateId) return { statusCode: 400, body: JSON.stringify({ error: "estateId required" }) };
   if (!builders[reportType]) return { statusCode: 400, body: JSON.stringify({ error: "unknown report type" }) };
@@ -174,7 +203,7 @@ export const handler = async (event) => {
 
   try {
     const { data: estate } = await admin.from("estates").select("deceased_name, state_of_residence").eq("id", estateId).single();
-    const report = await builders[reportType](estateId);
+    const report = await builders[reportType](estateId, options || {});
     const html = reportHtml(estate, report);
 
     // Preview / print only — no recipient.
