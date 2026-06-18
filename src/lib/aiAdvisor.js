@@ -92,6 +92,31 @@ export async function dismissSuggestion(id) {
   await supabase.from('estate_ai_suggestions').update({ status: 'dismissed' }).eq('id', id)
 }
 
+// "I already did this" — the suggestion is a real, valid item the executor has
+// already handled outside the app. Distinct from dismiss (not applicable): both
+// stop it being re-suggested, but 'done' records it as completed in the log.
+export async function markSuggestionDone(id) {
+  await supabase.from('estate_ai_suggestions').update({ status: 'done' }).eq('id', id)
+}
+
+// Full disposition history for the Suggestion Log: everything that's been
+// accepted, dismissed, or marked already-done (most recent first).
+export async function loadSuggestionLog(estateId) {
+  const { data } = await supabase
+    .from('estate_ai_suggestions')
+    .select('id, title, detail, kind, status, created_at')
+    .eq('estate_id', estateId)
+    .in('status', ['accepted', 'dismissed', 'done'])
+    .order('created_at', { ascending: false })
+    .limit(80)
+  return data ?? []
+}
+
+// Put a dispositioned suggestion back into review (undo accept/dismiss/done).
+export async function restoreSuggestion(id) {
+  await supabase.from('estate_ai_suggestions').update({ status: 'pending' }).eq('id', id)
+}
+
 // Accept a suggestion. Document-link suggestions attach the doc to its task
 // (and optionally update status); financial suggestions create a Finances entry;
 // review/forensic suggestions create a task.

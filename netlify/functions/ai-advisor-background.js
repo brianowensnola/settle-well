@@ -90,9 +90,10 @@ async function runReview(estate) {
     supabase.from("estate_documents").select("name, have, requested").eq("estate_id", estateId),
     supabase.from("estate_financials").select("name, category, status").eq("estate_id", estateId),
     supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
-    // Already-suggested items (still pending, or previously dismissed) so we
-    // don't re-propose them on repeat/auto runs.
-    supabase.from("estate_ai_suggestions").select("title, status").eq("estate_id", estateId).eq("kind", "review").in("status", ["pending", "dismissed", "accepted"]),
+    // Every prior suggestion the executor has already seen — pending, accepted,
+    // dismissed (not applicable), or marked already-done — so we never re-propose
+    // the same thing on repeat/auto runs.
+    supabase.from("estate_ai_suggestions").select("title, status").eq("estate_id", estateId).eq("kind", "review").in("status", ["pending", "dismissed", "accepted", "done"]),
   ]);
   const secLabel = Object.fromEntries((secRes.data ?? []).map(s => [s.id, s.label]));
   const tasks = (tasksRes.data ?? []).map(t => `[${secLabel[t.section_id] ?? "?"}] ${t.text} (${t.status})`);
@@ -108,10 +109,10 @@ Scope any legal/procedural guidance to that state. This is assistance, not legal
 
 INTAKE ANSWERS: ${JSON.stringify(estate.intake_answers || {})}
 
-EXISTING TASKS (do NOT duplicate these):
+EXISTING TASKS — each shows its status in parentheses, INCLUDING (done) = already completed and (in_progress) = underway. Do NOT propose anything that duplicates one of these, regardless of its status. A completed or in-progress task means that work is already handled — never re-suggest it:
 ${tasks.join("\n") || "(none)"}
 
-ALREADY SUGGESTED — pending review or previously dismissed by the executor (do NOT propose these again, even reworded):
+ALREADY SUGGESTED — items the executor has already seen and acted on: still pending, accepted, dismissed as not applicable, or marked already-done. Do NOT propose any of these again, even reworded:
 ${priorSuggestions.join("\n") || "(none)"}
 
 DOCUMENTS:
@@ -345,7 +346,7 @@ async function runStateLaw(estate) {
   const [tasksRes, secRes, sugRes] = await Promise.all([
     supabase.from("estate_tasks").select("text, section_id").eq("estate_id", estateId),
     supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
-    supabase.from("estate_ai_suggestions").select("title").eq("estate_id", estateId).eq("kind", "statelaw").in("status", ["pending", "dismissed"]),
+    supabase.from("estate_ai_suggestions").select("title").eq("estate_id", estateId).eq("kind", "statelaw").in("status", ["pending", "dismissed", "accepted", "done"]),
   ]);
   const tasks = (tasksRes.data ?? []).map(t => t.text);
   const prior = (sugRes.data ?? []).map(s => s.title);
@@ -394,7 +395,7 @@ async function runTaskAudit(estate) {
   const [tasksRes, secRes, sugRes] = await Promise.all([
     supabase.from("estate_tasks").select("id, text, status, parent_task_id, section_id").eq("estate_id", estateId).neq("status", "done"),
     supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
-    supabase.from("estate_ai_suggestions").select("title").eq("estate_id", estateId).eq("kind", "taskaudit").in("status", ["pending", "dismissed"]),
+    supabase.from("estate_ai_suggestions").select("title").eq("estate_id", estateId).eq("kind", "taskaudit").in("status", ["pending", "dismissed", "accepted", "done"]),
   ]);
   const tasks = tasksRes.data ?? [];
   if (tasks.length < 2) return [];

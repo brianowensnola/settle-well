@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
-import { runAdvisor, loadSuggestions, acceptSuggestion, dismissSuggestion } from '../lib/aiAdvisor'
+import { runAdvisor, loadSuggestions, acceptSuggestion, dismissSuggestion, markSuggestionDone, loadSuggestionLog, restoreSuggestion } from '../lib/aiAdvisor'
 import LegalDisclaimer from '../components/LegalDisclaimer'
 
 const FIN_CATEGORY_LABEL = {
@@ -29,7 +29,7 @@ export default function Assistant() {
   const [files, setFiles] = useState([])
   const [agentEnabled, setAgentEnabled] = useState(true)
   const [busyIds, setBusyIds] = useState(new Set())
-  const [dismissedRecent, setDismissedRecent] = useState([])
+  const [log, setLog] = useState([])
 
   useEffect(() => {
     if (!currentEstate) return
@@ -50,7 +50,7 @@ export default function Assistant() {
       const initial = await loadSuggestions(currentEstate.id)
       if (cancelled) return
       setSuggestions(initial)
-      loadDismissed()
+      loadLog()
       setLoading(false)
       // Auto-run the review in the background (executor only), throttled.
       if (!isFullAccess(role)) return
@@ -71,21 +71,18 @@ export default function Assistant() {
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (!isFullAccess(role)) return <div className="p-8 text-gray-400">The AI Assistant is available to the executor only.</div>
 
-  async function loadDismissed() {
-    const { data } = await supabase.from('estate_ai_suggestions')
-      .select('id, title, kind, created_at').eq('estate_id', currentEstate.id)
-      .eq('status', 'dismissed').order('created_at', { ascending: false }).limit(12)
-    setDismissedRecent(data ?? [])
+  async function loadLog() {
+    setLog(await loadSuggestionLog(currentEstate.id))
   }
   async function restore(s) {
-    await supabase.from('estate_ai_suggestions').update({ status: 'pending' }).eq('id', s.id)
-    setDismissedRecent(prev => prev.filter(x => x.id !== s.id))
+    await restoreSuggestion(s.id)
+    setLog(prev => prev.filter(x => x.id !== s.id))
     refresh()
   }
 
   async function refresh() {
     setSuggestions(await loadSuggestions(currentEstate.id))
-    loadDismissed()
+    loadLog()
   }
 
   async function review() {
@@ -150,25 +147,33 @@ export default function Assistant() {
     setBusyIds(prev => new Set(prev).add(s.id))
     await acceptSuggestion(s)
     setSuggestions(prev => prev.filter(x => x.id !== s.id))
+    loadLog()
   }
   async function dismiss(s) {
     setBusyIds(prev => new Set(prev).add(s.id))
     await dismissSuggestion(s.id)
     setSuggestions(prev => prev.filter(x => x.id !== s.id))
-    loadDismissed()
+    loadLog()
+  }
+  async function markDone(s) {
+    setBusyIds(prev => new Set(prev).add(s.id))
+    await markSuggestionDone(s.id)
+    setSuggestions(prev => prev.filter(x => x.id !== s.id))
+    loadLog()
   }
   async function acceptAll(list) {
     const ids = new Set(list.map(s => s.id))
     setBusyIds(prev => new Set([...prev, ...ids]))
     for (const s of list) await acceptSuggestion(s)
     setSuggestions(prev => prev.filter(x => !ids.has(x.id)))
+    loadLog()
   }
   async function dismissAll(list) {
     const ids = new Set(list.map(s => s.id))
     setBusyIds(prev => new Set([...prev, ...ids]))
     for (const s of list) await dismissSuggestion(s.id)
     setSuggestions(prev => prev.filter(x => !ids.has(x.id)))
-    loadDismissed()
+    loadLog()
   }
 
   const reviewSugs = suggestions.filter(s => s.kind === 'review')
@@ -247,8 +252,11 @@ export default function Assistant() {
                           s.suggested_phase && <div className="text-xs text-gray-400 mt-1">{s.suggested_phase}{s.is_private ? ' · 🔒 private' : ''}</div>
                         )}
                       </div>
-                      <div className="flex gap-2 shrink-0">
+                      <div className="flex flex-wrap gap-2 shrink-0 justify-end">
                         <button onClick={() => accept(s)} disabled={busyIds.has(s.id)} className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">Accept</button>
+                        {['review', 'statelaw', 'forensic', 'financial'].includes(s.kind) && (
+                          <button onClick={() => markDone(s)} disabled={busyIds.has(s.id)} title="I've already handled this — record it as done and stop suggesting it" className="text-xs px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 disabled:opacity-50">Already done</button>
+                        )}
                         <button onClick={() => dismiss(s)} disabled={busyIds.has(s.id)} className="text-xs px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg hover:bg-gray-200 disabled:opacity-50">Dismiss</button>
                       </div>
                     </div>
@@ -318,21 +326,34 @@ export default function Assistant() {
         </div>
       </details>
 
-      {/* Recently dismissed — visibility + undo */}
-      {dismissedRecent.length > 0 && (
+      {/* Suggestion log — full history of everything you've acted on, + undo */}
+      {log.length > 0 && (
         <details className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl mt-4">
           <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-            ▸ Recently dismissed ({dismissedRecent.length})
-            <span className="font-normal text-gray-400"> — restore one if you dismissed it by mistake</span>
+            ▸ Suggestion log ({log.length})
+            <span className="font-normal text-gray-400"> — everything already suggested and what you did with it</span>
           </summary>
           <div className="px-5 pb-4 space-y-2">
-            {dismissedRecent.map(s => (
-              <div key={s.id} className="flex items-center justify-between gap-3 text-sm border-t border-gray-100 dark:border-gray-800 pt-2">
-                <span className="text-gray-600 dark:text-gray-400 line-through truncate">{s.title}</span>
-                <button onClick={() => restore(s)} className="text-xs text-blue-600 hover:underline shrink-0">Restore</button>
-              </div>
-            ))}
-            <p className="text-[11px] text-gray-400 pt-1">Dismissed items won't be re-suggested by the assistant, even if reworded.</p>
+            {log.map(s => {
+              const badge = s.status === 'accepted'
+                ? { label: 'Accepted', cls: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300' }
+                : s.status === 'done'
+                ? { label: 'Already done', cls: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' }
+                : { label: 'Dismissed', cls: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400' }
+              return (
+                <div key={s.id} className="flex items-center justify-between gap-3 text-sm border-t border-gray-100 dark:border-gray-800 pt-2">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded shrink-0 ${badge.cls}`}>{badge.label}</span>
+                    <span className={`truncate ${s.status === 'dismissed' ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-700 dark:text-gray-300'}`}>{s.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[11px] text-gray-400 hidden sm:inline">{new Date(s.created_at).toLocaleDateString()}</span>
+                    <button onClick={() => restore(s)} title="Put this back into review" className="text-xs text-blue-600 hover:underline">Restore</button>
+                  </div>
+                </div>
+              )
+            })}
+            <p className="text-[11px] text-gray-400 pt-1">Accepted, already-done, and dismissed items are all remembered — the assistant won't re-suggest any of them, even reworded. Restore one to bring it back into review.</p>
           </div>
         </details>
       )}

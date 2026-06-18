@@ -13,6 +13,7 @@ finished. Not blocking. Brian adds to this by saying **"Park: <thing>"** (or
 "add to the parking lot" / "for later"). Claude appends it here verbatim, dated.
 Items graduate into the structured backlog below when it's time to do them.
 
+- **(2026-06-18) Leaked-password protection — deferred, needs Supabase Pro plan.** Supabase Auth → Attack Protection → "Prevent use of leaked passwords" (HaveIBeenPwned check) is a Pro-plan-and-up feature; the project is on Free, so it can't be enabled now. Not a hole (passwords are still hashed/protected) — just a hardening nice-to-have. Flip it on if/when upgrading to Pro (one toggle, via the Email provider panel). Captcha protection is currently ON with hCaptcha — verify a real hCaptcha key is configured if any login/sign-up issues appear.
 - **(2026-06-18) SMS — TFN submitted, awaiting carrier approval (2–4 wks, ~early-mid July 2026).** Toll-free verification form submitted via Brevo (use case: App Notifications; opt-in screenshot = the Users & Roles SMS-consent checkbox). App side is fully built: `notify-sweep` (dormant), invite/report SMS, and `estate_users.sms_consent` capture. **ACTIVATION when approved: set Netlify env `BREVO_SMS_SENDER` to the approved toll-free number** → everything flips on; then verify a meeting reminder sends.
 - **(2026-06-16) ⭐ Brian wants this soon** Text (SMS) messaging — make texting
   actually work: be able to **send** texts to people, and send **meeting
