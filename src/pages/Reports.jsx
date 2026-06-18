@@ -4,32 +4,23 @@ import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 
-// Keep keys/options in sync with the send-report function's builders.
+// Keep keys in sync with the send-report function (builders + DRILL).
 const REPORT_TYPES = [
-  { key: 'assets', label: 'Asset List (full detail)', options: [
-    { key: 'show', label: 'Show', choices: [['all', 'All assets'], ['owned', 'Owned (excl. sold/distributed)'], ['sold', 'Sold / distributed only']], default: 'all' },
-    { key: 'sort', label: 'Sort by', choices: [['type', 'Type'], ['value', 'Value (high → low)'], ['disposition', 'Disposition']], default: 'type' },
-  ] },
+  { key: 'assets', label: 'Asset List (full detail)' },
   { key: 'inventory', label: 'Estate Inventory (accounts, assets, debts, net worth)' },
   { key: 'ledger', label: 'Transaction Ledger / Accounting' },
   { key: 'liabilities', label: 'Debts & Monthly Obligations' },
-  { key: 'reimbursements', label: 'Reimbursements (pending & paid)', options: [
-    { key: 'show', label: 'Show', choices: [['all', 'Pending & reimbursed'], ['pending', 'Pending only'], ['reimbursed', 'Reimbursed only']], default: 'all' },
-  ] },
-  { key: 'contacts', label: 'Contacts Directory', options: [
-    { key: 'sort', label: 'Sort by', choices: [['role', 'Role'], ['name', 'Name']], default: 'role' },
-  ] },
-  { key: 'tasks', label: 'Task & Progress Report', options: [
-    { key: 'group', label: 'Group by', choices: [['phase', 'Phase'], ['status', 'Status'], ['assignee', 'Assignee']], default: 'phase' },
-    { key: 'show', label: 'Show', choices: [['all', 'All tasks'], ['open', 'Open only'], ['done', 'Done only']], default: 'all' },
-  ] },
+  { key: 'reimbursements', label: 'Reimbursements (pending & paid)' },
+  { key: 'contacts', label: 'Contacts Directory' },
+  { key: 'tasks', label: 'Task & Progress Report' },
 ]
-const defaultOptions = key => Object.fromEntries((REPORT_TYPES.find(r => r.key === key)?.options ?? []).map(o => [o.key, o.default]))
 
 export default function Reports() {
   const { currentEstate, role } = useEstate()
   const [reportType, setReportType] = useState('assets')
-  const [options, setOptions] = useState(defaultOptions('assets'))
+  const [path, setPath] = useState([])      // [{ key, label, value }] drill filters
+  const [group, setGroup] = useState(null)  // which remaining dimension to group by
+  const [drill, setDrill] = useState(null)  // { groupKey, groupLabel, values, remaining } from server
   const [html, setHtml] = useState('')
   const [building, setBuilding] = useState(false)
   const [contacts, setContacts] = useState([])
@@ -48,16 +39,16 @@ export default function Reports() {
       .then(({ data }) => setContacts((data ?? []).filter(c => c.email || (c.emails && c.emails[0]))))
   }, [currentEstate])
 
-  useEffect(() => { if (currentEstate) buildPreview() }, [currentEstate, reportType, options])
+  useEffect(() => { if (currentEstate) buildPreview() }, [currentEstate, reportType, path, group])
 
-  function changeReport(key) { setReportType(key); setOptions(defaultOptions(key)) }
+  function changeReport(key) { setReportType(key); setPath([]); setGroup(null); setDrill(null) }
 
   async function post(body) {
     const token = await getAccessToken()
     const resp = await fetch('/.netlify/functions/send-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ estateId: currentEstate.id, reportType, options, ...body }),
+      body: JSON.stringify({ estateId: currentEstate.id, reportType, options: { path, group }, ...body }),
     })
     const data = await resp.json().catch(() => ({}))
     if (!resp.ok) throw new Error(data.error || 'Request failed')
@@ -65,9 +56,11 @@ export default function Reports() {
   }
 
   async function buildPreview() {
-    setBuilding(true); setMsg(''); setHtml('')
-    try { const { html } = await post({}); setHtml(html || '') }
-    catch (e) { setMsg(`Could not build the report: ${e.message}`) }
+    setBuilding(true); setMsg('')
+    try {
+      const { html, drill } = await post({})
+      setHtml(html || ''); setDrill(drill || null)
+    } catch (e) { setMsg(`Could not build the report: ${e.message}`); setHtml('') }
     finally { setBuilding(false) }
   }
 
@@ -81,6 +74,12 @@ export default function Reports() {
     finally { setSending(false) }
   }
 
+  function drillInto(value) {
+    if (!value || !drill?.groupKey) return
+    setPath(p => [...p, { key: drill.groupKey, label: drill.groupLabel, value }])
+    setGroup(null)
+  }
+
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (!isFullAccess(role)) return <div className="p-8 text-gray-400">Reports are available to the executor only.</div>
 
@@ -91,26 +90,52 @@ export default function Reports() {
         <button onClick={() => window.print()} disabled={!html} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">🖨 Print / Save PDF</button>
       </div>
 
-      {/* Report picker + send controls */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-5 print:hidden space-y-3">
-        <div className="flex flex-wrap gap-3">
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Report</label>
-            <select value={reportType} onChange={e => changeReport(e.target.value)}
-              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-              {REPORT_TYPES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
-            </select>
+        <div>
+          <label className="text-xs text-gray-500 block mb-1">Report</label>
+          <select value={reportType} onChange={e => changeReport(e.target.value)}
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+            {REPORT_TYPES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+          </select>
+        </div>
+
+        {/* Drill path breadcrumb */}
+        {path.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            <button onClick={() => { setPath([]); setGroup(null) }} className="text-blue-600 hover:underline">All</button>
+            {path.map((f, i) => (
+              <span key={i} className="inline-flex items-center gap-1">
+                <span className="text-gray-400">›</span>
+                <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">{f.label}: {f.value}
+                  <button onClick={() => { setPath(p => p.slice(0, i)); setGroup(null) }} className="ml-1 text-gray-400 hover:text-red-500">×</button>
+                </span>
+              </span>
+            ))}
           </div>
-          {(REPORT_TYPES.find(r => r.key === reportType)?.options ?? []).map(o => (
-            <div key={o.key}>
-              <label className="text-xs text-gray-500 block mb-1">{o.label}</label>
-              <select value={options[o.key] ?? o.default} onChange={e => setOptions(p => ({ ...p, [o.key]: e.target.value }))}
+        )}
+
+        {/* Group by + drill into the current dimension */}
+        {drill && (drill.remaining?.length > 0) && (
+          <div className="flex flex-wrap gap-3 items-end">
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Group by</label>
+              <select value={drill.groupKey || ''} onChange={e => setGroup(e.target.value)}
                 className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-                {o.choices.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                {drill.remaining.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
               </select>
             </div>
-          ))}
-        </div>
+            {drill.values?.length > 0 && (
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Drill into a {drill.groupLabel?.toLowerCase()}</label>
+                <select value="" onChange={e => drillInto(e.target.value)}
+                  className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+                  <option value="">— pick one —</option>
+                  {drill.values.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
           <label className="text-xs text-gray-500 block mb-1">Email this report to a contact</label>
@@ -129,7 +154,7 @@ export default function Reports() {
               <button onClick={emailReport} disabled={sending || !to || !html} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">
                 {sending ? 'Sending…' : 'Email report'}
               </button>
-              <p className="text-xs text-gray-400">Sends from noreply@bastroplaundrypro.com and logs the send. Private items are excluded.</p>
+              <p className="text-xs text-gray-400">Sends exactly the view below (current drill) from noreply@bastroplaundrypro.com, and logs the send. Private items excluded.</p>
             </div>
           )}
         </div>

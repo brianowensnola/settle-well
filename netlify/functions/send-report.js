@@ -36,19 +36,6 @@ async function accountBalances(estateId) {
 
 // ---- report builders: each returns { title, sections[] } ----
 const builders = {
-  async assets(estateId, opts = {}) {
-    const show = opts.show || "all";
-    const sort = opts.sort || "type";
-    let { data: assets } = await admin.from("estate_financials").select("*").eq("estate_id", estateId).eq("category", "asset").eq("is_private", false).order("asset_type").order("name");
-    assets = assets ?? [];
-    if (show === "owned") assets = assets.filter(a => !["sold", "distributed"].includes(a.status));
-    else if (show === "sold") assets = assets.filter(a => ["sold", "distributed"].includes(a.status));
-    if (sort === "value") assets = [...assets].sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
-    else if (sort === "disposition") assets = [...assets].sort((a, b) => (a.status || "").localeCompare(b.status || ""));
-    const rows = assets.map(a => [a.name, TYPE_LABEL[a.asset_type] || a.asset_type || "", a.vin_serial || "", R(money(a.amount)), a.status && a.status !== "undecided" ? a.status : "", a.beneficiary || "", a.location || "", a.notes || ""]);
-    const total = assets.filter(a => !["sold", "distributed"].includes(a.status)).reduce((s, a) => s + (a.amount ?? 0), 0);
-    return { title: "Asset List", sections: [{ columns: ["Asset", "Type", "VIN/Serial", RH("Value"), "Disposition", "Beneficiary", "Location/Legal", "Notes"], rows, total: { label: "Total (excl. sold/distributed)", value: money(total) } }] };
-  },
   async inventory(estateId) {
     const accts = await accountBalances(estateId);
     const { data: fin } = await admin.from("estate_financials").select("*").eq("estate_id", estateId).eq("is_private", false);
@@ -97,62 +84,6 @@ const builders = {
       ],
     };
   },
-  async reimbursements(estateId, opts = {}) {
-    const show = opts.show || "all";
-    const { data: txns } = await admin.from("estate_transactions").select("*").eq("estate_id", estateId).not("reimburse_status", "is", null).order("date", { ascending: false });
-    const pending = (txns ?? []).filter(t => t.reimburse_status === "pending");
-    const paid = (txns ?? []).filter(t => t.reimburse_status === "reimbursed");
-    const sections = [];
-    if (show !== "reimbursed") sections.push({ heading: "Pending (owed, not yet paid)", columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")], rows: pending.map(t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))]), total: { label: "Total owed", value: money(pending.reduce((s, t) => s + Math.abs(t.amount ?? 0), 0)) } });
-    if (show !== "pending") sections.push({ heading: "Reimbursed", columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")], rows: paid.map(t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))]) });
-    return { title: "Reimbursements", sections };
-  },
-  async contacts(estateId, opts = {}) {
-    const q = admin.from("estate_contacts").select("*").eq("estate_id", estateId);
-    const { data: contacts } = opts.sort === "name" ? await q.order("name") : await q.order("role").order("name");
-    return {
-      title: "Contacts Directory",
-      sections: [{ columns: ["Name", "Role", "Company", "Phone", "Email"], rows: (contacts ?? []).map(c => [c.name, c.role || "", c.company || "", c.phone || (c.phones || [])[0] || "", c.email || (c.emails || [])[0] || ""]) }],
-    };
-  },
-  async tasks(estateId, opts = {}) {
-    const group = opts.group || "phase";
-    const show = opts.show || "all";
-    const [{ data: tasks }, { data: secs }] = await Promise.all([
-      admin.from("estate_tasks").select("text, status, section_id, assigned_to, is_private").eq("estate_id", estateId).eq("is_private", false).is("parent_task_id", null),
-      admin.from("estate_sections").select("id, label, sort_order").eq("estate_id", estateId).order("sort_order"),
-    ]);
-    const all = tasks ?? [];
-    const done = all.filter(x => x.status === "done").length;
-    const phaseLabel = id => (secs ?? []).find(s => s.id === id)?.label || "Unfiled";
-    let t = all;
-    if (show === "open") t = t.filter(x => x.status !== "done");
-    else if (show === "done") t = t.filter(x => x.status === "done");
-
-    const sections = [{ heading: "Overall", pairs: [["Tasks complete", `${done} of ${all.length}`], ["Progress", all.length ? `${Math.round((done / all.length) * 100)}%` : "—"], ["Showing", show === "all" ? "all tasks" : `${show} only`]] }];
-
-    if (group === "status") {
-      const order = ["in_progress", "waiting", "pending", "submitted", "done"];
-      const g = {}; for (const x of t) (g[x.status] ||= []).push(x);
-      for (const st of [...order, ...Object.keys(g).filter(k => !order.includes(k))]) {
-        if (!g[st]?.length) continue;
-        sections.push({ heading: st.replace(/_/g, " "), columns: ["Task", "Phase"], rows: g[st].map(x => [x.text, phaseLabel(x.section_id)]) });
-      }
-    } else if (group === "assignee") {
-      const g = {}; for (const x of t) (g[x.assigned_to || "Unassigned"] ||= []).push(x);
-      for (const who of Object.keys(g).sort()) {
-        sections.push({ heading: who, columns: ["Task", "Phase", "Status"], rows: g[who].map(x => [x.text, phaseLabel(x.section_id), x.status]) });
-      }
-    } else {
-      for (const s of (secs ?? [])) {
-        const list = t.filter(x => x.section_id === s.id);
-        if (list.length) sections.push({ heading: s.label, columns: ["Task", "Status"], rows: list.map(x => [x.text, x.status]) });
-      }
-      const unfiled = t.filter(x => !x.section_id);
-      if (unfiled.length) sections.push({ heading: "Unfiled", columns: ["Task", "Status"], rows: unfiled.map(x => [x.text, x.status]) });
-    }
-    return { title: "Task & Progress Report", sections };
-  },
 };
 
 // right-aligned cell + header helpers
@@ -178,12 +109,116 @@ function sectionHtml(sec) {
   return h;
 }
 function reportHtml(estate, report) {
+  const crumb = (report.path && report.path.length)
+    ? `<div style="font-size:12px;color:#374151;margin-bottom:8px">Filtered: ${report.path.map(f => `${esc(f.label)} = <strong>${esc(f.value)}</strong>`).join(" › ")}</div>`
+    : "";
   return `<div style="font-family:Arial,Helvetica,sans-serif;color:#1f2937;max-width:780px">
     <h2 style="color:#111827;margin-bottom:2px">${esc(estate.deceased_name)} — ${esc(report.title)}</h2>
     <div style="font-size:12px;color:#6b7280;margin-bottom:8px">Prepared ${new Date().toLocaleDateString()}${estate.state_of_residence ? " · " + esc(estate.state_of_residence) : ""}</div>
+    ${crumb}
     ${report.sections.map(sectionHtml).join("")}
     <div style="margin-top:18px;font-size:11px;color:#9ca3af">Working summary, not a legal filing or appraisal. Values are estimates unless an appraisal/statement is on file. Prepared with SettleWell.</div>
   </div>`;
+}
+
+// ---- Drill-down engine: reports defined by ordered dimensions you can group
+// by and filter into, level after level, until none remain (then a flat list).
+const DRILL = {
+  tasks: {
+    title: "Task & Progress Report",
+    async load(estateId) {
+      const [{ data: tasks }, { data: secs }] = await Promise.all([
+        admin.from("estate_tasks").select("text, status, section_id, assigned_to, is_private").eq("estate_id", estateId).eq("is_private", false).is("parent_task_id", null),
+        admin.from("estate_sections").select("id, label").eq("estate_id", estateId).order("sort_order"),
+      ]);
+      const phaseLabel = id => (secs ?? []).find(s => s.id === id)?.label || "Unfiled";
+      const rows = tasks ?? [];
+      return {
+        rows,
+        dims: [
+          { key: "assignee", label: "Assignee", value: t => t.assigned_to || "Unassigned" },
+          { key: "phase", label: "Phase", value: t => phaseLabel(t.section_id) },
+          { key: "status", label: "Status", value: t => (t.status || "").replace(/_/g, " ") || "—" },
+        ],
+        columns: ["Task", "Assignee", "Phase", "Status"],
+        cell: t => [t.text, t.assigned_to || "Unassigned", phaseLabel(t.section_id), (t.status || "").replace(/_/g, " ")],
+        summary: list => ({ heading: "Overall", pairs: [["Tasks shown", `${list.length}`], ["Complete", `${list.filter(x => x.status === "done").length} of ${list.length}`]] }),
+      };
+    },
+  },
+  assets: {
+    title: "Asset List",
+    async load(estateId) {
+      const { data: assets } = await admin.from("estate_financials").select("*").eq("estate_id", estateId).eq("category", "asset").eq("is_private", false).order("asset_type").order("name");
+      return {
+        rows: assets ?? [],
+        dims: [
+          { key: "type", label: "Type", value: a => TYPE_LABEL[a.asset_type] || a.asset_type || "Other" },
+          { key: "disposition", label: "Disposition", value: a => a.status || "undecided" },
+        ],
+        columns: ["Asset", "Type", "VIN/Serial", RH("Value"), "Disposition", "Beneficiary", "Location/Legal", "Notes"],
+        cell: a => [a.name, TYPE_LABEL[a.asset_type] || a.asset_type || "", a.vin_serial || "", R(money(a.amount)), a.status && a.status !== "undecided" ? a.status : "", a.beneficiary || "", a.location || "", a.notes || ""],
+        summary: list => ({ heading: "Total", pairs: [["Value (excl. sold/distributed)", money(list.filter(a => !["sold", "distributed"].includes(a.status)).reduce((s, a) => s + (a.amount ?? 0), 0))]] }),
+      };
+    },
+  },
+  reimbursements: {
+    title: "Reimbursements",
+    async load(estateId) {
+      const { data: txns } = await admin.from("estate_transactions").select("*").eq("estate_id", estateId).not("reimburse_status", "is", null).order("date", { ascending: false });
+      return {
+        rows: txns ?? [],
+        dims: [
+          { key: "status", label: "Status", value: t => t.reimburse_status === "pending" ? "Pending" : "Reimbursed" },
+          { key: "owed_to", label: "Owed to", value: t => t.paid_by || "—" },
+        ],
+        columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")],
+        cell: t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))],
+        summary: list => ({ heading: "Total", pairs: [["Owed (pending)", money(list.filter(t => t.reimburse_status === "pending").reduce((s, t) => s + Math.abs(t.amount ?? 0), 0))]] }),
+      };
+    },
+  },
+  contacts: {
+    title: "Contacts Directory",
+    async load(estateId) {
+      const { data: contacts } = await admin.from("estate_contacts").select("*").eq("estate_id", estateId).order("role").order("name");
+      return {
+        rows: contacts ?? [],
+        dims: [{ key: "role", label: "Role", value: c => c.role || "other" }],
+        columns: ["Name", "Role", "Company", "Phone", "Email"],
+        cell: c => [c.name, c.role || "", c.company || "", c.phone || (c.phones || [])[0] || "", c.email || (c.emails || [])[0] || ""],
+      };
+    },
+  },
+};
+
+function buildDrillReport(title, loaded, path = [], groupKey) {
+  const { rows, dims, columns, cell, summary } = loaded;
+  let filtered = rows;
+  const validPath = [];
+  for (const f of (path || [])) {
+    const d = dims.find(x => x.key === f.key);
+    if (!d) continue;
+    filtered = filtered.filter(r => d.value(r) === f.value);
+    validPath.push({ key: d.key, label: d.label, value: f.value });
+  }
+  const used = new Set(validPath.map(f => f.key));
+  const remaining = dims.filter(d => !used.has(d.key));
+  const group = remaining.find(d => d.key === groupKey) || remaining[0] || null;
+  const sections = [];
+  if (summary) sections.push(summary(filtered));
+  let drill;
+  if (group) {
+    const g = {};
+    for (const r of filtered) (g[group.value(r)] ||= []).push(r);
+    const keys = Object.keys(g).sort();
+    for (const k of keys) sections.push({ heading: `${group.label}: ${k} (${g[k].length})`, columns, rows: g[k].map(cell) });
+    drill = { groupKey: group.key, groupLabel: group.label, values: keys, remaining: remaining.map(d => [d.key, d.label]) };
+  } else {
+    sections.push({ columns, rows: filtered.map(cell) });
+    drill = { groupKey: null, groupLabel: null, values: [], remaining: [] };
+  }
+  return { title, sections, drill, path: validPath };
 }
 
 export const handler = async (event) => {
@@ -191,7 +226,7 @@ export const handler = async (event) => {
   try { ({ estateId, reportType = "assets", recipientId, cc, bcc, options = {} } = JSON.parse(event.body)); }
   catch { return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) }; }
   if (!estateId) return { statusCode: 400, body: JSON.stringify({ error: "estateId required" }) };
-  if (!builders[reportType]) return { statusCode: 400, body: JSON.stringify({ error: "unknown report type" }) };
+  if (!builders[reportType] && !DRILL[reportType]) return { statusCode: 400, body: JSON.stringify({ error: "unknown report type" }) };
 
   const token = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "");
   if (!token) return { statusCode: 401, body: JSON.stringify({ error: "not authenticated" }) };
@@ -203,11 +238,17 @@ export const handler = async (event) => {
 
   try {
     const { data: estate } = await admin.from("estates").select("deceased_name, state_of_residence").eq("id", estateId).single();
-    const report = await builders[reportType](estateId, options || {});
+    let report;
+    if (DRILL[reportType]) {
+      const loaded = await DRILL[reportType].load(estateId);
+      report = buildDrillReport(DRILL[reportType].title, loaded, options.path, options.group);
+    } else {
+      report = await builders[reportType](estateId, options || {});
+    }
     const html = reportHtml(estate, report);
 
     // Preview / print only — no recipient.
-    if (!recipientId) return { statusCode: 200, body: JSON.stringify({ html, title: report.title }) };
+    if (!recipientId) return { statusCode: 200, body: JSON.stringify({ html, title: report.title, drill: report.drill || null, path: report.path || [] }) };
 
     // Email path: recipient must be a contact on THIS estate.
     const apiKey = process.env.BREVO_API_KEY;
