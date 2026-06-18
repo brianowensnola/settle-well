@@ -150,7 +150,7 @@ export default function AdminUsers() {
                       className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
                     <label className="col-span-2 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                       <input type="checkbox" checked={!!draft.sms_consent} onChange={e => setDraft(d => ({ ...d, sms_consent: e.target.checked }))} className="mt-0.5" />
-                      <span>The person at the number above consents to receive SMS text notifications about this estate (meeting reminders and alerts). <span className="text-gray-400">Msg &amp; data rates may apply; message frequency varies. Reply STOP to opt out, HELP for help.</span></span>
+                      <span>The recipient at the number above consents to receive SMS text notifications about this estate (meeting reminders and alerts). <span className="text-gray-400">Message frequency may vary. Standard message and data rates may apply. Reply STOP to opt out. Reply HELP for assistance. Your mobile information will not be sold or shared with third parties for promotional or marketing purposes.</span></span>
                     </label>
                   </div>
                   <div className="flex gap-2">
@@ -239,7 +239,7 @@ export default function AdminUsers() {
         </div>
         <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 mb-3">
           <input type="checkbox" checked={invite.sms_consent} onChange={e => setInvite(v => ({ ...v, sms_consent: e.target.checked }))} className="mt-0.5" />
-          <span>The person at the number above consents to receive SMS text notifications about this estate (meeting reminders and alerts). <span className="text-gray-400">Msg &amp; data rates may apply; message frequency varies. Reply STOP to opt out, HELP for help.</span></span>
+          <span>The recipient at the number above consents to receive SMS text notifications about this estate (meeting reminders and alerts). <span className="text-gray-400">Message frequency may vary. Standard message and data rates may apply. Reply STOP to opt out. Reply HELP for assistance. Your mobile information will not be sold or shared with third parties for promotional or marketing purposes.</span></span>
         </label>
         <div className="mb-3">
           <div className="text-xs text-gray-500 mb-1">Add to which estate(s):</div>
