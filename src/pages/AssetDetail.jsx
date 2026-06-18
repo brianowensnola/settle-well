@@ -268,7 +268,10 @@ export default function AssetDetail() {
           </div>
           <div>
             <label className="text-xs text-gray-500 block mb-1">Estimated value</label>
-            <input type="number" value={edit.amount} onChange={e => set('amount', e.target.value)} className={inputCls} />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <input type="number" value={edit.amount} onChange={e => set('amount', e.target.value)} className={`${inputCls} pl-7`} />
+            </div>
           </div>
           <div>
             <label className="text-xs text-gray-500 block mb-1">Valuation date</label>

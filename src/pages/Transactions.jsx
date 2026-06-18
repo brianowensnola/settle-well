@@ -77,7 +77,7 @@ export default function Transactions() {
       receipt_path,
       reimburse_status: form.reimbursement ? 'pending' : null,
       paid_by: form.reimbursement ? (form.paid_by || null) : null,
-      paid_to: form.reimbursement ? (form.paid_to || null) : null,
+      paid_to: form.paid_to || null,
     }).select().single()
     if (data) setTxns(prev => [data, ...prev])
     setAdding(false)
@@ -150,14 +150,15 @@ export default function Transactions() {
     <div className="py-3 space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <input type="date" value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))} className={inputCls} />
-        <input type="number" step="0.01" value={editForm.amount} onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))} placeholder="Amount (+ / −)" className={inputCls} />
-      </div>
-      <input value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} placeholder="Description" className={inputCls} />
-      {t.reimburse_status ? (
-        <div className="grid grid-cols-2 gap-2">
-          <input value={editForm.paid_to} onChange={e => setEditForm(p => ({ ...p, paid_to: e.target.value }))} placeholder="Paid to (vendor)" className={inputCls} />
-          <input value={editForm.paid_by} onChange={e => setEditForm(p => ({ ...p, paid_by: e.target.value }))} placeholder="Owed to" className={inputCls} />
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+          <input type="number" step="0.01" value={editForm.amount} onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))} placeholder="Amount (+ / −)" className={`${inputCls} pl-7`} />
         </div>
+      </div>
+      <input value={editForm.paid_to} onChange={e => setEditForm(p => ({ ...p, paid_to: e.target.value }))} placeholder="Paid to / received from" className={inputCls} />
+      <input value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} placeholder="What it was for" className={inputCls} />
+      {t.reimburse_status ? (
+        <input value={editForm.paid_by} onChange={e => setEditForm(p => ({ ...p, paid_by: e.target.value }))} placeholder="Owed to" className={inputCls} />
       ) : (
         <select value={editForm.account_id} onChange={e => setEditForm(p => ({ ...p, account_id: e.target.value }))} className={inputCls}>
           <option value="">(no account)</option>
@@ -211,27 +212,33 @@ export default function Transactions() {
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Amount (+ deposit / − payment)</label>
-              <input type="number" step="0.01" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
-                placeholder="e.g. -1500 or 5000"
-                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input type="number" step="0.01" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+                  placeholder="e.g. -1500 or 5000"
+                  className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+              </div>
             </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Paid to / received from</label>
+            <input value={form.paid_to} onChange={e => setForm(p => ({ ...p, paid_to: e.target.value }))} placeholder="e.g. Memorial Funeral Home (or who funds came from)"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">What it was for</label>
+            <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="e.g. Funeral deposit"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
           </div>
           <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input type="checkbox" checked={form.reimbursement} onChange={e => setForm(p => ({ ...p, reimbursement: e.target.checked }))} className="mt-0.5" />
             <span>Pending reimbursement — someone paid out of pocket and the estate owes them back. <span className="text-gray-400">(Won't touch an account balance until you mark it reimbursed.)</span></span>
           </label>
           {form.reimbursement ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Owed to (who fronted the cost)</label>
-                <input value={form.paid_by} onChange={e => setForm(p => ({ ...p, paid_by: e.target.value }))} placeholder="e.g. Brian Owens"
-                  className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Paid to (vendor / who received it)</label>
-                <input value={form.paid_to} onChange={e => setForm(p => ({ ...p, paid_to: e.target.value }))} placeholder="e.g. Memorial Funeral Home"
-                  className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
-              </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Owed to (who fronted the cost)</label>
+              <input value={form.paid_by} onChange={e => setForm(p => ({ ...p, paid_by: e.target.value }))} placeholder="e.g. Brian Owens"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
             </div>
           ) : (
             <div>
@@ -243,11 +250,6 @@ export default function Transactions() {
               </select>
             </div>
           )}
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Description</label>
-            <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
-          </div>
           <div>
             <label className="text-xs text-gray-500 block mb-1">Receipt (optional)</label>
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic"
@@ -317,9 +319,14 @@ export default function Transactions() {
                 <div className="flex items-center gap-3 py-3">
                   <span className="text-xs text-gray-400 w-24 shrink-0">{t.date}</span>
                   <span className="flex-1 min-w-0">
-                    <span className="text-sm text-gray-800 dark:text-white">{t.description}</span>
-                    {acctName(t.account_id) && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{acctName(t.account_id)}</span>}
-                    {!t.account_id && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">no account</span>}
+                    <span className="text-sm text-gray-800 dark:text-white">
+                      {t.paid_to && <span className="font-medium">{t.paid_to}</span>}
+                      {t.paid_to && t.description ? ' — ' : ''}
+                      {t.description}
+                    </span>
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400">Paid</span>
+                    {acctName(t.account_id) && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{acctName(t.account_id)}</span>}
+                    {!t.account_id && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">no account</span>}
                   </span>
                   <button onClick={() => startEdit(t)} className="text-xs text-gray-400 hover:text-blue-600 hover:underline shrink-0">Edit</button>
                   {t.receipt_path ? (

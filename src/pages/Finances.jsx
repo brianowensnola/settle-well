@@ -283,9 +283,12 @@ export default function Finances() {
                       className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none capitalize">
                       {DISPOSITIONS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
-                    <input type="number" value={assetForm.value} onChange={e => setAssetForm(p => ({ ...p, value: e.target.value }))}
-                      placeholder="Est. value (optional)"
-                      className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    <div className="relative col-span-2">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" value={assetForm.value} onChange={e => setAssetForm(p => ({ ...p, value: e.target.value }))}
+                        placeholder="Est. value (optional)"
+                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none" />
+                    </div>
                     <textarea value={assetForm.notes} onChange={e => setAssetForm(p => ({ ...p, notes: e.target.value }))}
                       placeholder="Notes (optional)" rows={2}
                       className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
@@ -318,9 +321,12 @@ export default function Finances() {
                     <input value={finForm.name} onChange={e => setFinForm(p => ({ ...p, name: e.target.value }))}
                       placeholder="Name (e.g. Wells Fargo checking, PNC mortgage)" autoFocus
                       className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
-                    <input type="number" value={finForm.amount} onChange={e => setFinForm(p => ({ ...p, amount: e.target.value }))}
-                      placeholder={`${amountLabelFor(cat.key)} (optional)`}
-                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                      <input type="number" value={finForm.amount} onChange={e => setFinForm(p => ({ ...p, amount: e.target.value }))}
+                        placeholder={`${amountLabelFor(cat.key)} (optional)`}
+                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none" />
+                    </div>
                     <select value={finForm.status} onChange={e => setFinForm(p => ({ ...p, status: e.target.value }))}
                       className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none capitalize">
                       <option value="">Status…</option>
@@ -421,9 +427,12 @@ export default function Finances() {
                               <input value={editData.name ?? ''} onChange={e => setEditData(p => ({ ...p, name: e.target.value }))}
                                 placeholder="Name"
                                 className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
-                              <input type="number" value={editData.amount ?? ''} onChange={e => setEditData(p => ({ ...p, amount: e.target.value === '' ? null : Number(e.target.value) }))}
-                                placeholder={amountLabelFor(cat.key)}
-                                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                                <input type="number" value={editData.amount ?? ''} onChange={e => setEditData(p => ({ ...p, amount: e.target.value === '' ? null : Number(e.target.value) }))}
+                                  placeholder={amountLabelFor(cat.key)}
+                                  className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none" />
+                              </div>
                               <select value={editData.status ?? ''} onChange={e => setEditData(p => ({ ...p, status: e.target.value }))}
                                 className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none capitalize">
                                 <option value="">Status…</option>
