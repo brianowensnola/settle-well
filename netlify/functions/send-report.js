@@ -97,8 +97,8 @@ const builders = {
     return {
       title: "Reimbursements",
       sections: [
-        { heading: "Pending (owed, not yet paid)", columns: ["Date", "Description", "Owed to", RH("Amount")], rows: pending.map(t => [t.date, t.description, t.paid_by || "", R(money(Math.abs(t.amount)))]), total: { label: "Total owed", value: money(pending.reduce((s, t) => s + Math.abs(t.amount ?? 0), 0)) } },
-        { heading: "Reimbursed", columns: ["Date", "Description", "Owed to", RH("Amount")], rows: paid.map(t => [t.date, t.description, t.paid_by || "", R(money(Math.abs(t.amount)))]) },
+        { heading: "Pending (owed, not yet paid)", columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")], rows: pending.map(t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))]), total: { label: "Total owed", value: money(pending.reduce((s, t) => s + Math.abs(t.amount ?? 0), 0)) } },
+        { heading: "Reimbursed", columns: ["Date", "Description", "Paid to", "Owed to", RH("Amount")], rows: paid.map(t => [t.date, t.description, t.paid_to || "", t.paid_by || "", R(money(Math.abs(t.amount)))]) },
       ],
     };
   },

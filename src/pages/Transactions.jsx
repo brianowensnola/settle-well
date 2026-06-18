@@ -14,7 +14,7 @@ export default function Transactions() {
   const [txns, setTxns] = useState([])
   const [accounts, setAccounts] = useState([])
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: '', notes: '', reimbursement: false, paid_by: '' })
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: '', notes: '', reimbursement: false, paid_by: '', paid_to: '' })
   const [receiptFile, setReceiptFile] = useState(null)
   const [uploading, setUploading] = useState(null)
   const [settling, setSettling] = useState(null)   // reimbursement txn id being marked paid
@@ -45,7 +45,7 @@ export default function Transactions() {
   }
 
   function openAdd() {
-    setForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: accounts[0]?.id ?? '', notes: '', reimbursement: false, paid_by: '' })
+    setForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: accounts[0]?.id ?? '', notes: '', reimbursement: false, paid_by: '', paid_to: '' })
     setReceiptFile(null)
     setAdding(true)
   }
@@ -73,6 +73,7 @@ export default function Transactions() {
       receipt_path,
       reimburse_status: form.reimbursement ? 'pending' : null,
       paid_by: form.reimbursement ? (form.paid_by || null) : null,
+      paid_to: form.reimbursement ? (form.paid_to || null) : null,
     }).select().single()
     if (data) setTxns(prev => [data, ...prev])
     setAdding(false)
@@ -167,10 +168,17 @@ export default function Transactions() {
             <span>Pending reimbursement — someone paid out of pocket and the estate owes them back. <span className="text-gray-400">(Won't touch an account balance until you mark it reimbursed.)</span></span>
           </label>
           {form.reimbursement ? (
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Owed to (who fronted the cost)</label>
-              <input value={form.paid_by} onChange={e => setForm(p => ({ ...p, paid_by: e.target.value }))} placeholder="e.g. Brian Owens"
-                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Owed to (who fronted the cost)</label>
+                <input value={form.paid_by} onChange={e => setForm(p => ({ ...p, paid_by: e.target.value }))} placeholder="e.g. Brian Owens"
+                  className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Paid to (vendor / who received it)</label>
+                <input value={form.paid_to} onChange={e => setForm(p => ({ ...p, paid_to: e.target.value }))} placeholder="e.g. Memorial Funeral Home"
+                  className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+              </div>
             </div>
           ) : (
             <div>
@@ -215,7 +223,9 @@ export default function Transactions() {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500 w-24 shrink-0">{t.date}</span>
                   <span className="flex-1 min-w-0 text-sm text-gray-800 dark:text-white">
-                    {t.description}{t.paid_by && <span className="text-gray-500"> · owed to {t.paid_by}</span>}
+                    {t.description}
+                    {t.paid_to && <span className="text-gray-500"> · paid to {t.paid_to}</span>}
+                    {t.paid_by && <span className="text-gray-500"> · owed to {t.paid_by}</span>}
                   </span>
                   {t.receipt_path && <button onClick={() => viewReceipt(t)} className="text-xs text-blue-600 hover:underline shrink-0">📎</button>}
                   <span className="text-sm font-medium text-amber-800 dark:text-amber-300 shrink-0">{fmt(t.amount)}</span>
