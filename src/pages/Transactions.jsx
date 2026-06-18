@@ -14,9 +14,11 @@ export default function Transactions() {
   const [txns, setTxns] = useState([])
   const [accounts, setAccounts] = useState([])
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: '', notes: '' })
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: '', notes: '', reimbursement: false, paid_by: '' })
   const [receiptFile, setReceiptFile] = useState(null)
   const [uploading, setUploading] = useState(null)
+  const [settling, setSettling] = useState(null)   // reimbursement txn id being marked paid
+  const [settleAcct, setSettleAcct] = useState('')  // account chosen to pay it from
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -43,14 +45,17 @@ export default function Transactions() {
   }
 
   function openAdd() {
-    setForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: accounts[0]?.id ?? '', notes: '' })
+    setForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', account_id: accounts[0]?.id ?? '', notes: '', reimbursement: false, paid_by: '' })
     setReceiptFile(null)
     setAdding(true)
   }
 
   async function save() {
-    const amt = parseFloat(form.amount)
+    let amt = parseFloat(form.amount)
     if (!form.description || isNaN(amt)) return
+    // A reimbursement is money the estate owes back — always a payment (debit),
+    // and it doesn't touch an account until it's actually paid.
+    if (form.reimbursement) amt = -Math.abs(amt)
     let receipt_path = null
     if (receiptFile) {
       setUploading('new')
@@ -63,13 +68,25 @@ export default function Transactions() {
       date: form.date,
       description: form.description,
       amount: amt,
-      account_id: form.account_id || null,
+      account_id: form.reimbursement ? null : (form.account_id || null),
       notes: form.notes,
       receipt_path,
+      reimburse_status: form.reimbursement ? 'pending' : null,
+      paid_by: form.reimbursement ? (form.paid_by || null) : null,
     }).select().single()
     if (data) setTxns(prev => [data, ...prev])
     setAdding(false)
     setReceiptFile(null)
+  }
+
+  // Mark a pending reimbursement as paid back from a chosen account — it then
+  // posts to that account's balance like a normal debit.
+  async function markReimbursed(txn, accountId) {
+    await supabase.from('estate_transactions')
+      .update({ reimburse_status: 'reimbursed', account_id: accountId || txn.account_id || null })
+      .eq('id', txn.id)
+    setTxns(prev => prev.map(t => t.id === txn.id ? { ...t, reimburse_status: 'reimbursed', account_id: accountId || t.account_id || null } : t))
+    setSettling(null); setSettleAcct('')
   }
 
   async function attachReceipt(txn, file) {
@@ -94,10 +111,15 @@ export default function Transactions() {
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
   const acctName = id => accounts.find(a => a.id === id)?.name ?? null
-  // Live balance per account = opening balance + its ledger activity.
+  // Pending reimbursements are money owed but not yet paid — they don't affect
+  // any account balance or appear in the main ledger until they're reimbursed.
+  const pending = txns.filter(t => t.reimburse_status === 'pending')
+  const posted = txns.filter(t => t.reimburse_status !== 'pending')
+  const pendingTotal = pending.reduce((s, t) => s + Math.abs(t.amount ?? 0), 0)
+  // Live balance per account = opening balance + its posted ledger activity.
   const acctCurrent = id => (accounts.find(a => a.id === id)?.amount ?? 0) +
-    txns.filter(t => t.account_id === id).reduce((s, t) => s + (t.amount ?? 0), 0)
-  const unassigned = txns.filter(t => !t.account_id)
+    posted.filter(t => t.account_id === id).reduce((s, t) => s + (t.amount ?? 0), 0)
+  const unassigned = posted.filter(t => !t.account_id)
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
@@ -140,14 +162,26 @@ export default function Transactions() {
                 className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
             </div>
           </div>
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Account</label>
-            <select value={form.account_id} onChange={e => setForm(p => ({ ...p, account_id: e.target.value }))}
-              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">(no account)</option>
-              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </div>
+          <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input type="checkbox" checked={form.reimbursement} onChange={e => setForm(p => ({ ...p, reimbursement: e.target.checked }))} className="mt-0.5" />
+            <span>Pending reimbursement — someone paid out of pocket and the estate owes them back. <span className="text-gray-400">(Won't touch an account balance until you mark it reimbursed.)</span></span>
+          </label>
+          {form.reimbursement ? (
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Owed to (who fronted the cost)</label>
+              <input value={form.paid_by} onChange={e => setForm(p => ({ ...p, paid_by: e.target.value }))} placeholder="e.g. Brian Owens"
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-200" />
+            </div>
+          ) : (
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Account</label>
+              <select value={form.account_id} onChange={e => setForm(p => ({ ...p, account_id: e.target.value }))}
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+                <option value="">(no account)</option>
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-xs text-gray-500 block mb-1">Description</label>
             <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
@@ -168,10 +202,50 @@ export default function Transactions() {
         </div>
       )}
 
+      {/* Pending reimbursements — owed but not yet paid */}
+      {pending.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Pending reimbursements owed</h2>
+            <span className="text-sm font-semibold text-amber-900 dark:text-amber-200">{fmt(pendingTotal)}</span>
+          </div>
+          <div className="divide-y divide-amber-200/60 dark:divide-amber-800/60">
+            {pending.map(t => (
+              <div key={t.id} className="py-2">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500 w-24 shrink-0">{t.date}</span>
+                  <span className="flex-1 min-w-0 text-sm text-gray-800 dark:text-white">
+                    {t.description}{t.paid_by && <span className="text-gray-500"> · owed to {t.paid_by}</span>}
+                  </span>
+                  {t.receipt_path && <button onClick={() => viewReceipt(t)} className="text-xs text-blue-600 hover:underline shrink-0">📎</button>}
+                  <span className="text-sm font-medium text-amber-800 dark:text-amber-300 shrink-0">{fmt(t.amount)}</span>
+                  {settling === t.id
+                    ? null
+                    : <button onClick={() => { setSettling(t.id); setSettleAcct(accounts[0]?.id ?? '') }} className="text-xs text-green-700 hover:underline shrink-0">Mark reimbursed</button>}
+                </div>
+                {settling === t.id && (
+                  <div className="flex items-center gap-2 mt-2 ml-24">
+                    <span className="text-xs text-gray-500">Paid from:</span>
+                    <select value={settleAcct} onChange={e => setSettleAcct(e.target.value)}
+                      className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1 text-xs focus:outline-none">
+                      <option value="">(no account)</option>
+                      {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                    <button onClick={() => markReimbursed(t, settleAcct)} className="text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700">Confirm</button>
+                    <button onClick={() => { setSettling(null); setSettleAcct('') }} className="text-xs text-gray-400 hover:underline">cancel</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-amber-700/80 dark:text-amber-300/70 mt-2">These don't affect account balances until reimbursed. Marking one paid posts it to the chosen account as a payment.</p>
+        </div>
+      )}
+
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
-        {txns.length === 0 && <div className="p-6 text-sm text-gray-400">No transactions yet.</div>}
+        {posted.length === 0 && <div className="p-6 text-sm text-gray-400">No transactions yet.</div>}
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
-          {txns.map(t => (
+          {posted.map(t => (
             <div key={t.id} className="flex items-center gap-3 px-4 py-3">
               <span className="text-xs text-gray-400 w-24 shrink-0">{t.date}</span>
               <span className="flex-1 min-w-0">

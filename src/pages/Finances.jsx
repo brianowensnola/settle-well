@@ -92,6 +92,7 @@ export default function Finances() {
   const [linkedTasks, setLinkedTasks] = useState({}) // financial_id -> [tasks]
   const [ledger, setLedger] = useState({ net: 0, count: 0 })
   const [ledgerByAccount, setLedgerByAccount] = useState({}) // account_id -> net
+  const [reimbOwed, setReimbOwed] = useState(0) // pending reimbursements not yet paid
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -106,11 +107,15 @@ export default function Finances() {
       .order('sort_order')
     setFinancials(data ?? [])
     // Ledger summary + per-account activity (so account balances = opening + ledger).
-    const { data: txns } = await supabase.from('estate_transactions').select('amount, account_id').eq('estate_id', currentEstate.id)
-    setLedger({ net: (txns ?? []).reduce((s, t) => s + (t.amount ?? 0), 0), count: (txns ?? []).length })
+    // Pending reimbursements are money owed but not yet paid — they don't affect
+    // balances until reimbursed, so they're excluded here and totaled separately.
+    const { data: txns } = await supabase.from('estate_transactions').select('amount, account_id, reimburse_status').eq('estate_id', currentEstate.id)
+    const posted = (txns ?? []).filter(t => t.reimburse_status !== 'pending')
+    setLedger({ net: posted.reduce((s, t) => s + (t.amount ?? 0), 0), count: posted.length })
     const byAcct = {}
-    for (const t of txns ?? []) if (t.account_id) byAcct[t.account_id] = (byAcct[t.account_id] ?? 0) + (t.amount ?? 0)
+    for (const t of posted) if (t.account_id) byAcct[t.account_id] = (byAcct[t.account_id] ?? 0) + (t.amount ?? 0)
     setLedgerByAccount(byAcct)
+    setReimbOwed((txns ?? []).filter(t => t.reimburse_status === 'pending').reduce((s, t) => s + Math.abs(t.amount ?? 0), 0))
     // Tasks linked to an asset, so each asset can show its related tasks
     const { data: tdata } = await supabase
       .from('estate_tasks')
@@ -239,6 +244,13 @@ export default function Finances() {
           </div>
           <div className="text-[11px] text-gray-400 mt-0.5">{ledger.count} transaction{ledger.count !== 1 ? 's' : ''}</div>
         </Link>
+        {reimbOwed > 0 && (
+          <Link to="/transactions" className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800 rounded-xl p-4 hover:shadow-md transition-shadow block">
+            <div className="text-xs text-gray-500 mb-1">Reimbursements Owed</div>
+            <div className="text-lg font-semibold text-amber-700 dark:text-amber-400">{fmt(reimbOwed)}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">pending payback</div>
+          </Link>
+        )}
       </div>
 
       <div className="space-y-5">
