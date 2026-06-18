@@ -44,7 +44,7 @@ export default async () => {
   let sent = 0;
   for (const m of meetings ?? []) {
     const [{ data: admins }, { data: est }] = await Promise.all([
-      admin.from("estate_users").select("phone").eq("estate_id", m.estate_id).in("role", ["administrator", "executor"]),
+      admin.from("estate_users").select("phone").eq("estate_id", m.estate_id).in("role", ["administrator", "executor"]).eq("sms_consent", true),
       admin.from("estates").select("deceased_name").eq("id", m.estate_id).single(),
     ]);
     const phone = (admins || []).map(a => a.phone).find(Boolean);

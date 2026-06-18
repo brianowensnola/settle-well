@@ -55,6 +55,8 @@ export async function addMembership(estateId, person, role) {
     phone: person.phone || null,
     address: person.address || null,
     relationship: person.relationship || null,
+    sms_consent: !!person.sms_consent,
+    sms_consent_at: person.sms_consent ? new Date().toISOString() : null,
   }).select().single()
   return data
 }
@@ -68,6 +70,8 @@ export async function updateDemographics(membershipIds, fields) {
       phone: fields.phone ?? null,
       address: fields.address ?? null,
       relationship: fields.relationship ?? null,
+      sms_consent: !!fields.sms_consent,
+      sms_consent_at: fields.sms_consent ? new Date().toISOString() : null,
     })
     .in('id', membershipIds)
 }

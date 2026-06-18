@@ -3,7 +3,7 @@ import { useEstate } from '../lib/EstateContext'
 import { isFullAccess, roleLabel, INVITE_ROLES } from '../lib/roles'
 import { loadPeople, updateRole, removeMembership, removePerson, addMembership, updateDemographics, resetPassword, sendInvite } from '../lib/adminUsers'
 
-const BLANK_INVITE = { name: '', email: '', phone: '', relationship: '', role: 'heir', estates: [] }
+const BLANK_INVITE = { name: '', email: '', phone: '', relationship: '', role: 'heir', estates: [], sms_consent: false }
 
 export default function AdminUsers() {
   const { estates } = useEstate()
@@ -32,7 +32,7 @@ export default function AdminUsers() {
 
   function startEdit(p) {
     setEditKey(p.key)
-    setDraft({ name: p.name ?? '', email: p.email ?? '', phone: p.phone ?? '', address: p.address ?? '', relationship: p.relationship ?? '' })
+    setDraft({ name: p.name ?? '', email: p.email ?? '', phone: p.phone ?? '', address: p.address ?? '', relationship: p.relationship ?? '', sms_consent: !!p.memberships?.[0]?.sms_consent })
   }
   async function saveEdit(p) {
     await updateDemographics(p.memberships.map(m => m.id), draft)
@@ -111,7 +111,7 @@ export default function AdminUsers() {
     try {
       const email = invite.email.toLowerCase().trim()
       for (const eid of invite.estates) {
-        await addMembership(eid, { name: invite.name, email, phone: invite.phone, relationship: invite.relationship }, invite.role)
+        await addMembership(eid, { name: invite.name, email, phone: invite.phone, relationship: invite.relationship, sms_consent: invite.sms_consent }, invite.role)
       }
       await refresh()
       // Send the sign-up invitation (email + text) right away.
@@ -148,6 +148,10 @@ export default function AdminUsers() {
                       className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
                     <textarea value={draft.address} onChange={e => setDraft(d => ({ ...d, address: e.target.value }))} placeholder="Address" rows={2}
                       className="col-span-2 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+                    <label className="col-span-2 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <input type="checkbox" checked={!!draft.sms_consent} onChange={e => setDraft(d => ({ ...d, sms_consent: e.target.checked }))} className="mt-0.5" />
+                      <span>Send text (SMS) notifications to this number — consents to receive texts (reply STOP to opt out).</span>
+                    </label>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => saveEdit(p)} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm">Save</button>
@@ -233,6 +237,10 @@ export default function AdminUsers() {
             {INVITE_ROLES.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
           </select>
         </div>
+        <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 mb-3">
+          <input type="checkbox" checked={invite.sms_consent} onChange={e => setInvite(v => ({ ...v, sms_consent: e.target.checked }))} className="mt-0.5" />
+          <span>Send text (SMS) notifications about this estate to this number. <span className="text-gray-400">They consent to receive texts; they can reply STOP anytime.</span></span>
+        </label>
         <div className="mb-3">
           <div className="text-xs text-gray-500 mb-1">Add to which estate(s):</div>
           <div className="flex gap-3 flex-wrap">
