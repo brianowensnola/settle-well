@@ -9,6 +9,7 @@ const TOOLS = [
   { to: '/finances',         label: 'Finances',         icon: '💰', desc: 'Accounts, debts, monthly obligations, insurance, and assets.' },
   { to: '/assets',           label: 'Assets',           icon: '🏷️', desc: 'Manage each asset: value, title/docs checklist, disposition, beneficiary.' },
   { to: '/inventory',        label: 'Estate Inventory', icon: '📋', desc: 'Printable inventory: assets, accounts, liabilities, and net worth.' },
+  { to: '/reports',          label: 'Reports',          icon: '📊', desc: 'Run reports (e.g. the full Asset List) — print, save PDF, or email to a contact.' },
   { to: '/documents',        label: 'Documents',        icon: '📁', desc: 'All estate documents, grouped by type — have, requested, and needed.' },
   { to: '/contacts',         label: 'Contacts',         icon: '👥', desc: 'Attorneys, banks, and other key contacts for this estate.' },
   { to: '/credentials',      label: 'Credentials',      icon: '🔑', desc: 'Account logins and access details for this estate.' },

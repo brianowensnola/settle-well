@@ -13,6 +13,7 @@ import FamilyFinances from './pages/FamilyFinances'
 import Assets from './pages/Assets'
 import AssetDetail from './pages/AssetDetail'
 import Inventory from './pages/Inventory'
+import Reports from './pages/Reports'
 import MultiEstateSettings from './pages/MultiEstateSettings'
 import IntakeReview from './pages/IntakeReview'
 import QuickEstateSetup from './pages/QuickEstateSetup'
@@ -100,6 +101,7 @@ function AppRoutes() {
         <Route path="/assets" element={<Assets />} />
         <Route path="/assets/:id" element={<AssetDetail />} />
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/reports" element={<Reports />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/documents/upload" element={<DocumentUpload />} />
