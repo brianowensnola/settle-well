@@ -5,7 +5,7 @@ import { STATUS_STYLES, STATUS_LABELS } from '../lib/constants'
 // cross-estate All Tasks page. All actions are driven by callbacks so each
 // page can wire them to the right estate.
 export default function TaskRow({
-  task, subtasks = [], logs = [], onCycle, canApprove, onApprove, onSendBack,
+  task, subtasks = [], logs = [], onCycle, onCycleSubtask, canApprove, onApprove, onSendBack,
   addingNote, noteText, onStartNote, onNoteChange, onSaveNote, onCancelNote, noteRef,
   contextLabel,
 }) {
@@ -68,7 +68,17 @@ export default function TaskRow({
             <div className="mt-1.5 pl-3 border-l-2 border-gray-100 space-y-1">
               {subtasks.map(st => (
                 <div key={st.id} className="flex items-center gap-2 text-xs text-gray-500">
-                  <span className={`px-1.5 py-0.5 rounded text-xs ${STATUS_STYLES[st.status]}`}>{STATUS_LABELS[st.status]}</span>
+                  {st.status === 'submitted' || !onCycleSubtask ? (
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${STATUS_STYLES[st.status]}`} title={st.status === 'submitted' ? 'Awaiting executor approval' : undefined}>{STATUS_LABELS[st.status]}</span>
+                  ) : (
+                    <button
+                      onClick={() => onCycleSubtask(st)}
+                      className={`px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer ${STATUS_STYLES[st.status]}`}
+                      title="Click to cycle status"
+                    >
+                      {STATUS_LABELS[st.status]}
+                    </button>
+                  )}
                   <Link to={`/tasks/${st.id}`} className={`hover:text-gray-800 dark:hover:text-gray-200 hover:underline ${st.status === 'done' ? 'line-through' : ''}`}>{st.text}</Link>
                 </div>
               ))}

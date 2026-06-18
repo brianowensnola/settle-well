@@ -105,6 +105,7 @@ export default function AllTasks() {
     subtasks: visibleSubtasks(task),
     logs: logsOf(task.id),
     onCycle: () => cycleStatus(task),
+    onCycleSubtask: cycleStatus,
     canApprove: isExec,
     onApprove: () => approveTask(task),
     onSendBack: () => sendBackTask(task),

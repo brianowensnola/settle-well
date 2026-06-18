@@ -210,6 +210,7 @@ export default function Tasks() {
                       subtasks={tasks.filter(t => t.parent_task_id === task.id)}
                       logs={logs.filter(l => l.task_id === task.id)}
                       onCycle={() => cycleStatus(task)}
+                      onCycleSubtask={cycleStatus}
                       canApprove={isExec}
                       onApprove={() => approveTask(task)}
                       onSendBack={() => sendBackTask(task)}
@@ -272,6 +273,7 @@ export default function Tasks() {
                   subtasks={tasks.filter(t => t.parent_task_id === task.id)}
                   logs={logs.filter(l => l.task_id === task.id)}
                   onCycle={() => cycleStatus(task)}
+                  onCycleSubtask={cycleStatus}
                   addingNote={addingNote}
                   noteText={noteText}
                   onStartNote={() => { setAddingNote(task.id); setNoteText(''); setTimeout(() => noteRef.current?.focus(), 50) }}
