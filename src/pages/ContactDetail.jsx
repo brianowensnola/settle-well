@@ -48,7 +48,7 @@ export default function ContactDetail() {
     if (m) {
       // Track the meeting as a task so progress shows on the board.
       const when = new Date(iso).toLocaleString()
-      const { data: sec } = await supabase.from('estate_sections').select('id').eq('estate_id', currentEstate.id).eq('label', 'Phase 2 — First Week').maybeSingle()
+      const { data: sec } = await supabase.from('estate_sections').select('id').eq('estate_id', currentEstate.id).eq('label', 'Phase 1 — Immediate').maybeSingle()
       const { data: task } = await supabase.from('estate_tasks').insert({
         estate_id: currentEstate.id, section_id: sec?.id ?? null,
         text: `Meeting: ${contact.name} (${meetingForm.meeting_type.replace('_', ' ')}) — ${when}`,

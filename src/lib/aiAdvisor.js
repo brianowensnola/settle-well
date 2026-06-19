@@ -39,6 +39,21 @@ export async function runAdvisor(estateId, mode = 'review', filePaths = []) {
   return [] // timed out, or the run found nothing to suggest
 }
 
+// Ask the AI where a new task belongs: which phase, and optionally which
+// existing task to nest it under. Suggestion only — the caller pre-fills the
+// composer and the user confirms/overrides before saving. Returns
+// { phase, parent_task_id, parent_text, reason }.
+export async function placeTask(estateId, text, detail) {
+  const resp = await fetch('/.netlify/functions/place-task', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estateId, text, detail }),
+  })
+  const data = await resp.json().catch(() => ({}))
+  if (!resp.ok) throw new Error(data.error || 'Could not place the task')
+  return data
+}
+
 // Read one freshly-saved note and return any follow-up tasks it implies.
 // Synchronous (short text), so we just await the response. Never throws — a
 // note save must not fail because the suggestion step did.

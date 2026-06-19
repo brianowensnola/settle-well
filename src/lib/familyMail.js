@@ -128,7 +128,7 @@ export async function routeMailItem(item, estateId, overrideName, ledger, taskOp
   } else if (taskOpt?.mode === 'new') {
     const text = (taskOpt.newText || item.ai_action || `Follow up on mail: ${name}`).trim()
     const { data: sec } = await supabase.from('estate_sections')
-      .select('id').eq('estate_id', estateId).eq('label', 'Phase 2 — First Week').maybeSingle()
+      .select('id').eq('estate_id', estateId).eq('label', 'Phase 1 — Immediate').maybeSingle()
     const { data: nt } = await supabase.from('estate_tasks').insert({
       estate_id: estateId, section_id: sec?.id ?? null, text,
       status: 'pending', tag: 'from mail', detail: item.ai_summary || null,
@@ -142,7 +142,7 @@ export async function routeMailItem(item, estateId, overrideName, ledger, taskOp
       .select('id').eq('estate_id', estateId).eq('text', taskName).eq('status', 'pending').maybeSingle()
     if (!task) {
       const { data: sec } = await supabase.from('estate_sections')
-        .select('id').eq('estate_id', estateId).eq('label', 'Phase 2 — First Week').maybeSingle()
+        .select('id').eq('estate_id', estateId).eq('label', 'Phase 1 — Immediate').maybeSingle()
       const { data: newTask } = await supabase.from('estate_tasks').insert({
         estate_id: estateId, section_id: sec?.id ?? null, text: taskName,
         status: 'pending', tag: 'mail-review', detail: 'Review newly filed mail and decide what actions to take.',

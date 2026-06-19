@@ -12,8 +12,6 @@ export const TASK_TEMPLATE = {
     { text: 'Locate the will, trust, and funeral/burial wishes', detail: 'Check safes, files, email, and with the attorney. Wishes may specify burial vs cremation and prepaid arrangements.' },
     { text: 'Engage funeral home; confirm prepaid or insurance coverage', detail: 'Ask whether services were prepaid or covered by a policy before paying out of pocket.' },
     { text: 'Order 15+ certified death certificates', detail: 'Nearly every bank, insurer, and agency requires an original. Ordering extra now beats reordering later.' },
-  ],
-  'Phase 2 — First Week': [
     { text: 'Notify close family, the employer, and key people', detail: 'Ask the employer about final pay, benefits, and any employer-provided life insurance.' },
     { text: 'Contact the probate attorney to confirm the process for the state', detail: 'Probate rules and deadlines vary by state — confirm what applies where the deceased lived.' },
     { text: 'Gather financial records, bills, statements, and passwords', detail: 'Collect mail, checkbooks, recent statements, and any password list — needed for the financial audit and to stop/transfer services.' },

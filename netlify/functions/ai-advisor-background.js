@@ -24,7 +24,7 @@ const ADVISOR_MODEL = "claude-opus-4-8";
 const EXTRACT_MODEL = "claude-sonnet-4-6";
 
 const PHASES = [
-  "Phase 1 — Immediate", "Phase 2 — First Week", "Phase 3 — Government Notifications",
+  "Phase 1 — Immediate", "Phase 3 — Government Notifications",
   "Phase 4 — Financial Accounts", "Phase 5 — Insurance", "Phase 6 — Real Estate & Property",
   "Phase 7 — Debts & Liabilities", "Phase 8 — Business Interests", "Phase 9 — Digital Assets",
   "Phase 10 — Taxes", "Phase 11 — Commonly Missed Items",

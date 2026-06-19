@@ -50,7 +50,7 @@ export default function Documents() {
           ? `Send to ${data.requested_from || 'attorney'}: ${data.name}`
           : `Obtain document: ${data.name}`
         const { data: sec } = await supabase.from('estate_sections')
-          .select('id').eq('estate_id', currentEstate.id).eq('label', 'Phase 2 — First Week').maybeSingle()
+          .select('id').eq('estate_id', currentEstate.id).eq('label', 'Phase 1 — Immediate').maybeSingle()
         const { data: task } = await supabase.from('estate_tasks').insert({
           estate_id: currentEstate.id, section_id: sec?.id ?? null, text,
           status: 'pending', tag: data.requested ? 'attorney request' : 'needed doc',

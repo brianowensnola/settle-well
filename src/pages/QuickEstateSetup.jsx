@@ -76,7 +76,6 @@ export default function QuickEstateSetup() {
       // Create default sections
       const sections = [
         { label: 'Phase 1 — Immediate', color: 'red', sort_order: 1 },
-        { label: 'Phase 2 — First Week', color: 'orange', sort_order: 2 },
         { label: 'Phase 3 — Government Notifications', color: 'orange', sort_order: 3 },
         { label: 'Phase 4 — Financial Accounts', color: 'blue', sort_order: 4 },
         { label: 'Phase 5 — Insurance', color: 'gray', sort_order: 5 },
