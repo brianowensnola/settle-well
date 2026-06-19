@@ -219,8 +219,8 @@ export default function AllTasks() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white mb-2">All Tasks</h1>
-          <p className="text-gray-600 dark:text-gray-400">Work tasks across the family's estates</p>
+          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white mb-2">Combined Task List</h1>
+          <p className="text-gray-600 dark:text-gray-400">Every task across the family's estates, in one place</p>
         </div>
         {isExec && !composerOpen && (
           <button onClick={openComposer} className="shrink-0 px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800">+ Add task</button>

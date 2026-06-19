@@ -15,15 +15,6 @@ const MOBILE_NAV = [
   { to: '/contacts',    label: '👥', icon: 'Contacts' },
 ]
 
-// Family-estate child links (filtered per role at render). The family-estate
-// name itself is the parent and links to /all-estates.
-const MULTI_NAV = [
-  { to: '/all-tasks',   label: 'All Tasks' },
-  { to: '/family-finances', label: 'Family Finances' },
-  { to: '/mail',        label: 'Mail Intake' },
-  { to: '/admin',       label: 'Users & Roles' },
-]
-
 // Per-estate items everyone (per their role) uses — shown under each estate.
 const SHARED_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
@@ -166,22 +157,26 @@ export default function Layout() {
   // Shared nav body + footer, used by both the desktop sidebar and the mobile drawer.
   const renderNavBody = () => (
     <nav className="flex-1 py-3 space-y-0.5 px-2 overflow-y-auto">
-      {/* Multi-Estate Section — only the links this role can actually open */}
+      {/* Family Section — for the executor, the family name opens the dashboard,
+          which is now the single hub for All Tasks, Finances, Mail, Executor
+          Tools, etc. (those child links were folded into the dashboard's "Go to"
+          cards). Non-executor roles keep direct links to the family areas they
+          can use, since they don't have the executor dashboard. */}
       {(() => {
-        const links = MULTI_NAV.filter(({ to }) => canAccess(to, role))
-        const showExec = isFullAccess(role) && currentEstate
-        const showParent = canAccess('/all-estates', role)
-        if (links.length === 0 && !showExec && !showParent) return null
+        const showDash = canAccess('/all-estates', role) // executor only
+        const childLinks = showDash ? [] : [
+          { to: '/all-tasks', label: 'All Tasks' },
+          { to: '/mail', label: 'Mail Intake' },
+        ].filter(({ to }) => canAccess(to, role))
+        if (!showDash && childLinks.length === 0) return null
+        // One combined badge so the executor's nav still signals "something needs you."
+        const famBadge = (counts.mail ?? 0) + familySubmitted + (isFullAccess(role) ? (counts.ai ?? 0) : 0)
         return (
           <>
-            <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Multi-Estate</div>
-            {/* The family estate name heads the section and links to the family overview */}
-            {showParent && renderNavLink('/all-estates', familyName || 'All Estates')}
-            <div className="ml-2 space-y-0.5 border-l border-gray-200 dark:border-gray-800 pl-2">
-              {links.map(({ to, label }) => renderNavLink(to, label,
-                to === '/mail' ? counts.mail : to === '/all-tasks' ? familySubmitted : 0))}
-              {showExec && renderNavLink('/executor', 'Executor Tools', counts.ai)}
-            </div>
+            <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Family</div>
+            {showDash
+              ? renderNavLink('/all-estates', familyName || 'Family Dashboard', famBadge)
+              : childLinks.map(({ to, label }) => renderNavLink(to, label, to === '/mail' ? counts.mail : to === '/all-tasks' ? familySubmitted : 0))}
           </>
         )
       })()}
