@@ -20,7 +20,12 @@ export const REPORTS = {
   reimbursements: "Reimbursements (pending & paid)",
   contacts: "Contacts Directory",
   tasks: "Task & Progress Report",
+  communications: "Communications Log (calls, emails, letters, meetings)",
 };
+
+// Channel/direction labels for the communications report (mirrors the app).
+const CH_LABEL = { phone: "Phone call", email: "Email", text: "Text / SMS", letter: "Letter / mail", in_person: "In person", document: "Documents sent", other: "Note" };
+const DIR_LABEL = { inbound: "Received", outbound: "Sent" };
 
 // ---- shared data helpers ----
 async function accountBalances(estateId) {
@@ -82,6 +87,38 @@ const builders = {
         { heading: "Liabilities / debts", columns: ["Debt", "Lender", "Status", RH("Amount owed")], rows: liabs.map(l => [l.name, l.lender || "", l.status || "", R(money(l.amount))]), total: { label: "Total owed", value: money(liabs.reduce((s, l) => s + (l.amount ?? 0), 0)) } },
         { heading: "Recurring monthly obligations", columns: ["Obligation", "Status", RH("Monthly")], rows: obls.map(o => [o.name, o.status || "", R(money(o.amount ?? o.amount_max ?? o.amount_min))]) },
       ],
+    };
+  },
+  async communications(estateId) {
+    const [{ data: ints }, { data: mtgs }, { data: contacts }] = await Promise.all([
+      admin.from("estate_contact_interactions").select("occurred_at, created_at, direction, channel, subject, contact_id, is_private").eq("estate_id", estateId).eq("is_private", false),
+      admin.from("estate_meetings").select("scheduled_at, meeting_type, status, contact_name").eq("estate_id", estateId),
+      admin.from("estate_contacts").select("id, name").eq("estate_id", estateId),
+    ]);
+    const nameById = Object.fromEntries((contacts ?? []).map(c => [c.id, c.name]));
+    const events = [
+      ...(ints ?? []).map(i => ({
+        when: i.occurred_at || i.created_at,
+        who: nameById[i.contact_id] || "—",
+        kind: CH_LABEL[i.channel] || "Note",
+        dir: DIR_LABEL[i.direction] || "",
+        subject: i.subject || "",
+      })),
+      ...(mtgs ?? []).map(m => ({
+        when: m.scheduled_at,
+        who: m.contact_name || "—",
+        kind: "Meeting",
+        dir: m.status || "",
+        subject: `Meeting — ${(m.meeting_type || "meeting").replace(/_/g, " ")}`,
+      })),
+    ].sort((a, b) => new Date(b.when || 0) - new Date(a.when || 0));
+    return {
+      title: "Communications Log",
+      sections: [{
+        heading: "Correspondence & meetings",
+        columns: ["Date", "Contact", "Type", "Direction", "Subject"],
+        rows: events.map(e => [e.when ? new Date(e.when).toLocaleDateString() : "—", e.who, e.kind, e.dir, e.subject]),
+      }],
     };
   },
 };

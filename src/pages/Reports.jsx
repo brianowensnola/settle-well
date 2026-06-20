@@ -13,6 +13,7 @@ const REPORT_TYPES = [
   { key: 'reimbursements', label: 'Reimbursements (pending & paid)' },
   { key: 'contacts', label: 'Contacts Directory' },
   { key: 'tasks', label: 'Task & Progress Report' },
+  { key: 'communications', label: 'Communications Log (calls, emails, letters, meetings)' },
 ]
 
 export default function Reports() {
