@@ -79,10 +79,12 @@ export const handler = async (event) => {
 
 ESTATE: ${estate?.deceased_name || "the deceased"} (deceased). State: ${estate?.state_of_residence || "unknown"}.
 EXECUTOR (the sender): ${estate?.administrator_name || "the Executor"}.
-RECIPIENT: ${contactName || "the recipient"}${contactRole ? ` (${contactRole})` : ""}.
+RECIPIENT NAME: ${contactName || "(unknown)"}${contactRole ? ` — role: ${contactRole}` : ""}.
 ${instruction ? `EXECUTOR'S SPECIFIC INSTRUCTION: ${instruction}` : ""}
 
-Write a professional, warm-but-businesslike email the executor can send. Be concise and specific. Refer to ${estate?.deceased_name || "the deceased"} respectfully (e.g. "the estate of ${estate?.deceased_name || "the deceased"}"). Do NOT invent account numbers, dollar amounts, dates, or facts you weren't given — use a clearly bracketed placeholder like [account number] when something specific is needed so the executor can fill it in. Sign as ${estate?.administrator_name || "the Executor"}, Executor of the Estate of ${estate?.deceased_name || "the deceased"}. This is correspondence assistance, not legal advice; do not give legal opinions.
+Write a professional, warm-but-businesslike email the executor can send. Be concise and specific.
+SALUTATION: Open by addressing the recipient by the RECIPIENT NAME above. If it is a person's name, greet them by first name (e.g. "Dear Melissa,"). If it is a firm or organization, greet appropriately (e.g. "Dear Cotts Law Firm Team,"). You already have the recipient's name — NEVER write a placeholder such as [Attorney Name], [Recipient], or [Name] for it. ${contactName ? "" : "If the recipient name is unknown, use a neutral greeting such as \"Dear Sir or Madam,\". "}
+Refer to ${estate?.deceased_name || "the deceased"} respectfully (e.g. "the estate of ${estate?.deceased_name || "the deceased"}"). Do NOT invent account numbers, dollar amounts, dates, or facts you weren't given — use a clearly bracketed placeholder like [account number] ONLY for such missing factual details (never for the recipient's name) so the executor can fill it in. Sign as ${estate?.administrator_name || "the Executor"}, Executor of the Estate of ${estate?.deceased_name || "the deceased"}. This is correspondence assistance, not legal advice; do not give legal opinions.
 
 Return ONLY JSON: {"subject":"...","body":"the full email body as plain text with line breaks"}`;
 
