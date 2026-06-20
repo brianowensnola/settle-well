@@ -57,7 +57,7 @@ export const channelIcon = c => CHANNELS[c]?.icon ?? '•'
 // live, set INBOUND_LIVE = true here AND set the INBOUND_EMAIL_DOMAIN Netlify
 // env var to the same value (so reply-to uses the per-estate inbox).
 export const INBOUND_EMAIL_DOMAIN = 'in.settlewellestate.com'
-export const INBOUND_LIVE = false // flip to true once SES receiving is configured
+export const INBOUND_LIVE = true // SES receiving configured (settlewellestate.com)
 // An estate's own email address (where replies and forwarded mail are captured)
 // — only shown once inbound receiving is actually live.
 export const estateInboxAddress = estate =>
