@@ -4,6 +4,12 @@ import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 import { isFullAccess } from '../lib/roles'
 
+// Feature flag — OFF during Brian's own live use. Flip to true for the resale
+// product so every executor must acknowledge their fiduciary duties (liability
+// protection). The acknowledge_disclaimer RPC + disclaimer_ack_at column stay in
+// place, so turning this on resumes one-time-per-estate gating with no other work.
+const DISCLAIMER_GATE_ENABLED = false
+
 // Shown once per estate to an executor: a plain-English summary of their
 // fiduciary responsibilities, which they must acknowledge before working the
 // estate. Recorded via the acknowledge_disclaimer RPC. Not legal advice.
@@ -17,7 +23,7 @@ export default function DisclaimerGate() {
   useEffect(() => {
     let off = false
     setNeedsAck(false); setAgree(false)
-    if (!currentEstate || !user || !isFullAccess(role)) return
+    if (!DISCLAIMER_GATE_ENABLED || !currentEstate || !user || !isFullAccess(role)) return
     supabase.from('estate_users').select('disclaimer_ack_at')
       .eq('estate_id', currentEstate.id).eq('auth_user_id', user.id).maybeSingle()
       .then(({ data }) => { if (!off) setNeedsAck(!!data && !data.disclaimer_ack_at) })
