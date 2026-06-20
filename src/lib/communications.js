@@ -53,12 +53,15 @@ export const CHANNELS = {
 export const channelLabel = c => CHANNELS[c]?.label ?? 'Note'
 export const channelIcon = c => CHANNELS[c]?.icon ?? '•'
 
-// The domain estate inbound addresses live on. Swapping to a SettleWell-branded
-// domain later = change this here AND the INBOUND_EMAIL_DOMAIN Netlify env var.
-export const INBOUND_EMAIL_DOMAIN = 'estate.bastroplaundrypro.com'
-// An estate's own email address (where replies and forwarded mail are captured).
+// The domain estate inbound addresses live on. When receiving (Amazon SES) is
+// live, set INBOUND_LIVE = true here AND set the INBOUND_EMAIL_DOMAIN Netlify
+// env var to the same value (so reply-to uses the per-estate inbox).
+export const INBOUND_EMAIL_DOMAIN = 'in.settlewellestate.com'
+export const INBOUND_LIVE = false // flip to true once SES receiving is configured
+// An estate's own email address (where replies and forwarded mail are captured)
+// — only shown once inbound receiving is actually live.
 export const estateInboxAddress = estate =>
-  estate?.inbound_token ? `${estate.inbound_token}@${INBOUND_EMAIL_DOMAIN}` : null
+  (INBOUND_LIVE && estate?.inbound_token) ? `${estate.inbound_token}@${INBOUND_EMAIL_DOMAIN}` : null
 
 // Record a communication with a contact. Used both by the manual "Log
 // communication" form and by auto-capture when the app sends something

@@ -5,7 +5,10 @@ const admin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const FROM_EMAIL = process.env.BREVO_FROM_EMAIL || "noreply@bastroplaundrypro.com";
+// Estate email is branded as SettleWell (settlewellestate.com is authenticated
+// in Brevo). The From address need not be a real mailbox — replies go to
+// reply-to. Overridable via env if the address ever changes.
+const FROM_EMAIL = process.env.ESTATE_FROM_EMAIL || "estates@settlewellestate.com";
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
@@ -39,10 +42,11 @@ export const handler = async (event) => {
 
   const { data: estate } = await admin.from("estates").select("deceased_name, inbound_token").eq("id", estateId).single();
   const estateName = estate?.deceased_name ? `Estate of ${estate.deceased_name}` : "Estate";
-  // Replies go to the estate's own inbox so they're captured automatically.
-  // Falls back to the executor until the inbound domain is wired up.
-  const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || "estate.bastroplaundrypro.com";
-  const replyTo = estate?.inbound_token
+  // Replies go to the estate's own inbox once inbound receiving is live — that's
+  // signalled by setting the INBOUND_EMAIL_DOMAIN env var (done when SES is up).
+  // Until then, replies go to the executor so nothing bounces or is lost.
+  const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN;
+  const replyTo = (INBOUND_DOMAIN && estate?.inbound_token)
     ? { email: `${estate.inbound_token}@${INBOUND_DOMAIN}`, name: estateName }
     : (caller.email ? { email: caller.email } : undefined);
   const htmlContent = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.5">${escapeHtml(body).replace(/\n/g, "<br>")}</div>`;
