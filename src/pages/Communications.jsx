@@ -10,6 +10,12 @@ const LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 const todayStr = () => new Date().toISOString().slice(0, 10)
 const whenStr = d => d ? new Date(d).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
 
+// Derive a friendly contact name from an email address (jane.doe@x.com → Jane Doe).
+const nameFromEmail = email => {
+  const local = (String(email || '').split('@')[0] || '').replace(/[._-]+/g, ' ').trim()
+  return local ? local.replace(/\b\w/g, c => c.toUpperCase()) : (email || 'New contact')
+}
+
 // Append an email to a comma-separated list without duplicates.
 const appendEmail = (val, email) => {
   const list = (val || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -43,7 +49,7 @@ export default function Communications() {
   const [panel, setPanel] = useState(null) // 'log' | 'send' | 'compose' | null
 
   // Compose-email (AI-drafted) form
-  const [cm, setCm] = useState({ contactId: '', to: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
+  const [cm, setCm] = useState({ estateId: '', to: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
   const [drafting, setDrafting] = useState(false)
   const [cmBusy, setCmBusy] = useState(false)
   const [cmMsg, setCmMsg] = useState('')
@@ -129,17 +135,23 @@ export default function Communications() {
   // One option per email address (a contact may have several, e.g. an assistant).
   const emailOptions = emailContacts.flatMap(c =>
     (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em, contactId: c.id, estateId: c.estate_id })))
-  const cmContact = contactById[cm.contactId]
-  const cmEmail = cm.to || ''
+  // Contacts in the chosen estate (for the To "+ Contact" picker), and whether
+  // the typed To address already matches one.
+  const cmEstateOptions = contacts
+    .filter(c => c.estate_id === cm.estateId && (c.emails ?? []).some(Boolean))
+    .flatMap(c => (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em })))
+  const cmContact = contacts.find(c => c.estate_id === cm.estateId &&
+    (c.emails || []).some(e => (e || '').toLowerCase() === (cm.to || '').trim().toLowerCase()))
+  const cmIsNewRecipient = !!cm.to.trim() && !cmContact
 
   async function draftIt() {
-    if (!cmContact) { setCmMsg('Pick who the email is going to first.'); return }
+    if (!cm.estateId || !cm.to.trim()) { setCmMsg('Pick the estate and who the email is going to first.'); return }
     setDrafting(true); setCmMsg('')
     try {
       const r = await draftEmail({
-        estateId: cmContact.estate_id,
-        contactName: cmContact.name,
-        contactRole: cmContact.role,
+        estateId: cm.estateId,
+        contactName: cmContact?.name || nameFromEmail(cm.to),
+        contactRole: cmContact?.role || '',
         intent: cm.intent,
         instruction: cm.instruction,
       })
@@ -149,16 +161,27 @@ export default function Communications() {
   }
 
   async function sendComposed() {
-    if (!cmContact || !cmEmail) { setCmMsg('Pick a contact with an email.'); return }
+    if (!cm.estateId || !cm.to.trim()) { setCmMsg('Pick the estate and a recipient.'); return }
     if (!cm.subject.trim() || !cm.body.trim()) { setCmMsg('Add a subject and body (or draft with AI).'); return }
     setCmBusy(true); setCmMsg('')
     try {
+      // Auto-create a contact when emailing someone new, so the estate always
+      // keeps a record of who it corresponds with.
+      let contactId = cmContact?.id || null
+      if (!contactId) {
+        const { data: newC, error } = await supabase.from('estate_contacts')
+          .insert({ estate_id: cm.estateId, name: nameFromEmail(cm.to), role: 'other', emails: [cm.to.trim()] })
+          .select().single()
+        if (error) throw error
+        contactId = newC?.id || null
+        if (newC) setContacts(prev => [...prev, newC])
+      }
       const { interaction } = await sendEstateEmail({
-        estateId: cmContact.estate_id, contactId: cm.contactId, to: cmEmail,
+        estateId: cm.estateId, contactId, to: cm.to.trim(),
         cc: cm.cc, bcc: cm.bcc, subject: cm.subject, body: cm.body, isPrivate: cm.isPrivate,
       })
       if (interaction) setInteractions(prev => [interaction, ...prev])
-      setCm({ contactId: '', to: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
+      setCm({ estateId: cm.estateId, to: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
       setPanel(null)
     } catch (e) { setCmMsg(e.message || 'Could not send the email') }
     finally { setCmBusy(false) }
@@ -262,7 +285,7 @@ export default function Communications() {
           <p className="text-gray-600 dark:text-gray-400">Every call, email, letter, meeting, and document sent — across the family.</p>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-          <button onClick={() => { setPanel(panel === 'compose' ? null : 'compose'); setCmMsg('') }} className="px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800">✍️ Compose email</button>
+          <button onClick={() => { if (panel === 'compose') { setPanel(null); return } const def = familyEstates.find(e => e.id === currentEstate?.id)?.id || familyEstates[0]?.id || ''; setCm(p => ({ ...p, estateId: def })); setCmMsg(''); setPanel('compose') }} className="px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800">✍️ Compose email</button>
           <button onClick={() => { setPanel(panel === 'log' ? null : 'log') }} className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">+ Log</button>
           <button onClick={() => { panel === 'send' ? setPanel(null) : openSend() }} className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">📎 Send documents</button>
         </div>
@@ -319,22 +342,34 @@ export default function Communications() {
       {panel === 'compose' && (
         <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-3 mb-5">
           <div className="text-sm font-semibold text-gray-800 dark:text-white">Compose an estate email</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <select value={cm.contactId && cm.to ? `${cm.contactId}|${cm.to}` : ''}
-              onChange={e => { const [cid, em] = e.target.value.split('|'); setCm(p => ({ ...p, contactId: cid || '', to: em || '' })) }}
-              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">— Send to whom? —</option>
-              {emailOptions.map(o => <option key={o.key} value={o.key}>{o.name} — {o.email}{multiEstate ? ` · ${estateName(o.estateId)}` : ''}</option>)}
+          {multiEstate && (
+            <select value={cm.estateId} onChange={e => setCm(p => ({ ...p, estateId: e.target.value, to: '' }))}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+              {familyEstates.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
             </select>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex gap-1.5">
+              <input value={cm.to} onChange={e => setCm(p => ({ ...p, to: e.target.value }))}
+                placeholder="To (email address)"
+                className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+              <select value="" onChange={e => { if (e.target.value) setCm(p => ({ ...p, to: e.target.value })) }}
+                title="Pick an existing contact"
+                className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
+                <option value="">+ Contact</option>
+                {cmEstateOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
+              </select>
+            </div>
             <select value={cm.intent} onChange={e => setCm(p => ({ ...p, intent: e.target.value }))}
               className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
               {EMAIL_INTENTS.map(it => <option key={it.key} value={it.key}>{it.label}</option>)}
             </select>
           </div>
+          {cmIsNewRecipient && <p className="text-xs text-blue-600 dark:text-blue-400">New recipient — a contact for <strong>{cm.to.trim()}</strong> will be created when you send.</p>}
           <input value={cm.instruction} onChange={e => setCm(p => ({ ...p, instruction: e.target.value }))}
             placeholder="Anything specific to include? (account #, what you're asking for, deadline…)"
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
-          <button onClick={draftIt} disabled={drafting || !cm.contactId} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-sm hover:bg-blue-100 disabled:opacity-50">
+          <button onClick={draftIt} disabled={drafting || !cm.to.trim()} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-sm hover:bg-blue-100 disabled:opacity-50">
             {drafting ? 'Drafting…' : '🤖 Draft with AI'}
           </button>
 
@@ -375,7 +410,7 @@ export default function Communications() {
           </label>
           {cmMsg && <p className="text-xs text-red-600">{cmMsg}</p>}
           <div className="flex gap-2 items-center">
-            <button onClick={sendComposed} disabled={cmBusy || !cm.contactId || !cm.subject.trim() || !cm.body.trim()} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
+            <button onClick={sendComposed} disabled={cmBusy || !cm.to.trim() || !cm.subject.trim() || !cm.body.trim()} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
               {cmBusy ? 'Sending…' : 'Send email'}
             </button>
             <button onClick={() => setPanel(null)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
