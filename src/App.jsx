@@ -17,7 +17,7 @@ import Reports from './pages/Reports'
 import MultiEstateSettings from './pages/MultiEstateSettings'
 import IntakeReview from './pages/IntakeReview'
 import QuickEstateSetup from './pages/QuickEstateSetup'
-import SendToAttorney from './pages/SendToAttorney'
+import Communications from './pages/Communications'
 import Dashboard from './pages/Dashboard'
 import HeirDashboard from './pages/HeirDashboard'
 import ObserverDashboard from './pages/ObserverDashboard'
@@ -91,7 +91,9 @@ function AppRoutes() {
         <Route path="/executor" element={<ExecutorTools />} />
         <Route path="/death-notices" element={<DeathNotifications />} />
         <Route path="/intake-review" element={<IntakeReview />} />
-        <Route path="/send-to-attorney" element={<SendToAttorney />} />
+        <Route path="/communications" element={<Communications />} />
+        {/* Send to Attorney folded into the Communications portal */}
+        <Route path="/send-to-attorney" element={<Navigate to="/communications" replace />} />
         <Route path="/dashboard" element={<DashboardRouter />} />
         <Route path="/assistant" element={<Assistant />} />
         <Route path="/activity" element={<Activity />} />

@@ -37,7 +37,7 @@ const EXECUTOR_NAV = [
   { to: '/documents/upload', label: 'Upload Files' },
   { to: '/death-notices',    label: 'Death Notifications' },
   { to: '/intake-review',    label: 'Intake Review' },
-  { to: '/send-to-attorney', label: 'Send to Attorney' },
+  { to: '/communications',   label: 'Communications' },
   { to: '/activity',         label: 'Activity Log' },
   { to: '/settings',         label: 'Estate Settings' },
 ]

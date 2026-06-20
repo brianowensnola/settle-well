@@ -16,7 +16,7 @@ const TOOLS = [
   { to: '/documents/upload', label: 'Upload Files',     icon: '⬆️', desc: 'Upload documents into this estate.' },
   { to: '/death-notices',    label: 'Death Notifications', icon: '✉️', desc: 'Draft letters notifying agencies, banks, and companies of the death.' },
   { to: '/intake-review',    label: 'Intake Review',    icon: '📝', desc: 'Review and update the estate intake answers.' },
-  { to: '/send-to-attorney', label: 'Send to Attorney', icon: '✉️', desc: 'Send selected documents to the attorney with secure links.' },
+  { to: '/communications',   label: 'Communications',   icon: '✉️', desc: 'Log calls & emails, send documents to any contact, and see the full history.' },
   { to: '/activity',         label: 'Activity Log',     icon: '🧾', desc: 'Permanent, append-only record of every change.' },
   { to: '/settings',         label: 'Estate Settings',  icon: '⚙️', desc: 'Estate details, stage, and status.' },
   { to: '/multi-settings',   label: 'Multi-Estate Settings', icon: '🗂️', desc: 'Manage and delete estates across the family unit.' },

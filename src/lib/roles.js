@@ -46,6 +46,7 @@ export const PAGE_ROLES = {
   '/mail':             ['administrator', 'collaborator', 'heir'],
   '/intake-review':    ['administrator'],
   '/send-to-attorney': ['administrator'],
+  '/communications':   ['administrator'],
   '/finances':         ['administrator'],
   '/notes':            ['administrator', 'collaborator'],
   '/documents':        ['administrator', 'collaborator', 'heir'],
