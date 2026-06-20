@@ -78,7 +78,7 @@ export const handler = async (event) => {
     // Reply email = the estate's own inbox (where replies are captured) when
     // inbound receiving is live, else the executor's email on file. Phone comes
     // from the Executor section. Real values so the draft never placeholders them.
-    const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN;
+    const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || "in.settlewellestate.com";
     const replyEmail = (INBOUND_DOMAIN && estate?.inbound_token)
       ? `${estate.inbound_token}@${INBOUND_DOMAIN}`
       : (estate?.administrator_email || "");

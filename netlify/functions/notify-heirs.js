@@ -54,7 +54,7 @@ export const handler = async (event) => {
 
   const { data: estate } = await admin.from("estates").select("deceased_name, inbound_token").eq("id", estateId).single();
   const estateName = estate?.deceased_name ? `Estate of ${estate.deceased_name}` : "Estate";
-  const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN;
+  const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || "in.settlewellestate.com";
   const replyTo = (INBOUND_DOMAIN && estate?.inbound_token)
     ? { email: `${estate.inbound_token}@${INBOUND_DOMAIN}`, name: estateName }
     : (caller.email ? { email: caller.email } : undefined);

@@ -53,7 +53,7 @@ export const handler = async (event) => {
   // Replies go to the estate's own inbox once inbound receiving is live — that's
   // signalled by setting the INBOUND_EMAIL_DOMAIN env var (done when SES is up).
   // Until then, replies go to the executor so nothing bounces or is lost.
-  const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN;
+  const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || "in.settlewellestate.com";
   const replyTo = (INBOUND_DOMAIN && estate?.inbound_token)
     ? { email: `${estate.inbound_token}@${INBOUND_DOMAIN}`, name: estateName }
     : (caller.email ? { email: caller.email } : undefined);
