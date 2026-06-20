@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
-import { runAdvisor, loadSuggestions, acceptSuggestion, dismissSuggestion, markSuggestionDone, loadSuggestionLog, restoreSuggestion } from '../lib/aiAdvisor'
+import { runAdvisor, acceptSuggestion, dismissSuggestion, markSuggestionDone, restoreSuggestion, loadSuggestionsForEstates, loadSuggestionLogForEstates } from '../lib/aiAdvisor'
 import LegalDisclaimer from '../components/LegalDisclaimer'
 
 const FIN_CATEGORY_LABEL = {
@@ -19,7 +19,14 @@ const AUTO_REVIEW_THROTTLE_MS = 6 * 60 * 60 * 1000
 const lastAutoKey = id => `sw_last_auto_review_${id}`
 
 export default function Assistant() {
-  const { currentEstate, role } = useEstate()
+  const { currentEstate, role, estates } = useEstate()
+  // Findings are shown for the whole family, so nothing hides behind the
+  // currently-selected estate (the source of the "ghost badge" problem).
+  const familyEstates = estates.filter(e =>
+    currentEstate && (currentEstate.group_id ? e.group_id === currentEstate.group_id : e.id === currentEstate.id))
+  const familyIds = familyEstates.length ? familyEstates.map(e => e.id) : (currentEstate ? [currentEstate.id] : [])
+  const estateNameById = Object.fromEntries(familyEstates.map(e => [e.id, e.deceased_name]))
+  const multiEstate = familyEstates.length > 1
   const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
@@ -47,7 +54,7 @@ export default function Assistant() {
     if (!currentEstate) return
     let cancelled = false
     ;(async () => {
-      const initial = await loadSuggestions(currentEstate.id)
+      const initial = await loadSuggestionsForEstates(familyIds)
       if (cancelled) return
       setSuggestions(initial)
       loadLog()
@@ -72,7 +79,7 @@ export default function Assistant() {
   if (!isFullAccess(role)) return <div className="p-8 text-gray-400">The AI Assistant is available to the executor only.</div>
 
   async function loadLog() {
-    setLog(await loadSuggestionLog(currentEstate.id))
+    setLog(await loadSuggestionLogForEstates(familyIds))
   }
   async function restore(s) {
     await restoreSuggestion(s.id)
@@ -81,7 +88,7 @@ export default function Assistant() {
   }
 
   async function refresh() {
-    setSuggestions(await loadSuggestions(currentEstate.id))
+    setSuggestions(await loadSuggestionsForEstates(familyIds))
     loadLog()
   }
 
@@ -186,7 +193,7 @@ export default function Assistant() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto w-full">
       <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white mb-1">AI Assistant</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Suggestions only — you accept what's right. Assistance, not legal advice.</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Suggestions only — you accept what's right. Assistance, not legal advice.{multiEstate ? ' Showing findings across every estate in the family.' : ''}</p>
 
       {/* Background agent control */}
       <div className="flex items-center justify-between gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-4">
@@ -239,6 +246,9 @@ export default function Assistant() {
                   <div key={s.id} className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 ${busyIds.has(s.id) ? 'opacity-50' : ''}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
+                        {multiEstate && estateNameById[s.estate_id] && (
+                          <span className="inline-block text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded px-1.5 py-0.5 mb-1">{estateNameById[s.estate_id]}</span>
+                        )}
                         <div className="text-sm font-medium text-gray-900 dark:text-white">{s.title}</div>
                         {s.detail && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{s.detail}</div>}
                         {s.kind === 'financial' ? (
@@ -344,6 +354,9 @@ export default function Assistant() {
                 <div key={s.id} className="flex items-center justify-between gap-3 text-sm border-t border-gray-100 dark:border-gray-800 pt-2">
                   <div className="min-w-0 flex items-center gap-2">
                     <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded shrink-0 ${badge.cls}`}>{badge.label}</span>
+                    {multiEstate && estateNameById[s.estate_id] && (
+                      <span className="text-[10px] text-gray-400 shrink-0 hidden sm:inline">{estateNameById[s.estate_id]}</span>
+                    )}
                     <span className={`truncate ${s.status === 'dismissed' ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-700 dark:text-gray-300'}`}>{s.title}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

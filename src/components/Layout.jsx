@@ -89,11 +89,14 @@ export default function Layout() {
   useEffect(() => {
     let off = false
     ;(async () => {
+      // AI badge counts the whole family's pending findings (the dashboard /
+      // Assistant show them family-wide), so the number matches what you can act on.
+      const famIds = familyMembers.map(e => e.id)
       const [mailRes, subRes, aiRes] = await Promise.all([
         supabase.from('family_mail').select('id').eq('status', 'pending'),
         supabase.from('estate_tasks').select('estate_id').eq('status', 'submitted'),
-        currentEstate
-          ? supabase.from('estate_ai_suggestions').select('id').eq('estate_id', currentEstate.id).eq('status', 'pending')
+        famIds.length
+          ? supabase.from('estate_ai_suggestions').select('id').in('estate_id', famIds).eq('status', 'pending')
           : Promise.resolve({ data: [] }),
       ])
       if (off) return

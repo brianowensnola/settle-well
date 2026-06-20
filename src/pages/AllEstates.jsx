@@ -135,7 +135,7 @@ export default function AllEstates() {
     { to: '/all-tasks',        label: 'Combined Task List', icon: '✓',  desc: 'Every task across the family, in one place', badge: submitted.length },
     { to: '/family-finances',  label: 'Family Finances',    icon: '💰', desc: 'Accounts, debts, and obligations across estates' },
     { to: '/mail',             label: 'Mail Intake',        icon: '📬', desc: 'File incoming mail to the right estate', badge: mailPending },
-    { to: '/executor',         label: 'Executor Tools',     icon: '🧰', desc: 'Assets, documents, reports, notifications & more', badge: aiPending, execOnly: true },
+    { to: '/executor',         label: 'Executor Tools',     icon: '🧰', desc: 'Assets, documents, reports, notifications & more', execOnly: true },
     { to: '/reports',          label: 'Reports',            icon: '📊', desc: 'Asset lists & ledgers — print, save, or email', execOnly: true },
     { to: '/admin',            label: 'Users & Roles',      icon: '👥', desc: 'Invite people and manage access' },
   ].filter(l => canAccess(l.to, role) && (!l.execOnly || isExec))

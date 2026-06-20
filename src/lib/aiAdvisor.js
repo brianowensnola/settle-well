@@ -103,6 +103,33 @@ export async function loadSuggestions(estateId) {
   return data ?? []
 }
 
+// Pending suggestions across several estates (the executor's whole family), so
+// findings on any estate are reviewable in one place — not hidden behind the
+// currently-selected estate.
+export async function loadSuggestionsForEstates(estateIds) {
+  if (!estateIds?.length) return []
+  const { data } = await supabase
+    .from('estate_ai_suggestions')
+    .select('*')
+    .in('estate_id', estateIds)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+  return data ?? []
+}
+
+// Disposition history across several estates (for the family-wide log).
+export async function loadSuggestionLogForEstates(estateIds) {
+  if (!estateIds?.length) return []
+  const { data } = await supabase
+    .from('estate_ai_suggestions')
+    .select('id, title, detail, kind, status, created_at, estate_id')
+    .in('estate_id', estateIds)
+    .in('status', ['accepted', 'dismissed', 'done'])
+    .order('created_at', { ascending: false })
+    .limit(120)
+  return data ?? []
+}
+
 export async function dismissSuggestion(id) {
   await supabase.from('estate_ai_suggestions').update({ status: 'dismissed' }).eq('id', id)
 }
