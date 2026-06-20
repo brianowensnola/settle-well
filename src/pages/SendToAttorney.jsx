@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { DOC_TYPES } from '../lib/constants'
+import { logCommunication } from '../lib/communications'
 
 // Links stay valid for 7 days so the attorney has time to open the email
 // and download before they expire.
@@ -31,7 +32,7 @@ export default function SendToAttorney() {
     setLoading(true)
     const [docsRes, contactsRes, historyRes] = await Promise.all([
       supabase.from('estate_documents').select('*').eq('estate_id', currentEstate.id).eq('have', true).order('name'),
-      supabase.from('estate_contacts').select('name, role, emails, email_labels')
+      supabase.from('estate_contacts').select('id, name, role, emails, email_labels')
         .or(`estate_id.eq.${currentEstate.id},shared_with.cs.{${currentEstate.id}}`)
         .eq('role', 'attorney'),
       supabase.from('attorney_document_sends').select('*').eq('estate_id', currentEstate.id).order('sent_at', { ascending: false }),
@@ -47,7 +48,7 @@ export default function SendToAttorney() {
         const e = email?.trim()
         if (!e) return
         if ((c.email_labels?.[i] || '').toLowerCase() === 'assistant') assistants.push(e)
-        else opts.push({ email: e, name: c.name })
+        else opts.push({ email: e, name: c.name, contactId: c.id })
       })
     }
     setAttorneys(opts)
@@ -109,6 +110,21 @@ export default function SendToAttorney() {
     }
     const { data } = await supabase.from('attorney_document_sends').insert(row).select().single()
     if (data) setHistory(prev => [data, ...prev])
+
+    // Auto-capture this as a communication on the recipient's contact record,
+    // so it shows up in their Communications timeline without manual logging.
+    const match = attorneys.find(a => a.email === recipient)
+    if (match?.contactId) {
+      await logCommunication({
+        estateId: currentEstate.id,
+        contactId: match.contactId,
+        direction: 'outbound',
+        channel: 'document',
+        subject: `Sent ${selectedDocs.length} document${selectedDocs.length !== 1 ? 's' : ''}`,
+        summary: `Sent to ${recipient}: ${selectedDocs.map(d => d.name).join(', ')}${cc.trim() ? ` (cc: ${cc.trim()})` : ''}${note.trim() ? ` — “${note.trim()}”` : ''}`,
+        source: 'auto',
+      })
+    }
   }
 
   async function handleEmail() {

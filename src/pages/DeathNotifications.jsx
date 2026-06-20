@@ -3,6 +3,7 @@ import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { DEATH_NOTIFICATION_DIRECTORY } from '../lib/deathNotificationDirectory'
+import { logCommunication } from '../lib/communications'
 
 const TYPES = [
   ['government', 'Government agency'],
@@ -27,6 +28,7 @@ export default function DeathNotifications() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [logged, setLogged] = useState(false)
+  const [contactId, setContactId] = useState(null) // set when the recipient is a known contact
 
   useEffect(() => {
     if (!currentEstate) return
@@ -41,7 +43,7 @@ export default function DeathNotifications() {
   function reset() { setLetter(''); setSources(''); setError(''); setLogged(false) }
 
   function pickDirectory(entry) {
-    reset()
+    reset(); setContactId(null)
     setForm(f => ({ ...f, name: entry.name, type: entry.type, address: '', email: '' }))
     setMethod(entry.method)
     setInfo(entry.method === 'mail' ? null : { phone: entry.phone, url: entry.url, note: entry.note })
@@ -49,10 +51,10 @@ export default function DeathNotifications() {
   function pickContact(id) {
     const c = contacts.find(x => x.id === id)
     if (!c) return
-    reset(); setMethod('mail'); setInfo(null)
+    reset(); setMethod('mail'); setInfo(null); setContactId(c.id)
     setForm(f => ({ ...f, name: c.name, address: c.address || '', email: (c.emails && c.emails[0]) || '', type: roleToType(c.role) }))
   }
-  function editName(v) { setMethod('mail'); setInfo(null); reset(); setForm(f => ({ ...f, name: v })) }
+  function editName(v) { setMethod('mail'); setInfo(null); reset(); setContactId(null); setForm(f => ({ ...f, name: v })) }
 
   async function generate() {
     if (!form.name.trim()) { setError('Enter who the notice is going to.'); return }
@@ -88,6 +90,18 @@ export default function DeathNotifications() {
       estate_id: currentEstate.id, section_id: sec?.id ?? null,
       text: `Death notification sent — ${form.name}`, status: 'done', tag: 'notification', detail: form.notes || null,
     })
+    // If the recipient is a known contact, capture it on their Communications timeline.
+    if (contactId) {
+      await logCommunication({
+        estateId: currentEstate.id,
+        contactId,
+        direction: 'outbound',
+        channel: method === 'phone' ? 'phone' : method === 'online' ? 'other' : 'letter',
+        subject: 'Death notification',
+        summary: `Death notification sent to ${form.name}${form.notes ? ` — ${form.notes}` : ''}`,
+        source: 'auto',
+      })
+    }
     setLogged(true)
   }
 

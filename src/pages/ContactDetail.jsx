@@ -4,6 +4,9 @@ import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { CONTACT_ROLES } from '../lib/constants'
+import { logCommunication, CHANNELS, channelLabel, channelIcon } from '../lib/communications'
+
+const todayStr = () => new Date().toISOString().slice(0, 10)
 
 export default function ContactDetail() {
   const { id } = useParams()
@@ -13,7 +16,7 @@ export default function ContactDetail() {
   const [contact, setContact] = useState(null)
   const [interactions, setInteractions] = useState([])
   const [meetings, setMeetings] = useState([])
-  const [logForm, setLogForm] = useState({ direction: 'outbound', summary: '' })
+  const [logForm, setLogForm] = useState({ direction: 'outbound', channel: 'phone', subject: '', summary: '', date: todayStr() })
   const [meetingForm, setMeetingForm] = useState({ scheduled_at: '', meeting_type: 'initial', notes: '' })
   const [prepBusy, setPrepBusy] = useState(null)
   const [editMtg, setEditMtg] = useState(null) // { id, at } for rescheduling a meeting
@@ -25,7 +28,7 @@ export default function ContactDetail() {
     if (!id) return
     Promise.all([
       supabase.from('estate_contacts').select('*').eq('id', id).single(),
-      supabase.from('estate_contact_interactions').select('*').eq('contact_id', id).order('created_at', { ascending: false }),
+      supabase.from('estate_contact_interactions').select('*').eq('contact_id', id).order('occurred_at', { ascending: false }),
       supabase.from('estate_meetings').select('*').eq('contact_id', id).order('scheduled_at', { ascending: false }),
     ]).then(([c, i, m]) => {
       setContact(c.data)
@@ -121,14 +124,18 @@ export default function ContactDetail() {
 
   async function logInteraction() {
     if (!logForm.summary.trim()) return
-    const { data } = await supabase.from('estate_contact_interactions').insert({
-      contact_id: id,
-      estate_id: currentEstate.id,
+    const data = await logCommunication({
+      estateId: currentEstate.id,
+      contactId: id,
       direction: logForm.direction,
-      summary: logForm.summary.trim(),
-    }).select().single()
+      channel: logForm.channel,
+      subject: logForm.subject,
+      summary: logForm.summary,
+      source: 'manual',
+      occurredAt: logForm.date ? new Date(logForm.date + 'T12:00:00').toISOString() : null,
+    })
     if (data) setInteractions(prev => [data, ...prev])
-    setLogForm({ direction: 'outbound', summary: '' })
+    setLogForm({ direction: 'outbound', channel: 'phone', subject: '', summary: '', date: todayStr() })
   }
 
   async function saveEdit() {
@@ -410,18 +417,26 @@ export default function ContactDetail() {
       </div>
       )}
 
-      {/* Log interaction (executor only) */}
+      {/* Log a communication (executor only) */}
       {canDelete && (
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Log Interaction</h2>
-        <div className="flex gap-3 mb-2">
-          {['outbound','inbound'].map(d => (
-            <label key={d} className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
-              <input type="radio" name="direction" value={d} checked={logForm.direction === d} onChange={() => setLogForm(p => ({ ...p, direction: d }))} />
-              {d === 'outbound' ? 'I called / sent' : 'They called / sent'}
-            </label>
-          ))}
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Log a communication</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+          <select value={logForm.channel} onChange={e => setLogForm(p => ({ ...p, channel: e.target.value }))}
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+            {Object.entries(CHANNELS).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+          </select>
+          <select value={logForm.direction} onChange={e => setLogForm(p => ({ ...p, direction: e.target.value }))}
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+            <option value="outbound">↗ I contacted them</option>
+            <option value="inbound">↘ They contacted me</option>
+          </select>
+          <input type="date" value={logForm.date} onChange={e => setLogForm(p => ({ ...p, date: e.target.value }))}
+            className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
         </div>
+        <input value={logForm.subject} onChange={e => setLogForm(p => ({ ...p, subject: e.target.value }))}
+          placeholder="Subject (optional) — e.g. Probate filing timeline"
+          className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none mb-2" />
         <textarea
           value={logForm.summary}
           onChange={e => setLogForm(p => ({ ...p, summary: e.target.value }))}
@@ -430,23 +445,58 @@ export default function ContactDetail() {
           className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none mb-2"
         />
         <button onClick={logInteraction} disabled={!logForm.summary.trim()} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40">
-          Log
+          Log communication
         </button>
       </div>
       )}
 
-      {/* Interaction history */}
+      {/* Unified communications timeline — logged interactions + meetings, newest first */}
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Interaction History</h2>
-        {interactions.length === 0 && <p className="text-sm text-gray-400">No interactions logged.</p>}
-        <div className="space-y-3">
-          {interactions.map(i => (
-            <div key={i.id} className="text-sm border-l-2 border-gray-200 dark:border-gray-800 pl-3">
-              <div className="text-xs text-gray-400 mb-0.5">{i.created_at?.slice(0, 10)} · {i.direction}</div>
-              <div className="text-gray-700 dark:text-gray-300">{i.summary}</div>
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Communications</h2>
+        {(() => {
+          const events = [
+            ...interactions.map(i => ({
+              key: `i-${i.id}`, type: 'comm', when: i.occurred_at || i.created_at,
+              icon: channelIcon(i.channel), data: i,
+            })),
+            ...meetings.map(m => ({
+              key: `m-${m.id}`, type: 'meeting', when: m.scheduled_at, icon: '📅', data: m,
+            })),
+          ].sort((a, b) => new Date(b.when || 0) - new Date(a.when || 0))
+
+          if (events.length === 0) return <p className="text-sm text-gray-400">No communications yet. Log a call, email, or letter above — and anything the app sends to this contact is recorded here automatically.</p>
+
+          return (
+            <div className="space-y-3">
+              {events.map(ev => {
+                const dateStr = ev.when ? new Date(ev.when).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+                if (ev.type === 'meeting') {
+                  const m = ev.data
+                  return (
+                    <div key={ev.key} className="text-sm border-l-2 border-blue-200 dark:border-blue-900 pl-3">
+                      <div className="text-xs text-gray-400 mb-0.5">
+                        {dateStr} · 📅 Meeting <span className="capitalize">· {(m.meeting_type || '').replace('_', ' ')}</span> · <span className="capitalize">{m.status}</span>
+                      </div>
+                      {m.notes && <div className="text-gray-700 dark:text-gray-300">{m.notes}</div>}
+                    </div>
+                  )
+                }
+                const i = ev.data
+                const dir = i.direction === 'inbound' ? '↘ from them' : '↗ to them'
+                return (
+                  <div key={ev.key} className="text-sm border-l-2 border-gray-200 dark:border-gray-800 pl-3">
+                    <div className="text-xs text-gray-400 mb-0.5">
+                      {dateStr} · {ev.icon} {channelLabel(i.channel)} · {dir}
+                      {i.source === 'auto' && <span className="ml-1 text-[10px] uppercase tracking-wide bg-gray-100 dark:bg-gray-800 text-gray-500 rounded px-1">auto</span>}
+                    </div>
+                    {i.subject && <div className="font-medium text-gray-800 dark:text-gray-200">{i.subject}</div>}
+                    <div className="text-gray-700 dark:text-gray-300">{i.summary}</div>
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
+          )
+        })()}
       </div>
     </div>
   )
