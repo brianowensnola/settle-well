@@ -125,6 +125,9 @@ export default function Communications() {
 
   // ----- Compose an AI-drafted estate email -----
   const emailContacts = contacts.filter(c => (c.emails ?? []).some(Boolean))
+  // One option per email address (a contact may have several, e.g. an assistant).
+  const emailOptions = emailContacts.flatMap(c =>
+    (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em })))
   const cmContact = contactById[cm.contactId]
   const cmEmail = cmContact?.emails?.find(Boolean) || ''
 
@@ -192,6 +195,8 @@ export default function Communications() {
   }, [panel, sEstate])
 
   const sendContacts = contacts.filter(c => c.estate_id === sEstate && (c.emails ?? []).some(Boolean))
+  const sendEmailOptions = sendContacts.flatMap(c =>
+    (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em })))
   const sendContact = contactById[sContactId]
   const sendEmail = sendContact?.emails?.find(Boolean) || ''
   const chosenDocs = docs.filter(d => sel[d.id])
@@ -343,7 +348,7 @@ export default function Communications() {
                 title="Add a contact to Cc"
                 className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
                 <option value="">+ Contact</option>
-                {emailContacts.map(c => <option key={c.id} value={c.emails.find(Boolean)}>{c.name}</option>)}
+                {emailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
               </select>
             </div>
             <div className="flex gap-1.5">
@@ -354,7 +359,7 @@ export default function Communications() {
                 title="Add a contact to Bcc"
                 className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
                 <option value="">+ Contact</option>
-                {emailContacts.map(c => <option key={c.id} value={c.emails.find(Boolean)}>{c.name}</option>)}
+                {emailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
               </select>
             </div>
           </div>
@@ -462,7 +467,7 @@ export default function Communications() {
                 title="Add a contact to Cc"
                 className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
                 <option value="">+ Contact</option>
-                {sendContacts.map(c => <option key={c.id} value={c.emails.find(Boolean)}>{c.name}</option>)}
+                {sendEmailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
               </select>
             </div>
             <div className="flex gap-1.5">
@@ -473,7 +478,7 @@ export default function Communications() {
                 title="Add a contact to Bcc"
                 className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
                 <option value="">+ Contact</option>
-                {sendContacts.map(c => <option key={c.id} value={c.emails.find(Boolean)}>{c.name}</option>)}
+                {sendEmailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
               </select>
             </div>
           </div>
