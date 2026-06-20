@@ -18,6 +18,8 @@ import MultiEstateSettings from './pages/MultiEstateSettings'
 import IntakeReview from './pages/IntakeReview'
 import QuickEstateSetup from './pages/QuickEstateSetup'
 import Communications from './pages/Communications'
+import HeirComms from './pages/HeirComms'
+import Messages from './pages/Messages'
 import Dashboard from './pages/Dashboard'
 import HeirDashboard from './pages/HeirDashboard'
 import ObserverDashboard from './pages/ObserverDashboard'
@@ -92,6 +94,8 @@ function AppRoutes() {
         <Route path="/death-notices" element={<DeathNotifications />} />
         <Route path="/intake-review" element={<IntakeReview />} />
         <Route path="/communications" element={<Communications />} />
+        <Route path="/heir-comms" element={<HeirComms />} />
+        <Route path="/messages" element={<Messages />} />
         {/* Send to Attorney folded into the Communications portal */}
         <Route path="/send-to-attorney" element={<Navigate to="/communications" replace />} />
         <Route path="/dashboard" element={<DashboardRouter />} />

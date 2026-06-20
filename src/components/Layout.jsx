@@ -19,6 +19,7 @@ const MOBILE_NAV = [
 // Per-estate items everyone (per their role) uses — shown under each estate.
 const SHARED_NAV = [
   { to: '/dashboard',   label: 'Dashboard' },
+  { to: '/messages',    label: 'Messages' },
   { to: '/tasks',       label: 'Tasks' },
   { to: '/notes',       label: 'Daily Notes' },
   { to: '/documents',   label: 'Documents' },
@@ -39,6 +40,7 @@ const EXECUTOR_NAV = [
   { to: '/death-notices',    label: 'Death Notifications' },
   { to: '/intake-review',    label: 'Intake Review' },
   { to: '/communications',   label: 'Communications' },
+  { to: '/heir-comms',       label: 'Heir Communications' },
   { to: '/activity',         label: 'Activity Log' },
   { to: '/settings',         label: 'Estate Settings' },
 ]

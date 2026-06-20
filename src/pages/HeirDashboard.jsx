@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { statusStageLabel } from '../lib/constants'
 import { channelIcon, channelLabel } from '../lib/communications'
+import { noticeLabel } from '../lib/heirComms'
 
 const fmt = n => '$' + (n ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
 
@@ -12,6 +14,7 @@ export default function HeirDashboard() {
   const [summary, setSummary] = useState(null) // safe accounting aggregates (RPC)
   const [documents, setDocuments] = useState([])
   const [sends, setSends] = useState([])
+  const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -20,17 +23,19 @@ export default function HeirDashboard() {
   }, [currentEstate])
 
   async function loadData() {
-    const [tasksRes, sumRes, docsRes, sendsRes] = await Promise.all([
+    const [tasksRes, sumRes, docsRes, sendsRes, noticesRes] = await Promise.all([
       supabase.from('estate_tasks').select('*').eq('estate_id', currentEstate.id),
       supabase.rpc('estate_transparency', { p_estate_id: currentEstate.id }),
       supabase.from('estate_documents').select('*').eq('estate_id', currentEstate.id).in('doc_type', ['legal', 'property']),
       supabase.from('attorney_document_sends').select('id, document_count, document_names, recipient_name, sent_at').eq('estate_id', currentEstate.id).order('sent_at', { ascending: false }),
+      supabase.from('estate_heir_notice_log').select('id, notice_type, title, body, sent_at').eq('estate_id', currentEstate.id).order('sent_at', { ascending: false }),
     ])
 
     setTasks(tasksRes.data ?? [])
     setSummary(sumRes.data ?? null)
     setDocuments(docsRes.data ?? [])
     setSends(sendsRes.data ?? [])
+    setNotices(noticesRes.data ?? [])
     setLoading(false)
   }
 
@@ -68,6 +73,30 @@ export default function HeirDashboard() {
             {currentEstate.heir_digest_at && <span className="text-xs text-gray-400">as of {new Date(currentEstate.heir_digest_at).toLocaleDateString()}</span>}
           </div>
           <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{currentEstate.heir_digest}</div>
+        </div>
+      )}
+
+      {/* Have a question? */}
+      <Link to="/messages" className="block bg-blue-600 hover:bg-blue-700 text-white rounded-xl p-4 mb-6">
+        <div className="font-medium text-sm">💬 Have a question? Send a message</div>
+        <div className="text-xs text-blue-100 mt-0.5">Ask the executor anything — it's kept with the estate and they'll be notified.</div>
+      </Link>
+
+      {/* Updates & notices sent to the heirs */}
+      {notices.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Updates &amp; notices you've received</h2>
+          <div className="space-y-3">
+            {notices.map(n => (
+              <details key={n.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <summary className="cursor-pointer list-none">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{n.title || noticeLabel(n.notice_type)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{new Date(n.sent_at).toLocaleDateString()} · {noticeLabel(n.notice_type)}</span>
+                </summary>
+                {n.body && <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line mt-2 leading-relaxed">{n.body}</div>}
+              </details>
+            ))}
+          </div>
         </div>
       )}
 
