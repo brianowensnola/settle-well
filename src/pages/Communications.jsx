@@ -43,7 +43,7 @@ export default function Communications() {
   const [panel, setPanel] = useState(null) // 'log' | 'send' | 'compose' | null
 
   // Compose-email (AI-drafted) form
-  const [cm, setCm] = useState({ contactId: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
+  const [cm, setCm] = useState({ contactId: '', to: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
   const [drafting, setDrafting] = useState(false)
   const [cmBusy, setCmBusy] = useState(false)
   const [cmMsg, setCmMsg] = useState('')
@@ -57,6 +57,7 @@ export default function Communications() {
   const [docs, setDocs] = useState([])
   const [sel, setSel] = useState({})
   const [note, setNote] = useState('')
+  const [sTo, setSTo] = useState('')
   const [sCc, setSCc] = useState('')
   const [sBcc, setSBcc] = useState('')
   const [sendBusy, setSendBusy] = useState(false)
@@ -127,9 +128,9 @@ export default function Communications() {
   const emailContacts = contacts.filter(c => (c.emails ?? []).some(Boolean))
   // One option per email address (a contact may have several, e.g. an assistant).
   const emailOptions = emailContacts.flatMap(c =>
-    (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em })))
+    (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em, contactId: c.id, estateId: c.estate_id })))
   const cmContact = contactById[cm.contactId]
-  const cmEmail = cmContact?.emails?.find(Boolean) || ''
+  const cmEmail = cm.to || ''
 
   async function draftIt() {
     if (!cmContact) { setCmMsg('Pick who the email is going to first.'); return }
@@ -157,7 +158,7 @@ export default function Communications() {
         cc: cm.cc, bcc: cm.bcc, subject: cm.subject, body: cm.body, isPrivate: cm.isPrivate,
       })
       if (interaction) setInteractions(prev => [interaction, ...prev])
-      setCm({ contactId: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
+      setCm({ contactId: '', to: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
       setPanel(null)
     } catch (e) { setCmMsg(e.message || 'Could not send the email') }
     finally { setCmBusy(false) }
@@ -182,7 +183,7 @@ export default function Communications() {
   // ----- Send documents -----
   function openSend() {
     const def = familyEstates.find(e => e.id === currentEstate?.id)?.id || familyEstates[0]?.id || ''
-    setSEstate(def); setSContactId(''); setSel({}); setNote(''); setSCc(''); setSBcc(''); setSendMsg('')
+    setSEstate(def); setSContactId(''); setSTo(''); setSel({}); setNote(''); setSCc(''); setSBcc(''); setSendMsg('')
     setPanel('send')
   }
   useEffect(() => {
@@ -198,7 +199,7 @@ export default function Communications() {
   const sendEmailOptions = sendContacts.flatMap(c =>
     (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em })))
   const sendContact = contactById[sContactId]
-  const sendEmail = sendContact?.emails?.find(Boolean) || ''
+  const sendEmail = sTo || ''
   const chosenDocs = docs.filter(d => sel[d.id])
 
   async function sendDocuments() {
@@ -319,10 +320,11 @@ export default function Communications() {
         <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-3 mb-5">
           <div className="text-sm font-semibold text-gray-800 dark:text-white">Compose an estate email</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <select value={cm.contactId} onChange={e => setCm(p => ({ ...p, contactId: e.target.value }))}
+            <select value={cm.contactId && cm.to ? `${cm.contactId}|${cm.to}` : ''}
+              onChange={e => { const [cid, em] = e.target.value.split('|'); setCm(p => ({ ...p, contactId: cid || '', to: em || '' })) }}
               className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">— Send to which contact? —</option>
-              {emailContacts.map(c => <option key={c.id} value={c.id}>{c.name} ({c.emails.find(Boolean)}){multiEstate ? ` · ${estateName(c.estate_id)}` : ''}</option>)}
+              <option value="">— Send to whom? —</option>
+              {emailOptions.map(o => <option key={o.key} value={o.key}>{o.name} — {o.email}{multiEstate ? ` · ${estateName(o.estateId)}` : ''}</option>)}
             </select>
             <select value={cm.intent} onChange={e => setCm(p => ({ ...p, intent: e.target.value }))}
               className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
@@ -423,15 +425,16 @@ export default function Communications() {
           <div className="text-sm font-semibold text-gray-800 dark:text-white">Send documents</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {multiEstate && (
-              <select value={sEstate} onChange={e => { setSEstate(e.target.value); setSContactId('') }}
+              <select value={sEstate} onChange={e => { setSEstate(e.target.value); setSContactId(''); setSTo('') }}
                 className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
                 {familyEstates.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
               </select>
             )}
-            <select value={sContactId} onChange={e => setSContactId(e.target.value)}
+            <select value={sContactId && sTo ? `${sContactId}|${sTo}` : ''}
+              onChange={e => { const [cid, em] = e.target.value.split('|'); setSContactId(cid || ''); setSTo(em || '') }}
               className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">— Send to which contact? —</option>
-              {sendContacts.map(c => <option key={c.id} value={c.id}>{c.name} ({c.emails.find(Boolean)})</option>)}
+              <option value="">— Send to whom? —</option>
+              {sendEmailOptions.map(o => <option key={o.key} value={o.key}>{o.name} — {o.email}</option>)}
             </select>
           </div>
           {sendContacts.length === 0 && <p className="text-xs text-amber-600">No contacts in this estate have an email address. Add one on the contact first.</p>}
