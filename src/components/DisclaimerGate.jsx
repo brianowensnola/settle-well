@@ -10,9 +10,10 @@ import { isFullAccess } from '../lib/roles'
 // place, so turning this on resumes one-time-per-estate gating with no other work.
 const DISCLAIMER_GATE_ENABLED = false
 
-// Shown once per estate to an executor: a plain-English summary of their
-// fiduciary responsibilities, which they must acknowledge before working the
-// estate. Recorded via the acknowledge_disclaimer RPC. Not legal advice.
+// Shown ONCE per executor (ever): a plain-English summary of their fiduciary
+// responsibilities, which they must acknowledge before working an estate. The
+// acknowledgment is recorded across all their estate_users rows via the
+// acknowledge_disclaimer RPC, so they're never re-prompted. Not legal advice.
 export default function DisclaimerGate() {
   const { currentEstate, role } = useEstate()
   const user = useUser()
@@ -24,9 +25,9 @@ export default function DisclaimerGate() {
     let off = false
     setNeedsAck(false); setAgree(false)
     if (!DISCLAIMER_GATE_ENABLED || !currentEstate || !user || !isFullAccess(role)) return
-    supabase.from('estate_users').select('disclaimer_ack_at')
-      .eq('estate_id', currentEstate.id).eq('auth_user_id', user.id).maybeSingle()
-      .then(({ data }) => { if (!off) setNeedsAck(!!data && !data.disclaimer_ack_at) })
+    // Once per executor ever: acknowledged if ANY of their rows is marked.
+    supabase.from('estate_users').select('disclaimer_ack_at').eq('auth_user_id', user.id)
+      .then(({ data }) => { if (!off) setNeedsAck(Array.isArray(data) && data.length > 0 && !data.some(r => r.disclaimer_ack_at)) })
     return () => { off = true }
   }, [currentEstate?.id, user?.id, role])
 
