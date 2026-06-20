@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Always-on AI agent (Phase 1) — scheduled processor (Netlify v2 scheduled
-// function: default export + config.schedule). Runs every 30 minutes, finds
+// function: default export + config.schedule). Runs once a day, finds
 // estates whose data changed since the agent last ran (marked "dirty" by DB
 // triggers), and fires the existing review engine for each. The review dedups
 // against pending/dismissed suggestions, so repeated sweeps don't pile up.
@@ -53,4 +53,6 @@ export default async () => {
   });
 };
 
-export const config = { schedule: "*/30 * * * *" };
+// Once a day at 08:00 UTC (~3am Central). Was every 30 min — backed off to cut
+// AI cost; the on-demand "Review the estate" button still runs anytime.
+export const config = { schedule: "0 8 * * *" };

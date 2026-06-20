@@ -15,7 +15,7 @@ const fmtMoney = n => n == null ? null : new Intl.NumberFormat('en-US', { style:
 // Auto-run the "what am I missing?" review at most this often per estate (per
 // device). Dedup on the server keeps repeats from piling up; this just limits
 // how often we spend an Opus call.
-const AUTO_REVIEW_THROTTLE_MS = 6 * 60 * 60 * 1000
+const AUTO_REVIEW_THROTTLE_MS = 24 * 60 * 60 * 1000
 const lastAutoKey = id => `sw_last_auto_review_${id}`
 
 export default function Assistant() {
