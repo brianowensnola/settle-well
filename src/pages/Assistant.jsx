@@ -73,7 +73,11 @@ export default function Assistant() {
       finally { if (!cancelled) setAutoRunning(false) }
     })()
     return () => { cancelled = true }
-  }, [currentEstate])
+    // Re-run when the family set resolves too, so findings on a sibling estate
+    // (e.g. loaded a beat after currentEstate) aren't missed. The auto-review is
+    // localStorage-throttled, so re-running this effect won't re-trigger it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEstate?.id, familyIds.join(',')])
 
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (!isFullAccess(role)) return <div className="p-8 text-gray-400">The AI Assistant is available to the executor only.</div>
