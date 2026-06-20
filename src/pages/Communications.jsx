@@ -50,6 +50,8 @@ export default function Communications() {
   const [docs, setDocs] = useState([])
   const [sel, setSel] = useState({})
   const [note, setNote] = useState('')
+  const [sCc, setSCc] = useState('')
+  const [sBcc, setSBcc] = useState('')
   const [sendBusy, setSendBusy] = useState(false)
   const [sendMsg, setSendMsg] = useState('')
 
@@ -170,7 +172,7 @@ export default function Communications() {
   // ----- Send documents -----
   function openSend() {
     const def = familyEstates.find(e => e.id === currentEstate?.id)?.id || familyEstates[0]?.id || ''
-    setSEstate(def); setSContactId(''); setSel({}); setNote(''); setSendMsg('')
+    setSEstate(def); setSContactId(''); setSel({}); setNote(''); setSCc(''); setSBcc(''); setSendMsg('')
     setPanel('send')
   }
   useEffect(() => {
@@ -220,11 +222,14 @@ export default function Communications() {
       const comm = await logCommunication({
         estateId: sEstate, contactId: sContactId, direction: 'outbound', channel: 'document',
         subject: `Sent ${chosenDocs.length} document${chosenDocs.length !== 1 ? 's' : ''}`,
-        summary: `Sent to ${sendContact.name} (${sendEmail}): ${chosenDocs.map(d => d.name).join(', ')}${note.trim() ? ` — “${note.trim()}”` : ''}`,
+        summary: `Sent to ${sendContact.name} (${sendEmail})${sCc.trim() ? ` (cc: ${sCc.trim()})` : ''}: ${chosenDocs.map(d => d.name).join(', ')}${note.trim() ? ` — “${note.trim()}”` : ''}`,
         source: 'auto',
       })
       if (comm) setInteractions(prev => [comm, ...prev])
-      window.location.href = `mailto:${encodeURIComponent(sendEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+      const params = [`subject=${encodeURIComponent(subject)}`, `body=${encodeURIComponent(body)}`]
+      if (sCc.trim()) params.unshift(`cc=${encodeURIComponent(sCc.trim())}`)
+      if (sBcc.trim()) params.unshift(`bcc=${encodeURIComponent(sBcc.trim())}`)
+      window.location.href = `mailto:${encodeURIComponent(sendEmail)}?${params.join('&')}`
       setPanel(null)
     } catch (e) {
       setSendMsg(e.message || 'Could not prepare the email.')
@@ -425,6 +430,14 @@ export default function Communications() {
           <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
             placeholder="Optional note to include in the email..."
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input value={sCc} onChange={e => setSCc(e.target.value)}
+              placeholder="Cc (optional, comma-separated)"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            <input value={sBcc} onChange={e => setSBcc(e.target.value)}
+              placeholder="Bcc (optional, comma-separated)"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          </div>
           {sendMsg && <p className="text-xs text-red-600">{sendMsg}</p>}
           <div className="flex gap-2 items-center">
             <button onClick={sendDocuments} disabled={sendBusy || !sContactId || chosenDocs.length === 0} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
