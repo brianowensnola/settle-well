@@ -10,6 +10,13 @@ const LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 const todayStr = () => new Date().toISOString().slice(0, 10)
 const whenStr = d => d ? new Date(d).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
 
+// Append an email to a comma-separated list without duplicates.
+const appendEmail = (val, email) => {
+  const list = (val || '').split(',').map(s => s.trim()).filter(Boolean)
+  if (email && !list.includes(email)) list.push(email)
+  return list.join(', ')
+}
+
 // One hub for every communication across the family's estates: a single
 // timeline (logged calls/emails/letters + meetings + document sends), with the
 // actions that create them — log a communication, or send documents to anyone.
@@ -328,12 +335,28 @@ export default function Communications() {
             placeholder="Subject"
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input value={cm.cc} onChange={e => setCm(p => ({ ...p, cc: e.target.value }))}
-              placeholder="Cc (optional, comma-separated)"
-              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
-            <input value={cm.bcc} onChange={e => setCm(p => ({ ...p, bcc: e.target.value }))}
-              placeholder="Bcc (optional, comma-separated)"
-              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            <div className="flex gap-1.5">
+              <input value={cm.cc} onChange={e => setCm(p => ({ ...p, cc: e.target.value }))}
+                placeholder="Cc (optional)"
+                className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+              <select value="" onChange={e => { if (e.target.value) setCm(p => ({ ...p, cc: appendEmail(p.cc, e.target.value) })) }}
+                title="Add a contact to Cc"
+                className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
+                <option value="">+ Contact</option>
+                {emailContacts.map(c => <option key={c.id} value={c.emails.find(Boolean)}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-1.5">
+              <input value={cm.bcc} onChange={e => setCm(p => ({ ...p, bcc: e.target.value }))}
+                placeholder="Bcc (optional)"
+                className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+              <select value="" onChange={e => { if (e.target.value) setCm(p => ({ ...p, bcc: appendEmail(p.bcc, e.target.value) })) }}
+                title="Add a contact to Bcc"
+                className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
+                <option value="">+ Contact</option>
+                {emailContacts.map(c => <option key={c.id} value={c.emails.find(Boolean)}>{c.name}</option>)}
+              </select>
+            </div>
           </div>
           <textarea value={cm.body} onChange={e => setCm(p => ({ ...p, body: e.target.value }))} rows={10}
             placeholder="Write the email, or use Draft with AI above and edit here…"
@@ -431,12 +454,28 @@ export default function Communications() {
             placeholder="Optional note to include in the email..."
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input value={sCc} onChange={e => setSCc(e.target.value)}
-              placeholder="Cc (optional, comma-separated)"
-              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
-            <input value={sBcc} onChange={e => setSBcc(e.target.value)}
-              placeholder="Bcc (optional, comma-separated)"
-              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            <div className="flex gap-1.5">
+              <input value={sCc} onChange={e => setSCc(e.target.value)}
+                placeholder="Cc (optional)"
+                className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+              <select value="" onChange={e => { if (e.target.value) setSCc(v => appendEmail(v, e.target.value)) }}
+                title="Add a contact to Cc"
+                className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
+                <option value="">+ Contact</option>
+                {sendContacts.map(c => <option key={c.id} value={c.emails.find(Boolean)}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-1.5">
+              <input value={sBcc} onChange={e => setSBcc(e.target.value)}
+                placeholder="Bcc (optional)"
+                className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+              <select value="" onChange={e => { if (e.target.value) setSBcc(v => appendEmail(v, e.target.value)) }}
+                title="Add a contact to Bcc"
+                className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
+                <option value="">+ Contact</option>
+                {sendContacts.map(c => <option key={c.id} value={c.emails.find(Boolean)}>{c.name}</option>)}
+              </select>
+            </div>
           </div>
           {sendMsg && <p className="text-xs text-red-600">{sendMsg}</p>}
           <div className="flex gap-2 items-center">

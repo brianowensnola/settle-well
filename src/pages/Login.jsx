@@ -8,6 +8,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [logoOk, setLogoOk] = useState(true)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -54,7 +55,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center" style={{ background: '#fafaf8' }}>
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Estate Admin</h1>
+          {logoOk
+            ? <img src="/logo.png" alt="SettleWell" className="h-28 mx-auto mb-1" onError={() => setLogoOk(false)} />
+            : <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">SettleWell</h1>}
           <p className="text-sm text-gray-500 mt-1">{mode === 'login' ? 'Sign in to continue' : 'Create your account'}</p>
         </div>
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 space-y-4 shadow-sm">

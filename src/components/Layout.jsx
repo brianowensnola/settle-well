@@ -282,7 +282,8 @@ export default function Layout() {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-52 shrink-0 flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
-          <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Estate Admin</div>
+          <img src="/logo.png" alt="SettleWell" className="h-9 mb-2" onError={e => { e.currentTarget.style.display = 'none' }} />
+          <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">SettleWell</div>
         </div>
 
         {renderNavBody()}
@@ -295,7 +296,7 @@ export default function Layout() {
           <div className="absolute inset-0 bg-black/40" onClick={closeMobile} />
           <aside className="relative w-64 max-w-[82%] h-full bg-white dark:bg-gray-900 flex flex-col shadow-xl">
             <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Estate Admin</span>
+              <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">SettleWell</span>
               <button onClick={closeMobile} aria-label="Close menu" className="text-xl text-gray-500 leading-none">✕</button>
             </div>
             {renderNavBody()}
@@ -334,7 +335,7 @@ export default function Layout() {
         {/* Mobile top bar with menu button */}
         <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-40">
           <button onClick={() => setMobileNavOpen(true)} aria-label="Open menu" className="text-2xl leading-none text-gray-700 dark:text-gray-300">☰</button>
-          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Estate Admin</span>
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">SettleWell</span>
         </div>
         {currentEstate && familyMembers.length > 1 && (
           <div className="bg-blue-600 text-white px-4 py-2 text-sm font-medium md:sticky md:top-0 z-30 flex items-center gap-2">
