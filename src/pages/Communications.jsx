@@ -59,7 +59,6 @@ export default function Communications() {
 
   // Send-documents form
   const [sEstate, setSEstate] = useState('')
-  const [sContactId, setSContactId] = useState('')
   const [docs, setDocs] = useState([])
   const [sel, setSel] = useState({})
   const [note, setNote] = useState('')
@@ -202,7 +201,7 @@ export default function Communications() {
   // ----- Send documents -----
   function openSend() {
     const def = familyEstates.find(e => e.id === currentEstate?.id)?.id || familyEstates[0]?.id || ''
-    setSEstate(def); setSContactId(''); setSTo(''); setSel({}); setNote(''); setSCc(''); setSBcc(''); setSendMsg('')
+    setSEstate(def); setSTo(''); setSel({}); setNote(''); setSCc(''); setSBcc(''); setSendMsg('')
     setPanel('send')
   }
   useEffect(() => {
@@ -214,20 +213,30 @@ export default function Communications() {
     })()
   }, [panel, sEstate])
 
-  const sendContacts = contacts.filter(c => c.estate_id === sEstate && (c.emails ?? []).some(Boolean))
-  const sendEmailOptions = sendContacts.flatMap(c =>
-    (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em })))
-  const sendContact = contactById[sContactId]
-  const sendEmail = sTo || ''
+  // Recipient matched to a contact in this estate (if any); else we'll create one.
+  const sSendContact = contacts.find(c => c.estate_id === sEstate &&
+    (c.emails || []).some(e => (e || '').toLowerCase() === (sTo || '').trim().toLowerCase()))
+  const sIsNewRecipient = !!sTo.trim() && !sSendContact
+  const sendEmail = sTo.trim()
   const chosenDocs = docs.filter(d => sel[d.id])
 
   async function sendDocuments() {
-    if (!sendContact || !sendEmail || chosenDocs.length === 0) {
-      setSendMsg('Choose a contact with an email and at least one document.')
+    if (!sendEmail || chosenDocs.length === 0) {
+      setSendMsg('Enter a recipient email and choose at least one document.')
       return
     }
     setSendBusy(true); setSendMsg('')
     try {
+      // Resolve or auto-create the recipient contact in this estate.
+      let recipientContactId = sSendContact?.id || null
+      const recipientName = sSendContact?.name || nameFromEmail(sendEmail)
+      if (!recipientContactId) {
+        const { data: newC, error: cErr } = await supabase.from('estate_contacts')
+          .insert({ estate_id: sEstate, name: recipientName, role: 'other', emails: [sendEmail] }).select().single()
+        if (cErr) throw cErr
+        recipientContactId = newC?.id || null
+        if (newC) setContacts(prev => [...prev, newC])
+      }
       const paths = chosenDocs.map(d => d.file_path)
       const { data: signed, error } = await supabase.storage.from('estate-documents').createSignedUrls(paths, LINK_TTL_SECONDS)
       if (error) throw error
@@ -249,12 +258,12 @@ export default function Communications() {
         document_count: chosenDocs.length,
         document_names: chosenDocs.map(d => d.name).join(', '),
         sent_at: new Date().toISOString(),
-        recipient_name: `${sendContact.name} <${sendEmail}>`,
+        recipient_name: `${recipientName} <${sendEmail}>`,
       })
       const comm = await logCommunication({
-        estateId: sEstate, contactId: sContactId, direction: 'outbound', channel: 'document',
+        estateId: sEstate, contactId: recipientContactId, direction: 'outbound', channel: 'document',
         subject: `Sent ${chosenDocs.length} document${chosenDocs.length !== 1 ? 's' : ''}`,
-        summary: `Sent to ${sendContact.name} (${sendEmail})${sCc.trim() ? ` (cc: ${sCc.trim()})` : ''}: ${chosenDocs.map(d => d.name).join(', ')}${note.trim() ? ` — “${note.trim()}”` : ''}`,
+        summary: `Sent to ${recipientName} (${sendEmail})${sCc.trim() ? ` (cc: ${sCc.trim()})` : ''}: ${chosenDocs.map(d => d.name).join(', ')}${note.trim() ? ` — “${note.trim()}”` : ''}`,
         source: 'auto',
       })
       if (comm) setInteractions(prev => [comm, ...prev])
@@ -454,23 +463,26 @@ export default function Communications() {
       {panel === 'send' && (
         <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-3 mb-5">
           <div className="text-sm font-semibold text-gray-800 dark:text-white">Send documents</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {multiEstate && (
-              <select value={sEstate} onChange={e => { setSEstate(e.target.value); setSContactId(''); setSTo('') }}
-                className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-                {familyEstates.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
-              </select>
-            )}
-            <select value={sContactId && sTo ? `${sContactId}|${sTo}` : ''}
-              onChange={e => { const [cid, em] = e.target.value.split('|'); setSContactId(cid || ''); setSTo(em || '') }}
-              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">— Send to whom? —</option>
-              {sendEmailOptions.map(o => <option key={o.key} value={o.key}>{o.name} — {o.email}</option>)}
+          {multiEstate && (
+            <select value={sEstate} onChange={e => setSEstate(e.target.value)}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+              {familyEstates.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
+            </select>
+          )}
+          <div className="flex gap-1.5">
+            <input value={sTo} onChange={e => setSTo(e.target.value)}
+              placeholder="Send to (email address)"
+              className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            <select value="" onChange={e => { if (e.target.value) setSTo(e.target.value) }}
+              title="Pick an existing contact"
+              className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
+              <option value="">+ Contact</option>
+              {emailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}{multiEstate ? ` · ${estateName(o.estateId)}` : ''}</option>)}
             </select>
           </div>
-          {sendContacts.length === 0 && <p className="text-xs text-amber-600">No contacts in this estate have an email address. Add one on the contact first.</p>}
+          {sIsNewRecipient && <p className="text-xs text-blue-600 dark:text-blue-400">New recipient — a contact for <strong>{sTo.trim()}</strong> will be created when you send.</p>}
 
-          {sContactId && (
+          {sEstate && (
             <div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Documents to include</div>
               {docs.length === 0 ? (
@@ -501,7 +513,7 @@ export default function Communications() {
                 title="Add a contact to Cc"
                 className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
                 <option value="">+ Contact</option>
-                {sendEmailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
+                {emailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
               </select>
             </div>
             <div className="flex gap-1.5">
@@ -512,13 +524,13 @@ export default function Communications() {
                 title="Add a contact to Bcc"
                 className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
                 <option value="">+ Contact</option>
-                {sendEmailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
+                {emailOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
               </select>
             </div>
           </div>
           {sendMsg && <p className="text-xs text-red-600">{sendMsg}</p>}
           <div className="flex gap-2 items-center">
-            <button onClick={sendDocuments} disabled={sendBusy || !sContactId || chosenDocs.length === 0} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
+            <button onClick={sendDocuments} disabled={sendBusy || !sTo.trim() || chosenDocs.length === 0} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
               {sendBusy ? 'Preparing…' : `Open email${chosenDocs.length ? ` (${chosenDocs.length})` : ''}`}
             </button>
             <button onClick={() => setPanel(null)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
