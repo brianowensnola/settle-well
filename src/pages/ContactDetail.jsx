@@ -4,7 +4,7 @@ import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { CONTACT_ROLES } from '../lib/constants'
-import { logCommunication, CHANNELS, channelLabel, channelIcon } from '../lib/communications'
+import { logCommunication, CHANNELS, channelLabel, channelIcon, deleteCommunication } from '../lib/communications'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
@@ -120,6 +120,14 @@ export default function ContactDetail() {
       await supabase.from('estate_tasks').update({ status: 'done', updated_at: new Date().toISOString() }).eq('id', meeting.linked_task_id)
     }
     setMeetings(prev => prev.map(x => x.id === meeting.id ? { ...x, status } : x))
+  }
+
+  async function removeInteraction(interactionId) {
+    if (!confirm('Delete this communication? This cannot be undone.')) return
+    try {
+      await deleteCommunication(interactionId)
+      setInteractions(prev => prev.filter(x => x.id !== interactionId))
+    } catch (e) { alert(`Couldn't delete: ${e.message}`) }
   }
 
   async function logInteraction() {
@@ -484,13 +492,16 @@ export default function ContactDetail() {
                 const i = ev.data
                 const dir = i.direction === 'inbound' ? '↘ from them' : '↗ to them'
                 return (
-                  <div key={ev.key} className="text-sm border-l-2 border-gray-200 dark:border-gray-800 pl-3">
-                    <div className="text-xs text-gray-400 mb-0.5">
-                      {dateStr} · {ev.icon} {channelLabel(i.channel)} · {dir}
-                      {i.source === 'auto' && <span className="ml-1 text-[10px] uppercase tracking-wide bg-gray-100 dark:bg-gray-800 text-gray-500 rounded px-1">auto</span>}
+                  <div key={ev.key} className="flex items-start justify-between gap-2 border-l-2 border-gray-200 dark:border-gray-800 pl-3 group">
+                    <div className="text-sm min-w-0 flex-1">
+                      <div className="text-xs text-gray-400 mb-0.5">
+                        {dateStr} · {ev.icon} {channelLabel(i.channel)} · {dir}
+                        {i.source === 'auto' && <span className="ml-1 text-[10px] uppercase tracking-wide bg-gray-100 dark:bg-gray-800 text-gray-500 rounded px-1">auto</span>}
+                      </div>
+                      {i.subject && <div className="font-medium text-gray-800 dark:text-gray-200">{i.subject}</div>}
+                      <div className="text-gray-700 dark:text-gray-300">{i.summary}</div>
                     </div>
-                    {i.subject && <div className="font-medium text-gray-800 dark:text-gray-200">{i.subject}</div>}
-                    <div className="text-gray-700 dark:text-gray-300">{i.summary}</div>
+                    {canDelete && <button onClick={() => removeInteraction(i.id)} title="Delete" className="shrink-0 text-gray-300 hover:text-red-500 text-sm opacity-0 group-hover:opacity-100 transition-opacity">🗑</button>}
                   </div>
                 )
               })}

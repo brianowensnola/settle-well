@@ -63,6 +63,12 @@ export const INBOUND_LIVE = true // SES receiving configured (settlewellestate.c
 export const estateInboxAddress = estate =>
   (INBOUND_LIVE && estate?.inbound_token) ? `${estate.inbound_token}@${INBOUND_EMAIL_DOMAIN}` : null
 
+// Permanently delete a logged/captured communication (executor only).
+export async function deleteCommunication(id) {
+  const { error } = await supabase.from('estate_contact_interactions').delete().eq('id', id)
+  if (error) throw error
+}
+
 // Record a communication with a contact. Used both by the manual "Log
 // communication" form and by auto-capture when the app sends something
 // (attorney packets, death notices, texts) so nothing has to be remembered.

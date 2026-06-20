@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { DOC_TYPES } from '../lib/constants'
-import { CHANNELS, channelIcon, channelLabel, logCommunication, EMAIL_INTENTS, draftEmail, sendEstateEmail, estateInboxAddress } from '../lib/communications'
+import { CHANNELS, channelIcon, channelLabel, logCommunication, EMAIL_INTENTS, draftEmail, sendEstateEmail, estateInboxAddress, deleteCommunication } from '../lib/communications'
 
 const LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -151,6 +151,15 @@ export default function Communications() {
     finally { setCmBusy(false) }
   }
 
+  // Permanently delete a logged/captured communication.
+  async function removeComm(id) {
+    if (!confirm('Delete this communication? This cannot be undone.')) return
+    try {
+      await deleteCommunication(id)
+      setInteractions(prev => prev.filter(i => i.id !== id))
+    } catch (e) { alert(`Couldn't delete: ${e.message}`) }
+  }
+
   // Assign an unmatched inbound email to a contact.
   async function assignToContact(interactionId, contactId) {
     if (!contactId) return
@@ -274,11 +283,14 @@ export default function Communications() {
                   <div className="text-gray-800 dark:text-gray-200 truncate">{i.subject}</div>
                   <div className="text-xs text-gray-500 truncate">{i.summary}</div>
                 </div>
-                <select defaultValue="" onChange={e => assignToContact(i.id, e.target.value)}
-                  className="shrink-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none">
-                  <option value="">Assign to…</option>
-                  {contactsForEstate(i.estate_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <div className="flex items-center gap-2 shrink-0">
+                  <select defaultValue="" onChange={e => assignToContact(i.id, e.target.value)}
+                    className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none">
+                    <option value="">Assign to…</option>
+                    {contactsForEstate(i.estate_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <button onClick={() => removeComm(i.id)} title="Delete" className="text-gray-400 hover:text-red-500 text-sm">🗑</button>
+                </div>
               </div>
             ))}
           </div>
@@ -467,17 +479,20 @@ export default function Communications() {
               const i = ev.data
               const dir = i.direction === 'inbound' ? '↘ from them' : '↗ to them'
               return (
-                <div key={ev.key} className="text-sm border-l-2 border-gray-200 dark:border-gray-800 pl-3">
-                  <div className="text-xs text-gray-400 mb-0.5">
-                    {whenStr(ev.when)} · {channelIcon(i.channel)} {channelLabel(i.channel)} · {dir}
-                    {multiEstate && <span> · {estateName(ev.estateId)}</span>}
-                    {i.source === 'auto' && <span className="ml-1 text-[10px] uppercase tracking-wide bg-gray-100 dark:bg-gray-800 text-gray-500 rounded px-1">auto</span>}
+                <div key={ev.key} className="flex items-start justify-between gap-2 border-l-2 border-gray-200 dark:border-gray-800 pl-3 group">
+                  <div className="text-sm min-w-0 flex-1">
+                    <div className="text-xs text-gray-400 mb-0.5">
+                      {whenStr(ev.when)} · {channelIcon(i.channel)} {channelLabel(i.channel)} · {dir}
+                      {multiEstate && <span> · {estateName(ev.estateId)}</span>}
+                      {i.source === 'auto' && <span className="ml-1 text-[10px] uppercase tracking-wide bg-gray-100 dark:bg-gray-800 text-gray-500 rounded px-1">auto</span>}
+                    </div>
+                    <div className="text-gray-800 dark:text-gray-200">
+                      {ev.contactId ? <Link to={`/contacts/${ev.contactId}`} className="font-medium hover:underline">{nm}</Link> : <span className="font-medium">{nm}</span>}
+                      {i.subject && <span className="text-gray-700 dark:text-gray-300"> — {i.subject}</span>}
+                    </div>
+                    {i.summary && <div className="text-gray-600 dark:text-gray-400">{i.summary}</div>}
                   </div>
-                  <div className="text-gray-800 dark:text-gray-200">
-                    {ev.contactId ? <Link to={`/contacts/${ev.contactId}`} className="font-medium hover:underline">{nm}</Link> : <span className="font-medium">{nm}</span>}
-                    {i.subject && <span className="text-gray-700 dark:text-gray-300"> — {i.subject}</span>}
-                  </div>
-                  {i.summary && <div className="text-gray-600 dark:text-gray-400">{i.summary}</div>}
+                  <button onClick={() => removeComm(i.id)} title="Delete" className="shrink-0 text-gray-300 hover:text-red-500 text-sm opacity-0 group-hover:opacity-100 transition-opacity">🗑</button>
                 </div>
               )
             })}
