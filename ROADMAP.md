@@ -6,6 +6,34 @@ captured here; nothing here gets silently dropped.
 
 ---
 
+## Production Email Architecture (BUILDING — approved 2026-06-20)
+
+The communications hub becomes a real, branded send/receive system. Approved
+direction; Brian will fund a ~$12/yr domain (no other recurring cost).
+
+- **Branded domain:** a SettleWell domain (TBD). Send from it; receive at a
+  subdomain (e.g. `in.<domain>`). Authenticate SPF/DKIM/DMARC for deliverability.
+- **Per-estate addresses:** already built — each estate has `inbound_token`;
+  address = `<token>@in.<domain>`. Auto-provisioned, scales, no per-estate setup.
+- **Sending:** Brevo now (authenticate the new domain in Brevo = quick win,
+  branded outbound); Amazon SES later for scale/margin. Both drop into the
+  existing send code.
+- **Receiving:** **Amazon SES inbound** (no monthly fee, ~$0.10/1k; NOT
+  Cloudflare — Brian ruled it out; NOT Mailgun — $35/mo trap). SES receipt rule
+  → S3 + SNS → our `inbound-email` webhook (swap parser for SES; token routing,
+  timeline, unmatched tray, heir flag all stay — no rework). Postmark (~$15/mo)
+  is the "less AWS hassle" fallback.
+- **Already built & waiting:** Communications portal, AI-drafted outbound
+  (`draft-email` + `send-estate-email`), `inbound-email` webhook + token system
+  (migration 067), executor-only flag, unmatched tray.
+- **Sequence:** (1) register domain [Brian]; (2) authenticate it in Brevo →
+  branded outbound [quick]; (3) AWS account + SES domain verify + request prod
+  access (~1 day) [Brian + Claude]; (4) MX → SES, build SES inbound parse, flip
+  `INBOUND_EMAIL_DOMAIN`, test loop.
+- **Native iOS later:** push on new mail/text + share-sheet "Send to SettleWell".
+
+---
+
 ## Parking Lot — fix before "done," not urgent
 
 Quick-capture list of things to handle long-term or before the app is truly
