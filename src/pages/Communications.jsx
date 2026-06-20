@@ -135,11 +135,7 @@ export default function Communications() {
   // One option per email address (a contact may have several, e.g. an assistant).
   const emailOptions = emailContacts.flatMap(c =>
     (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em, contactId: c.id, estateId: c.estate_id })))
-  // Contacts in the chosen estate (for the To "+ Contact" picker), and whether
-  // the typed To address already matches one.
-  const cmEstateOptions = contacts
-    .filter(c => c.estate_id === cm.estateId && (c.emails ?? []).some(Boolean))
-    .flatMap(c => (c.emails || []).filter(Boolean).map(em => ({ key: `${c.id}|${em}`, name: c.name, email: em })))
+  // Whether the typed/picked To address already matches a contact in the estate.
   const cmContact = contacts.find(c => c.estate_id === cm.estateId &&
     (c.emails || []).some(e => (e || '').toLowerCase() === (cm.to || '').trim().toLowerCase()))
   const cmIsNewRecipient = !!cm.to.trim() && !cmContact
@@ -353,11 +349,11 @@ export default function Communications() {
               <input value={cm.to} onChange={e => setCm(p => ({ ...p, to: e.target.value }))}
                 placeholder="To (email address)"
                 className="flex-1 min-w-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
-              <select value="" onChange={e => { if (e.target.value) setCm(p => ({ ...p, to: e.target.value })) }}
+              <select value="" onChange={e => { const o = emailOptions.find(x => x.key === e.target.value); if (o) setCm(p => ({ ...p, to: o.email, estateId: o.estateId })) }}
                 title="Pick an existing contact"
                 className="shrink-0 w-28 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-500 rounded-lg px-2 py-2 text-xs focus:outline-none">
                 <option value="">+ Contact</option>
-                {cmEstateOptions.map(o => <option key={o.key} value={o.email}>{o.name} — {o.email}</option>)}
+                {emailOptions.map(o => <option key={o.key} value={o.key}>{o.name} — {o.email}{multiEstate ? ` · ${estateName(o.estateId)}` : ''}</option>)}
               </select>
             </div>
             <select value={cm.intent} onChange={e => setCm(p => ({ ...p, intent: e.target.value }))}
