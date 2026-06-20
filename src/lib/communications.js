@@ -1,4 +1,44 @@
-import { supabase } from './supabase'
+import { supabase, getAccessToken } from './supabase'
+
+// Common estate emails the app can draft for you. Keys map to the server's
+// INTENTS in draft-email.js.
+export const EMAIL_INTENTS = [
+  { key: 'attorney_status', label: 'Attorney — status / follow-up' },
+  { key: 'bank_balances', label: 'Bank — request date-of-death balance' },
+  { key: 'payoff', label: 'Lender — request payoff balance' },
+  { key: 'insurance_claim', label: 'Insurance — how to file a claim' },
+  { key: 'records_request', label: 'Request records / documents' },
+  { key: 'cancel_service', label: 'Cancel a service / subscription' },
+  { key: 'general', label: 'Something else (describe it)' },
+]
+
+// Ask the AI to draft an estate email. Returns { subject, body } for the
+// executor to edit before sending. Nothing is sent here.
+export async function draftEmail({ estateId, contactName, contactRole, intent, instruction }) {
+  const token = await getAccessToken()
+  const resp = await fetch('/.netlify/functions/draft-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ estateId, contactName, contactRole, intent, instruction }),
+  })
+  const data = await resp.json().catch(() => ({}))
+  if (!resp.ok) throw new Error(data.error || 'Could not draft the email')
+  return data
+}
+
+// Send an estate email through the app (Brevo). It's captured on the contact's
+// communications timeline automatically. Returns { interaction }.
+export async function sendEstateEmail({ estateId, contactId, to, subject, body, isPrivate }) {
+  const token = await getAccessToken()
+  const resp = await fetch('/.netlify/functions/send-estate-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ estateId, contactId, to, subject, body, isPrivate }),
+  })
+  const data = await resp.json().catch(() => ({}))
+  if (!resp.ok) throw new Error(data.error || 'Could not send the email')
+  return data
+}
 
 // Communication channels we capture. Keep keys stable; labels/icons are for UI.
 export const CHANNELS = {

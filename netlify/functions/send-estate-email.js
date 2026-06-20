@@ -1,0 +1,84 @@
+import { createClient } from "@supabase/supabase-js";
+
+const admin = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const FROM_EMAIL = process.env.BREVO_FROM_EMAIL || "noreply@bastroplaundrypro.com";
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+// Send an estate email through Brevo, on behalf of the estate, and capture it on
+// the recipient contact's communications timeline. Executor-gated.
+export const handler = async (event) => {
+  let estateId, contactId, to, subject, body, isPrivate;
+  try {
+    ({ estateId, contactId, to, subject, body, isPrivate = false } = JSON.parse(event.body));
+  } catch {
+    return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) };
+  }
+  if (!estateId || !to || !subject || !body) {
+    return { statusCode: 400, body: JSON.stringify({ error: "estateId, to, subject, and body are required" }) };
+  }
+
+  // Auth: caller must be an executor/administrator on this estate.
+  const token = (event.headers.authorization || event.headers.Authorization || "").replace(/^Bearer\s+/i, "");
+  if (!token) return { statusCode: 401, body: JSON.stringify({ error: "not authenticated" }) };
+  const { data: callerData, error: callerErr } = await admin.auth.getUser(token);
+  const caller = callerData?.user;
+  if (callerErr || !caller) return { statusCode: 401, body: JSON.stringify({ error: "invalid session" }) };
+  const { data: roles } = await admin.from("estate_users").select("role").eq("auth_user_id", caller.id).eq("estate_id", estateId);
+  const isExec = (roles || []).some(r => r.role === "administrator" || r.role === "executor");
+  if (!isExec) return { statusCode: 403, body: JSON.stringify({ error: "executor access required" }) };
+
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "BREVO_API_KEY is not configured" }) };
+
+  const { data: estate } = await admin.from("estates").select("deceased_name").eq("id", estateId).single();
+  const estateName = estate?.deceased_name ? `Estate of ${estate.deceased_name}` : "Estate";
+  // Until the estate's own inbox is live (Phase 2), replies go to the executor.
+  const replyTo = caller.email ? { email: caller.email } : undefined;
+  const htmlContent = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.5">${escapeHtml(body).replace(/\n/g, "<br>")}</div>`;
+
+  try {
+    const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        sender: { name: `${estateName} (via SettleWell)`, email: FROM_EMAIL },
+        replyTo,
+        to: [{ email: to }],
+        subject,
+        htmlContent,
+        textContent: body,
+      }),
+    });
+    if (!resp.ok) {
+      const detail = await resp.text();
+      console.error("Brevo send failed:", resp.status, detail);
+      return { statusCode: 502, body: JSON.stringify({ error: "The email couldn't be sent. Please try again." }) };
+    }
+
+    // Capture it on the contact's communications timeline.
+    const { data: logged } = await admin.from("estate_contact_interactions").insert({
+      estate_id: estateId,
+      contact_id: contactId || null,
+      direction: "outbound",
+      channel: "email",
+      subject,
+      summary: `To ${to}: ${body.slice(0, 280)}${body.length > 280 ? "…" : ""}`,
+      body,
+      is_private: !!isPrivate,
+      source: "app",
+      occurred_at: new Date().toISOString(),
+    }).select().single();
+
+    return { statusCode: 200, body: JSON.stringify({ success: true, interaction: logged || null }) };
+  } catch (e) {
+    console.error("send-estate-email error:", e);
+    return { statusCode: 500, body: JSON.stringify({ error: "The email couldn't be sent. Please try again." }) };
+  }
+};

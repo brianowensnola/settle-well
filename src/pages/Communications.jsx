@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { DOC_TYPES } from '../lib/constants'
-import { CHANNELS, channelIcon, channelLabel, logCommunication } from '../lib/communications'
+import { CHANNELS, channelIcon, channelLabel, logCommunication, EMAIL_INTENTS, draftEmail, sendEstateEmail } from '../lib/communications'
 
 const LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -33,7 +33,13 @@ export default function Communications() {
   const [fChannel, setFChannel] = useState('all')
   const [fEstate, setFEstate] = useState('all')
 
-  const [panel, setPanel] = useState(null) // 'log' | 'send' | null
+  const [panel, setPanel] = useState(null) // 'log' | 'send' | 'compose' | null
+
+  // Compose-email (AI-drafted) form
+  const [cm, setCm] = useState({ contactId: '', intent: 'attorney_status', instruction: '', subject: '', body: '', isPrivate: false })
+  const [drafting, setDrafting] = useState(false)
+  const [cmBusy, setCmBusy] = useState(false)
+  const [cmMsg, setCmMsg] = useState('')
 
   // Log-communication form
   const [log, setLog] = useState({ contactId: '', channel: 'phone', direction: 'outbound', date: todayStr(), subject: '', summary: '' })
@@ -102,6 +108,43 @@ export default function Communications() {
     if (data) setInteractions(prev => [data, ...prev])
     setLog({ contactId: '', channel: 'phone', direction: 'outbound', date: todayStr(), subject: '', summary: '' })
     setPanel(null)
+  }
+
+  // ----- Compose an AI-drafted estate email -----
+  const emailContacts = contacts.filter(c => (c.emails ?? []).some(Boolean))
+  const cmContact = contactById[cm.contactId]
+  const cmEmail = cmContact?.emails?.find(Boolean) || ''
+
+  async function draftIt() {
+    if (!cmContact) { setCmMsg('Pick who the email is going to first.'); return }
+    setDrafting(true); setCmMsg('')
+    try {
+      const r = await draftEmail({
+        estateId: cmContact.estate_id,
+        contactName: cmContact.name,
+        contactRole: cmContact.role,
+        intent: cm.intent,
+        instruction: cm.instruction,
+      })
+      setCm(p => ({ ...p, subject: r.subject || p.subject, body: r.body || p.body }))
+    } catch (e) { setCmMsg(e.message || 'Could not draft the email') }
+    finally { setDrafting(false) }
+  }
+
+  async function sendComposed() {
+    if (!cmContact || !cmEmail) { setCmMsg('Pick a contact with an email.'); return }
+    if (!cm.subject.trim() || !cm.body.trim()) { setCmMsg('Add a subject and body (or draft with AI).'); return }
+    setCmBusy(true); setCmMsg('')
+    try {
+      const { interaction } = await sendEstateEmail({
+        estateId: cmContact.estate_id, contactId: cm.contactId, to: cmEmail,
+        subject: cm.subject, body: cm.body, isPrivate: cm.isPrivate,
+      })
+      if (interaction) setInteractions(prev => [interaction, ...prev])
+      setCm({ contactId: '', intent: 'attorney_status', instruction: '', subject: '', body: '', isPrivate: false })
+      setPanel(null)
+    } catch (e) { setCmMsg(e.message || 'Could not send the email') }
+    finally { setCmBusy(false) }
   }
 
   // ----- Send documents -----
@@ -180,11 +223,56 @@ export default function Communications() {
           <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white mb-1">Communications</h1>
           <p className="text-gray-600 dark:text-gray-400">Every call, email, letter, meeting, and document sent — across the family.</p>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <button onClick={() => { setPanel(panel === 'log' ? null : 'log') }} className="px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800">+ Log</button>
+        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          <button onClick={() => { setPanel(panel === 'compose' ? null : 'compose'); setCmMsg('') }} className="px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800">✍️ Compose email</button>
+          <button onClick={() => { setPanel(panel === 'log' ? null : 'log') }} className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">+ Log</button>
           <button onClick={() => { panel === 'send' ? setPanel(null) : openSend() }} className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">📎 Send documents</button>
         </div>
       </div>
+
+      {/* Compose an AI-drafted estate email */}
+      {panel === 'compose' && (
+        <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900 space-y-3 mb-5">
+          <div className="text-sm font-semibold text-gray-800 dark:text-white">Compose an estate email</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select value={cm.contactId} onChange={e => setCm(p => ({ ...p, contactId: e.target.value }))}
+              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+              <option value="">— Send to which contact? —</option>
+              {emailContacts.map(c => <option key={c.id} value={c.id}>{c.name} ({c.emails.find(Boolean)}){multiEstate ? ` · ${estateName(c.estate_id)}` : ''}</option>)}
+            </select>
+            <select value={cm.intent} onChange={e => setCm(p => ({ ...p, intent: e.target.value }))}
+              className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
+              {EMAIL_INTENTS.map(it => <option key={it.key} value={it.key}>{it.label}</option>)}
+            </select>
+          </div>
+          <input value={cm.instruction} onChange={e => setCm(p => ({ ...p, instruction: e.target.value }))}
+            placeholder="Anything specific to include? (account #, what you're asking for, deadline…)"
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          <button onClick={draftIt} disabled={drafting || !cm.contactId} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-sm hover:bg-blue-100 disabled:opacity-50">
+            {drafting ? 'Drafting…' : '🤖 Draft with AI'}
+          </button>
+
+          <input value={cm.subject} onChange={e => setCm(p => ({ ...p, subject: e.target.value }))}
+            placeholder="Subject"
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          <textarea value={cm.body} onChange={e => setCm(p => ({ ...p, body: e.target.value }))} rows={10}
+            placeholder="Write the email, or use Draft with AI above and edit here…"
+            className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none font-serif leading-relaxed" />
+
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <input type="checkbox" checked={cm.isPrivate} onChange={e => setCm(p => ({ ...p, isPrivate: e.target.checked }))} />
+            Executor-only (hide from the heir transparency view)
+          </label>
+          {cmMsg && <p className="text-xs text-red-600">{cmMsg}</p>}
+          <div className="flex gap-2 items-center">
+            <button onClick={sendComposed} disabled={cmBusy || !cm.contactId || !cm.subject.trim() || !cm.body.trim()} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
+              {cmBusy ? 'Sending…' : 'Send email'}
+            </button>
+            <button onClick={() => setPanel(null)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+            <span className="text-xs text-gray-400">Sent through the app · replies go to you for now · logged automatically</span>
+          </div>
+        </div>
+      )}
 
       {/* Log a communication */}
       {panel === 'log' && (
