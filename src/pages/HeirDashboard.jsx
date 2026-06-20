@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { statusStageLabel } from '../lib/constants'
+import { channelIcon, channelLabel } from '../lib/communications'
 
 const fmt = n => '$' + (n ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })
 
@@ -165,9 +166,31 @@ export default function HeirDashboard() {
         </div>
       )}
 
+      {/* Communications (non-private) */}
+      {Array.isArray(s.communications) && s.communications.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Communications</h2>
+          <div className="space-y-2">
+            {s.communications.map((c, i) => (
+              <div key={i} className="p-3 bg-gray-50 dark:bg-gray-800 rounded">
+                <div className="text-xs text-gray-400 mb-0.5">
+                  {c.occurred_at ? new Date(c.occurred_at).toLocaleDateString() : ''}
+                  {' · '}{c.channel === 'meeting' ? '📅 Meeting' : `${channelIcon(c.channel)} ${channelLabel(c.channel)}`}
+                  {c.contact_name ? ` · ${c.contact_name}` : ''}
+                  {c.direction === 'inbound' ? ' · received' : c.direction === 'outbound' ? ' · sent' : ''}
+                </div>
+                {c.subject && <div className="text-sm text-gray-900 dark:text-white">{c.subject}</div>}
+                {c.summary && <div className="text-xs text-gray-500 dark:text-gray-400">{c.summary}</div>}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-3">Executor-only communications are not shown.</p>
+        </div>
+      )}
+
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <p className="text-sm text-blue-900 dark:text-blue-300">
-          📋 This Transparency Report shows estate status, assets, expenses, court documents, and what's been sent to the attorney.
+          📋 This Transparency Report shows estate status, assets, expenses, court documents, communications, and what's been sent to the attorney.
         </p>
       </div>
     </div>
