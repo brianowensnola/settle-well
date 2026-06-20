@@ -46,12 +46,19 @@ function tooSimilar(a, b) {
   const A = sigWords(a), B = sigWords(b);
   if (A.size === 0 || B.size === 0) return false;
   let inter = 0; for (const w of A) if (B.has(w)) inter++;
-  return inter / (A.size + B.size - inter) >= 0.6; // Jaccard
+  return inter / (A.size + B.size - inter) >= 0.5; // Jaccard
 }
 // Drop any candidate whose title closely matches something already proposed
 // (any status) or an existing task.
 const dedupAgainst = (candidates, priorTitles) =>
   candidates.filter(c => !priorTitles.some(p => tooSimilar(c.title, p)));
+// Drop near-duplicates WITHIN one batch (the model often proposes the same item
+// twice, reworded, in a single run — those never hit the prior-title filter).
+function dedupWithin(candidates) {
+  const kept = [];
+  for (const c of candidates) if (!kept.some(k => tooSimilar(c.title, k.title))) kept.push(c);
+  return kept;
+}
 
 // Reworded repeats slip past word-overlap matching. This second pass asks the
 // model to drop any candidate that means the same thing as something already
@@ -60,10 +67,10 @@ async function semanticDedupe(candidates, handled) {
   if (candidates.length === 0 || handled.length === 0) return candidates;
   try {
     const list = candidates.map((r, i) => `${i + 1}. ${r.title}${r.detail ? " — " + r.detail : ""}`).join("\n");
-    const handledList = handled.slice(0, 250).map(h => `- ${h}`).join("\n");
+    const handledList = handled.slice(0, 600).map(h => `- ${h}`).join("\n");
     const resp = await client.messages.create({
       model: "claude-sonnet-4-6", max_tokens: 500,
-      messages: [{ role: "user", content: `An assistant proposed NEW items for an estate. Some may be the SAME underlying task or issue as something the executor has ALREADY handled — created as a task, completed, or reviewed and dismissed as not applicable — even if worded differently. List the numbers of proposals that are essentially duplicates of an already-handled item. Keep genuinely new items and ones that meaningfully expand on something. When in doubt, keep it.
+      messages: [{ role: "user", content: `An assistant proposed NEW items for an estate. Many are likely REPEATS of something the executor has ALREADY handled — created as a task, completed, or reviewed and dismissed as not applicable — even if reworded or applied to a slightly different example. List the numbers of proposals to DROP. Drop a proposal if its core ACTION + SUBJECT already appears in the handled list, or if it's just a reworded or re-scoped version of a handled item (e.g. "verify Truck A is secured" when "verify the vehicles are secured" was already handled). Keep ONLY proposals that raise a genuinely new concern not represented in the handled list. When unsure whether something is a repeat, DROP it.
 
 ALREADY HANDLED:
 ${handledList}
@@ -93,7 +100,7 @@ async function runReview(estate) {
     // Every prior suggestion the executor has already seen — pending, accepted,
     // dismissed (not applicable), or marked already-done — so we never re-propose
     // the same thing on repeat/auto runs.
-    supabase.from("estate_ai_suggestions").select("title, status").eq("estate_id", estateId).eq("kind", "review").in("status", ["pending", "dismissed", "accepted", "done"]),
+    supabase.from("estate_ai_suggestions").select("title, status").eq("estate_id", estateId).eq("kind", "review").in("status", ["pending", "dismissed", "accepted", "done"]).order("created_at", { ascending: false }).limit(600),
   ]);
   const secLabel = Object.fromEntries((secRes.data ?? []).map(s => [s.id, s.label]));
   const tasks = (tasksRes.data ?? []).map(t => `[${secLabel[t.section_id] ?? "?"}] ${t.text} (${t.status})`);
@@ -129,6 +136,7 @@ QUALITY BAR — make every suggestion earn its place:
 - NO generic boilerplate that would apply to any estate (e.g. "stay organized", "keep records", "consult an attorney"), and nothing already implied by an existing task.
 - Favor the non-obvious, anticipatory things a first-time executor would miss (e.g. a vacant house's lawn/insurance, a recurring charge that keeps draining the estate, a deadline tied to date of death).
 - The detail must say WHY it matters or what specifically prompted it — not restate the title.
+- CONSOLIDATE: if the same kind of action applies to several assets/accounts, propose ONE combined task (e.g. "Confirm all idle vehicles are secured and insured"), NOT one per asset. Do not split one concern into multiple near-identical suggestions.
 - Quality over quantity: 3-10 high-value, distinct suggestions. Fewer great ones beats a long generic list.
 
 Return ONLY JSON:
@@ -145,10 +153,13 @@ Return ONLY JSON:
     estate_id: estateId, kind: "review", title: s.title, detail: s.detail || null,
     suggested_phase: PHASES.includes(s.phase) ? s.phase : null, is_private: false, status: "pending",
   }));
-  // Final safety net: drop anything that matches a prior suggestion (any
-  // status) or an existing task, even if reworded.
+  // Final safety net, in order: (1) collapse near-duplicates within this batch,
+  // (2) drop anything matching a prior suggestion (any status) or existing task
+  // by wording, (3) semantic pass for reworded repeats the word-match misses.
+  // priorSuggestions is recency-ordered so the most-recently-seen items (the
+  // ones most likely to be re-proposed) are always inside the dedup window.
   const handled = [...priorSuggestions, ...(tasksRes.data ?? []).map(t => t.text)];
-  return await semanticDedupe(dedupAgainst(rows, handled), handled);
+  return await semanticDedupe(dedupAgainst(dedupWithin(rows), handled), handled);
 }
 
 const FORENSIC_PROMPT = `You are a forensic financial analyst reviewing ONE of a deceased person's financial statements for an estate. The executor needs TWO things: (1) anything suspicious or unknown to investigate, and (2) EVERY recurring bill, subscription, utility, loan, and insurance payment — because each one keeps draining the estate until it is cancelled or transferred, no matter how small.
@@ -346,7 +357,7 @@ async function runStateLaw(estate) {
   const [tasksRes, secRes, sugRes] = await Promise.all([
     supabase.from("estate_tasks").select("text, section_id").eq("estate_id", estateId),
     supabase.from("estate_sections").select("id, label").eq("estate_id", estateId),
-    supabase.from("estate_ai_suggestions").select("title").eq("estate_id", estateId).eq("kind", "statelaw").in("status", ["pending", "dismissed", "accepted", "done"]),
+    supabase.from("estate_ai_suggestions").select("title").eq("estate_id", estateId).eq("kind", "statelaw").in("status", ["pending", "dismissed", "accepted", "done"]).order("created_at", { ascending: false }).limit(600),
   ]);
   const tasks = (tasksRes.data ?? []).map(t => t.text);
   const prior = (sugRes.data ?? []).map(s => s.title);
@@ -381,10 +392,13 @@ Return ONLY JSON: {"suggestions":[{"title":"short actionable, ${state}-specific 
     text = (resp.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
   }
   const parsed = jsonFrom(text);
-  return (parsed.suggestions || []).map(s => ({
+  const rows = (parsed.suggestions || []).map(s => ({
     estate_id: estateId, kind: "statelaw", title: s.title, detail: s.detail || null,
     suggested_phase: PHASES.includes(s.phase) ? s.phase : null, is_private: false, status: "pending",
   }));
+  // Same dedup pipeline as the review pass — statelaw had none before.
+  const handled = [...prior, ...tasks];
+  return await semanticDedupe(dedupAgainst(dedupWithin(rows), handled), handled);
 }
 
 // Audit the task list for duplicate tasks and grouping opportunities. Produces
