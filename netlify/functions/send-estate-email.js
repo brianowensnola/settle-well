@@ -14,12 +14,20 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 }
 
+// Turn "a@x.com, b@y.com" into Brevo's [{email}] array (valid addresses only).
+function addrList(raw) {
+  return String(raw || "")
+    .split(/[,;]+/).map(s => s.trim())
+    .filter(s => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s))
+    .map(email => ({ email }));
+}
+
 // Send an estate email through Brevo, on behalf of the estate, and capture it on
 // the recipient contact's communications timeline. Executor-gated.
 export const handler = async (event) => {
-  let estateId, contactId, to, subject, body, isPrivate;
+  let estateId, contactId, to, cc, bcc, subject, body, isPrivate;
   try {
-    ({ estateId, contactId, to, subject, body, isPrivate = false } = JSON.parse(event.body));
+    ({ estateId, contactId, to, cc, bcc, subject, body, isPrivate = false } = JSON.parse(event.body));
   } catch {
     return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) };
   }
@@ -50,6 +58,8 @@ export const handler = async (event) => {
     ? { email: `${estate.inbound_token}@${INBOUND_DOMAIN}`, name: estateName }
     : (caller.email ? { email: caller.email } : undefined);
   const htmlContent = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.5">${escapeHtml(body).replace(/\n/g, "<br>")}</div>`;
+  const ccList = addrList(cc);
+  const bccList = addrList(bcc);
 
   try {
     const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -59,6 +69,8 @@ export const handler = async (event) => {
         sender: { name: `${estateName} (via SettleWell)`, email: FROM_EMAIL },
         replyTo,
         to: [{ email: to }],
+        ...(ccList.length ? { cc: ccList } : {}),
+        ...(bccList.length ? { bcc: bccList } : {}),
         subject,
         htmlContent,
         textContent: body,
@@ -77,7 +89,7 @@ export const handler = async (event) => {
       direction: "outbound",
       channel: "email",
       subject,
-      summary: `To ${to}: ${body.slice(0, 280)}${body.length > 280 ? "…" : ""}`,
+      summary: `To ${to}${ccList.length ? ` (cc: ${ccList.map(c => c.email).join(", ")})` : ""}: ${body.slice(0, 280)}${body.length > 280 ? "…" : ""}`,
       body,
       is_private: !!isPrivate,
       source: "app",

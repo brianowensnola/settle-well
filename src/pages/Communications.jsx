@@ -36,7 +36,7 @@ export default function Communications() {
   const [panel, setPanel] = useState(null) // 'log' | 'send' | 'compose' | null
 
   // Compose-email (AI-drafted) form
-  const [cm, setCm] = useState({ contactId: '', intent: 'attorney_status', instruction: '', subject: '', body: '', isPrivate: false })
+  const [cm, setCm] = useState({ contactId: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
   const [drafting, setDrafting] = useState(false)
   const [cmBusy, setCmBusy] = useState(false)
   const [cmMsg, setCmMsg] = useState('')
@@ -142,10 +142,10 @@ export default function Communications() {
     try {
       const { interaction } = await sendEstateEmail({
         estateId: cmContact.estate_id, contactId: cm.contactId, to: cmEmail,
-        subject: cm.subject, body: cm.body, isPrivate: cm.isPrivate,
+        cc: cm.cc, bcc: cm.bcc, subject: cm.subject, body: cm.body, isPrivate: cm.isPrivate,
       })
       if (interaction) setInteractions(prev => [interaction, ...prev])
-      setCm({ contactId: '', intent: 'attorney_status', instruction: '', subject: '', body: '', isPrivate: false })
+      setCm({ contactId: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
       setPanel(null)
     } catch (e) { setCmMsg(e.message || 'Could not send the email') }
     finally { setCmBusy(false) }
@@ -322,6 +322,14 @@ export default function Communications() {
           <input value={cm.subject} onChange={e => setCm(p => ({ ...p, subject: e.target.value }))}
             placeholder="Subject"
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input value={cm.cc} onChange={e => setCm(p => ({ ...p, cc: e.target.value }))}
+              placeholder="Cc (optional, comma-separated)"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            <input value={cm.bcc} onChange={e => setCm(p => ({ ...p, bcc: e.target.value }))}
+              placeholder="Bcc (optional, comma-separated)"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          </div>
           <textarea value={cm.body} onChange={e => setCm(p => ({ ...p, body: e.target.value }))} rows={10}
             placeholder="Write the email, or use Draft with AI above and edit here…"
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none font-serif leading-relaxed" />
