@@ -37,10 +37,14 @@ export const handler = async (event) => {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "BREVO_API_KEY is not configured" }) };
 
-  const { data: estate } = await admin.from("estates").select("deceased_name").eq("id", estateId).single();
+  const { data: estate } = await admin.from("estates").select("deceased_name, inbound_token").eq("id", estateId).single();
   const estateName = estate?.deceased_name ? `Estate of ${estate.deceased_name}` : "Estate";
-  // Until the estate's own inbox is live (Phase 2), replies go to the executor.
-  const replyTo = caller.email ? { email: caller.email } : undefined;
+  // Replies go to the estate's own inbox so they're captured automatically.
+  // Falls back to the executor until the inbound domain is wired up.
+  const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || "estate.bastroplaundrypro.com";
+  const replyTo = estate?.inbound_token
+    ? { email: `${estate.inbound_token}@${INBOUND_DOMAIN}`, name: estateName }
+    : (caller.email ? { email: caller.email } : undefined);
   const htmlContent = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.5">${escapeHtml(body).replace(/\n/g, "<br>")}</div>`;
 
   try {

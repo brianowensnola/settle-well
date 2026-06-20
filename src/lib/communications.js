@@ -53,6 +53,13 @@ export const CHANNELS = {
 export const channelLabel = c => CHANNELS[c]?.label ?? 'Note'
 export const channelIcon = c => CHANNELS[c]?.icon ?? '•'
 
+// The domain estate inbound addresses live on. Swapping to a SettleWell-branded
+// domain later = change this here AND the INBOUND_EMAIL_DOMAIN Netlify env var.
+export const INBOUND_EMAIL_DOMAIN = 'estate.bastroplaundrypro.com'
+// An estate's own email address (where replies and forwarded mail are captured).
+export const estateInboxAddress = estate =>
+  estate?.inbound_token ? `${estate.inbound_token}@${INBOUND_EMAIL_DOMAIN}` : null
+
 // Record a communication with a contact. Used both by the manual "Log
 // communication" form and by auto-capture when the app sends something
 // (attorney packets, death notices, texts) so nothing has to be remembered.

@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { DOC_TYPES } from '../lib/constants'
-import { CHANNELS, channelIcon, channelLabel, logCommunication, EMAIL_INTENTS, draftEmail, sendEstateEmail } from '../lib/communications'
+import { CHANNELS, channelIcon, channelLabel, logCommunication, EMAIL_INTENTS, draftEmail, sendEstateEmail, estateInboxAddress } from '../lib/communications'
 
 const LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 const todayStr = () => new Date().toISOString().slice(0, 10)
@@ -95,6 +95,10 @@ export default function Communications() {
     return true
   })
 
+  // Inbound emails the app couldn't match to a contact — awaiting assignment.
+  const unmatched = interactions.filter(i => i.source === 'inbound' && !i.contact_id)
+  const contactsForEstate = eid => contacts.filter(c => c.estate_id === eid)
+
   async function submitLog() {
     if (!log.contactId || !log.summary.trim()) return
     const c = contactById[log.contactId]
@@ -145,6 +149,13 @@ export default function Communications() {
       setPanel(null)
     } catch (e) { setCmMsg(e.message || 'Could not send the email') }
     finally { setCmBusy(false) }
+  }
+
+  // Assign an unmatched inbound email to a contact.
+  async function assignToContact(interactionId, contactId) {
+    if (!contactId) return
+    await supabase.from('estate_contact_interactions').update({ contact_id: contactId }).eq('id', interactionId)
+    setInteractions(prev => prev.map(i => i.id === interactionId ? { ...i, contact_id: contactId } : i))
   }
 
   // ----- Send documents -----
@@ -229,6 +240,50 @@ export default function Communications() {
           <button onClick={() => { panel === 'send' ? setPanel(null) : openSend() }} className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">📎 Send documents</button>
         </div>
       </div>
+
+      {/* Estate inbox address(es) — what to give contacts so replies are captured */}
+      <div className="bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-900 rounded-xl p-3 mb-5 text-sm">
+        <div className="text-xs font-semibold text-blue-900 dark:text-blue-200 mb-1">📥 This estate's email address — have contacts send/reply here so it's captured automatically</div>
+        <div className="space-y-0.5">
+          {familyEstates.map(e => {
+            const addr = estateInboxAddress(e)
+            return (
+              <div key={e.id} className="flex items-center gap-2 flex-wrap">
+                {multiEstate && <span className="text-gray-500 dark:text-gray-400">{e.deceased_name}:</span>}
+                {addr ? (
+                  <>
+                    <code className="text-blue-800 dark:text-blue-300 bg-white dark:bg-gray-800 border border-blue-100 dark:border-blue-900 rounded px-1.5 py-0.5">{addr}</code>
+                    <button onClick={() => navigator.clipboard?.writeText(addr)} className="text-xs text-blue-600 hover:underline">Copy</button>
+                  </>
+                ) : <span className="text-gray-400">address pending setup</span>}
+              </div>
+            )
+          })}
+        </div>
+        <div className="text-[11px] text-blue-500 dark:text-blue-400 mt-1">Inbound capture goes live once the mail routing is connected (setup steps from Claude). Until then, replies to app-sent emails come to you.</div>
+      </div>
+
+      {/* Unmatched inbound — assign to a contact */}
+      {unmatched.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-900 rounded-xl p-4 mb-5">
+          <div className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-2">Unmatched inbound ({unmatched.length}) — couldn't match the sender to a contact</div>
+          <div className="space-y-2">
+            {unmatched.map(i => (
+              <div key={i.id} className="flex items-center justify-between gap-3 text-sm border-t border-amber-100 dark:border-amber-900/60 pt-2">
+                <div className="min-w-0">
+                  <div className="text-gray-800 dark:text-gray-200 truncate">{i.subject}</div>
+                  <div className="text-xs text-gray-500 truncate">{i.summary}</div>
+                </div>
+                <select defaultValue="" onChange={e => assignToContact(i.id, e.target.value)}
+                  className="shrink-0 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none">
+                  <option value="">Assign to…</option>
+                  {contactsForEstate(i.estate_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Compose an AI-drafted estate email */}
       {panel === 'compose' && (
