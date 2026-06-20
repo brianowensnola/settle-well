@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const admin = createClient(
@@ -5,51 +6,68 @@ const admin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Pull the first email address out of a raw header value like
-// `"Jane Doe" <jane@x.com>, other@y.com`.
+// Pull the first email address out of a header value like `"Jane" <jane@x.com>`.
 function firstEmail(raw) {
   if (!raw) return null;
-  const s = Array.isArray(raw) ? raw.join(",") : String(raw);
-  const m = s.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const m = String(raw).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   return m ? m[0].toLowerCase() : null;
 }
 
-// Receives an inbound email (posted by the Cloudflare Email Worker) and files it
-// on the right estate's communications timeline. The estate is identified by the
-// token in the recipient's local part: <token>@<inbound-domain>. Senders we can
-// match to a contact attach to that contact; unknown senders land with no
-// contact (the "Unmatched" tray) for the executor to assign.
-//
-// Secured by a shared secret the Worker sends — this endpoint is public.
+// Minimal multipart/form-data parser for TEXT fields (Mailgun posts inbound
+// mail this way). Attachment parts (those with a filename) are skipped — we
+// only need the parsed text fields here. Returns { fieldName: value }.
+function parseTextFields(buf, boundary) {
+  const fields = {};
+  const data = buf.toString("latin1");
+  for (const sec of data.split(`--${boundary}`)) {
+    const nameM = sec.match(/name="([^"]+)"/);
+    if (!nameM || /filename="/.test(sec)) continue;
+    const idx = sec.indexOf("\r\n\r\n");
+    if (idx === -1) continue;
+    const val = sec.slice(idx + 4).replace(/\r\n$/, "");
+    fields[nameM[1]] = Buffer.from(val, "latin1").toString("utf8");
+  }
+  return fields;
+}
+
+// Inbound email from Mailgun. Verifies Mailgun's signature, identifies the
+// estate from the token in the recipient address (<token>@<inbound-domain>),
+// matches the sender to a contact, and files it on the communications timeline.
+// Unknown senders land with no contact (the "Unmatched" tray).
 export const handler = async (event) => {
   if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method not allowed" };
 
-  const secret = event.headers["x-inbound-secret"] || event.headers["X-Inbound-Secret"];
-  if (!process.env.INBOUND_WEBHOOK_SECRET || secret !== process.env.INBOUND_WEBHOOK_SECRET) {
-    return { statusCode: 401, body: "unauthorized" };
+  const contentType = event.headers["content-type"] || event.headers["Content-Type"] || "";
+  const bM = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!bM) return { statusCode: 400, body: "expected multipart/form-data" };
+  const boundary = (bM[1] || bM[2]).trim();
+
+  const raw = event.isBase64Encoded ? Buffer.from(event.body || "", "base64") : Buffer.from(event.body || "", "utf8");
+  const f = parseTextFields(raw, boundary);
+
+  // Verify Mailgun signature: HMAC-SHA256(signing key, timestamp + token).
+  const signingKey = process.env.MAILGUN_SIGNING_KEY;
+  if (!signingKey) return { statusCode: 500, body: "MAILGUN_SIGNING_KEY not configured" };
+  const expected = crypto.createHmac("sha256", signingKey).update((f.timestamp || "") + (f.token || "")).digest("hex");
+  if (!f.signature || expected !== f.signature) {
+    console.warn("inbound-email: bad Mailgun signature");
+    return { statusCode: 401, body: "bad signature" };
   }
 
-  let payload;
-  try { payload = JSON.parse(event.body); }
-  catch { return { statusCode: 400, body: "invalid body" }; }
+  const toAddr = firstEmail(f.recipient);
+  const fromAddr = firstEmail(f.sender || f.from);
+  const subject = (f.subject || "(no subject)").slice(0, 300);
+  const bodyText = (f["body-plain"] || f["stripped-text"] || f["body-html"] || "").toString();
 
-  // The Worker sends: { to, from, subject, text, html }
-  const toAddr = firstEmail(payload.to);
-  const fromAddr = firstEmail(payload.from);
-  const subject = (payload.subject || "(no subject)").slice(0, 300);
-  const bodyText = (payload.text || payload.html || "").toString();
-
-  // Identify the estate from the token in the recipient's local part.
   const token = toAddr ? toAddr.split("@")[0].trim().toLowerCase() : null;
   if (!token) return { statusCode: 200, body: "no recipient token" };
 
   const { data: estate } = await admin.from("estates").select("id").eq("inbound_token", token).maybeSingle();
   if (!estate) {
     console.warn("inbound-email: no estate for token", token);
-    return { statusCode: 200, body: "no matching estate" }; // 200 so the sender isn't retried forever
+    return { statusCode: 200, body: "no matching estate" }; // 200 so it isn't retried forever
   }
 
-  // Try to match the sender to a contact on this estate (or one shared with it).
   let contactId = null;
   if (fromAddr) {
     const { data: contacts } = await admin.from("estate_contacts")
