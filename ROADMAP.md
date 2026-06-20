@@ -6,7 +6,20 @@ captured here; nothing here gets silently dropped.
 
 ---
 
-## Production Email Architecture (BUILDING — approved 2026-06-20)
+## Production Email Architecture (✅ LIVE — 2026-06-20)
+
+**DONE: full two-way branded estate email is live on `settlewellestate.com`.**
+- **Outbound:** AI-drafted estate emails send via **Brevo** from `estates@settlewellestate.com` (domain authenticated in Brevo via GoDaddy auto-config). Reply-to = the per-estate inbox.
+- **Inbound:** **Amazon SES** (us-east-1, sandbox is fine — receiving only) receives at `<token>@in.settlewellestate.com` → SES receipt rule → **SNS topic `settlewell-inbound`** → `inbound-email` webhook (verified by `SES_SNS_TOPIC_ARN`) → matched to a contact or the Unmatched tray. MX for `in.` → `inbound-smtp.us-east-1.amazonaws.com`. DKIM verified via 3 CNAMEs.
+- **Tested end-to-end:** real inbound emails captured to the timeline; outbound sends + logs; delete works.
+- **Netlify env:** `ESTATE_FROM_EMAIL` (estates@settlewellestate.com, defaulted in code), `INBOUND_EMAIL_DOMAIN=in.settlewellestate.com`, `SES_SNS_TOPIC_ARN=arn:aws:sns:us-east-1:060255765432:settlewell-inbound`, plus existing `BREVO_*`.
+- AWS account: BEPO Services LLC (060255765432).
+
+**Remaining / future:** SES is receive-only on the sandbox (no production-access needed since we don't send via SES); move sending to SES later for scale/margin if desired; inbound **attachments** currently aren't saved to Documents (SNS inline content only — add S3 path for large mail/attachments when needed); native iOS push + share-sheet capture later.
+
+---
+
+## Production Email Architecture — original plan (superseded by LIVE above)
 
 The communications hub becomes a real, branded send/receive system. Approved
 direction; Brian will fund a ~$12/yr domain (no other recurring cost).
