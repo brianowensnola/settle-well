@@ -5,6 +5,7 @@ import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 import { useDarkMode } from '../lib/DarkModeContext'
 import { canAccess, isFullAccess } from '../lib/roles'
+import DisclaimerGate from './DisclaimerGate'
 
 const MOBILE_NAV = [
   { to: '/dashboard',   label: '📊', icon: 'Dashboard' },
@@ -368,6 +369,7 @@ export default function Layout() {
           )}
         </div>
       </main>
+      <DisclaimerGate />
     </div>
   )
 }
