@@ -46,7 +46,15 @@ export const handler = async (event) => {
   // task's assigned contact, else its assigned app user.
   let contact = null, logContactId = null;
   if (contactId) {
-    ({ data: contact } = await admin.from("estate_contacts").select("name, email, emails, phone").eq("id", contactId).eq("estate_id", task.estate_id).single());
+    // Allow any contact in the same family (group) as the task's estate, since
+    // contacts are shared across the family's estates.
+    const { data: te } = await admin.from("estates").select("group_id").eq("id", task.estate_id).single();
+    let famIds = [task.estate_id];
+    if (te?.group_id) {
+      const { data: fam } = await admin.from("estates").select("id").eq("group_id", te.group_id);
+      famIds = (fam || []).map(e => e.id);
+    }
+    ({ data: contact } = await admin.from("estate_contacts").select("name, email, emails, phone").eq("id", contactId).in("estate_id", famIds).single());
     logContactId = contactId;
   } else if (task.assigned_contact_id) {
     ({ data: contact } = await admin.from("estate_contacts").select("name, email, emails, phone").eq("id", task.assigned_contact_id).single());

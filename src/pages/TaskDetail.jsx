@@ -85,10 +85,16 @@ export default function TaskDetail() {
       .order('name')
     setAllDocs(docs ?? [])
 
-    // Load estate users AND contacts for assignment
+    // Load estate users AND contacts for assignment. Contacts are pulled
+    // family-wide (every estate in the same family group), since the family
+    // shares contacts (attorney, funeral home, etc.) across estates.
+    const taskEstate = (estates ?? []).find(e => e.id === t.data?.estate_id)
+    const famIds = taskEstate?.group_id
+      ? (estates ?? []).filter(e => e.group_id === taskEstate.group_id).map(e => e.id)
+      : [t.data?.estate_id]
     const [{ data: users }, { data: assignContacts }] = await Promise.all([
       supabase.from('estate_users').select('*').eq('estate_id', t.data?.estate_id),
-      supabase.from('estate_contacts').select('id, name, role, email, emails, phone').eq('estate_id', t.data?.estate_id).order('name'),
+      supabase.from('estate_contacts').select('id, name, role, email, emails, phone, estate_id').in('estate_id', famIds).order('name'),
     ])
     setEstateUsers(users ?? [])
     setContacts(assignContacts ?? [])
@@ -445,6 +451,15 @@ export default function TaskDetail() {
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
   if (!task) return <div className="p-8 text-gray-400">Task not found.</div>
 
+  // Contact label — appends the owning estate's first name when the contact
+  // belongs to a different estate in the family, to tell duplicates apart.
+  const contactLabel = c => {
+    const suffix = (c.estate_id && c.estate_id !== task.estate_id)
+      ? ` — ${((estates ?? []).find(e => e.id === c.estate_id)?.deceased_name || '').split(' ')[0]}`
+      : ''
+    return `${c.name}${c.role ? ` (${c.role})` : ''}${suffix}`
+  }
+
   // Candidate parents: other top-level tasks (one level of nesting), never this
   // task or its own children, respecting privacy.
   const childIds = new Set(subtasks.map(s => s.id))
@@ -509,7 +524,7 @@ export default function TaskDetail() {
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm mb-2">
               <option value="">Choose a contact…</option>
               {contacts.map(c => (
-                <option key={c.id} value={c.id}>{c.name}{c.role ? ` (${c.role})` : ''}{!(c.email || c.emails?.[0]) ? ' — no email' : ''}</option>
+                <option key={c.id} value={c.id}>{contactLabel(c)}{!(c.email || c.emails?.[0]) ? ' — no email' : ''}</option>
               ))}
             </select>
             <textarea value={askText} onChange={e => setAskText(e.target.value)} rows={3}
@@ -575,7 +590,7 @@ export default function TaskDetail() {
                 {contacts.length > 0 && (
                   <optgroup label="Contacts">
                     {contacts.map(c => (
-                      <option key={c.id} value={`c:${c.id}`}>{c.name}{c.role ? ` (${c.role})` : ''}</option>
+                      <option key={c.id} value={`c:${c.id}`}>{contactLabel(c)}</option>
                     ))}
                   </optgroup>
                 )}
