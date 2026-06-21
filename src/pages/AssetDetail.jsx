@@ -17,8 +17,9 @@ const inputCls = 'w-full border border-gray-200 dark:border-gray-800 bg-white da
 export default function AssetDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { role } = useEstate()
+  const { role, estates } = useEstate()
   const [asset, setAsset] = useState(null)
+  const [moving, setMoving] = useState(false)
   const [docs, setDocs] = useState([])
   const [available, setAvailable] = useState([]) // unlinked docs that could be attached
   const [tasks, setTasks] = useState([])
@@ -48,7 +49,7 @@ export default function AssetDetail() {
       })
       const [docRes, taskRes, availRes] = await Promise.all([
         supabase.from('estate_documents').select('*').eq('asset_id', a.id),
-        supabase.from('estate_tasks').select('id, text, status').eq('linked_financial_id', a.id),
+        supabase.from('estate_tasks').select('id, text, status, section_id').eq('linked_financial_id', a.id),
         supabase.from('estate_documents').select('id, name, doc_type').eq('estate_id', a.estate_id).is('asset_id', null).order('name'),
       ])
       setDocs(docRes.data ?? [])
@@ -114,6 +115,45 @@ export default function AssetDetail() {
     setSaving(false)
     if (error) { alert('Could not delete: ' + error.message); return }
     navigate('/assets')
+  }
+
+  // Move this asset to another estate. Its attached documents move with it, and
+  // any linked tasks are re-filed into the matching phase on the target estate.
+  async function moveAsset(targetId) {
+    if (!targetId) return
+    const target = (estates ?? []).find(e => e.id === targetId)
+    if (!confirm(`Move "${asset.name}" to the ${target?.deceased_name} estate?`
+      + (docs.length ? ` Its ${docs.length} attached document(s) move with it.` : '')
+      + (tasks.length ? ` ${tasks.length} linked task(s) move too.` : ''))) return
+    setMoving(true)
+    try {
+      // Re-file linked tasks into the target estate's matching phase (by label).
+      if (tasks.length) {
+        const [{ data: srcSec }, { data: tgtSec }] = await Promise.all([
+          supabase.from('estate_sections').select('id, label').eq('estate_id', asset.estate_id),
+          supabase.from('estate_sections').select('id, label').eq('estate_id', targetId),
+        ])
+        const labelBySrc = Object.fromEntries((srcSec ?? []).map(s => [s.id, s.label]))
+        const idByLabel = Object.fromEntries((tgtSec ?? []).map(s => [s.label, s.id]))
+        for (const t of tasks) {
+          await supabase.from('estate_tasks').update({
+            estate_id: targetId, section_id: idByLabel[labelBySrc[t.section_id]] ?? null,
+            updated_at: new Date().toISOString(),
+          }).eq('id', t.id)
+        }
+      }
+      // Attached documents move with the asset (stay attached, same estate).
+      await supabase.from('estate_documents').update({ estate_id: targetId }).eq('asset_id', asset.id)
+      // Move the asset itself.
+      const { error } = await supabase.from('estate_financials').update({ estate_id: targetId }).eq('id', asset.id)
+      if (error) throw error
+      alert(`Moved "${asset.name}" to the ${target?.deceased_name} estate.`)
+      navigate('/assets')
+    } catch (e) {
+      alert('Move failed: ' + e.message)
+    } finally {
+      setMoving(false)
+    }
   }
 
   // Add a checklist item as a "needed" document linked to this asset + obtain task.
@@ -203,6 +243,8 @@ export default function AssetDetail() {
   if (!isFullAccess(role)) return <div className="p-8 text-gray-400">Asset management is available to the executor only.</div>
 
   const checklist = ASSET_DOC_CHECKLIST[edit.asset_type] || []
+  // Estates this asset can move to (executor on both, by RLS).
+  const moveTargets = (estates ?? []).filter(e => e.id !== asset.estate_id && isFullAccess(e._role))
   const docByLabel = label => docs.find(d => d.name.toLowerCase() === label.toLowerCase())
   const set = (k, v) => setEdit(p => ({ ...p, [k]: v }))
 
@@ -412,6 +454,18 @@ export default function AssetDetail() {
               </Link>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Move to another estate */}
+      {moveTargets.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Move to another estate</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Moves this asset, its attached documents, and any linked tasks to the chosen estate.</p>
+          <select defaultValue="" disabled={moving} onChange={e => { moveAsset(e.target.value); e.target.value = '' }} className={`${inputCls}`}>
+            <option value="" disabled>{moving ? 'Moving…' : 'Choose estate…'}</option>
+            {moveTargets.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
+          </select>
         </div>
       )}
     </div>
