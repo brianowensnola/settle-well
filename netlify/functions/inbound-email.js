@@ -133,6 +133,7 @@ export const handler = async (event) => {
     direction: "inbound",
     channel: "email",
     subject,
+    from_email: fromAddr || null,
     summary: `From ${fromAddr || "unknown sender"}${attachNote}: ${bodyText.slice(0, 280)}${bodyText.length > 280 ? "…" : ""}`,
     body: bodyText,
     is_private: false,

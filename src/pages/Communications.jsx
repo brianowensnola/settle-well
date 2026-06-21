@@ -198,6 +198,20 @@ export default function Communications() {
     setInteractions(prev => prev.map(i => i.id === interactionId ? { ...i, contact_id: contactId } : i))
   }
 
+  // Reply to a captured inbound email: open Compose pre-filled with the sender,
+  // a "Re:" subject, and the original quoted. Sends via the estate (reply-to is
+  // the estate inbox) so the thread stays captured.
+  function replyTo(i) {
+    const to = i.from_email || (i.contact_id && contactById[i.contact_id]?.emails?.[0]) || ''
+    const re = (i.subject || '').replace(/^\s*re:\s*/i, '')
+    const who = i.from_email || contactName(i.contact_id, 'they')
+    const quoted = `\n\n----- On ${whenStr(i.occurred_at || i.created_at)}, ${who} wrote: -----\n${i.body || i.summary || ''}`
+    setCm({ estateId: i.estate_id, to, intent: 'general', instruction: '', subject: `Re: ${re}`, body: quoted, cc: '', bcc: '', isPrivate: false })
+    setCmMsg(to ? '' : "Couldn't read the sender's address — add the recipient in the To field.")
+    setPanel('compose')
+    window.scrollTo?.({ top: 0, behavior: 'smooth' })
+  }
+
   // ----- Send documents -----
   function openSend() {
     const def = familyEstates.find(e => e.id === currentEstate?.id)?.id || familyEstates[0]?.id || ''
@@ -315,7 +329,7 @@ export default function Communications() {
             )
           })}
         </div>
-        <div className="text-[11px] text-blue-500 dark:text-blue-400 mt-1">Inbound capture goes live once the mail routing is connected (setup steps from Claude). Until then, replies to app-sent emails come to you.</div>
+        <div className="text-[11px] text-blue-500 dark:text-blue-400 mt-1">Replies to this address are captured below automatically. Hover any received email and click ↩ Reply to respond from the app.</div>
       </div>
 
       {/* Unmatched inbound — assign to a contact */}
@@ -603,7 +617,12 @@ export default function Communications() {
                     </div>
                     {i.summary && <div className="text-gray-600 dark:text-gray-400">{i.summary}</div>}
                   </div>
-                  <button onClick={() => removeComm(i.id)} title="Delete" className="shrink-0 text-gray-300 hover:text-red-500 text-sm opacity-0 group-hover:opacity-100 transition-opacity">🗑</button>
+                  <div className="shrink-0 flex items-center gap-2">
+                    {i.channel === 'email' && i.direction === 'inbound' && (
+                      <button onClick={() => replyTo(i)} title="Reply" className="text-xs text-blue-600 hover:underline opacity-0 group-hover:opacity-100 transition-opacity">↩ Reply</button>
+                    )}
+                    <button onClick={() => removeComm(i.id)} title="Delete" className="text-gray-300 hover:text-red-500 text-sm opacity-0 group-hover:opacity-100 transition-opacity">🗑</button>
+                  </div>
                 </div>
               )
             })}
