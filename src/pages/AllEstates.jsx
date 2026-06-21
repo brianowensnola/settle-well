@@ -36,6 +36,14 @@ export default function AllEstates() {
   // Only the current family's estates — other families never show here.
   const familyEstates = estates.filter(e =>
     currentEstate && (currentEstate.group_id ? e.group_id === currentEstate.group_id : e.id === currentEstate.id))
+
+  // Open a specific task — switch to its estate first (it may belong to another
+  // estate in the family) so TaskDetail has the right context, then navigate.
+  function openTask(t) {
+    const est = estates.find(e => e.id === t.estate_id)
+    if (est && est.id !== currentEstate?.id) switchEstate(est)
+    navigate(`/tasks/${t.id}`)
+  }
   const familyEstateIds = familyEstates.map(e => e.id)
   const estateName = eid => estates.find(e => e.id === eid)?.deceased_name ?? ''
 
@@ -226,7 +234,7 @@ export default function AllEstates() {
           ) : (
             <div className="space-y-1.5">
               {nextUp.map(t => (
-                <Link key={t.id} to="/all-tasks" className="block hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1 -mx-2">
+                <button key={t.id} onClick={() => openTask(t)} className="block w-full text-left hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1 -mx-2">
                   <div className="flex items-center gap-2">
                     <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${t.status === 'in_progress' ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
                     <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{t.text}</span>
@@ -236,7 +244,7 @@ export default function AllEstates() {
                     {showMulti && ` · ${estateName(t.estate_id)}`}
                     {t.assigned_to && ` · 👤 ${t.assigned_to}`}
                   </div>
-                </Link>
+                </button>
               ))}
             </div>
           )}
