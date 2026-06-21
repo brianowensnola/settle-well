@@ -29,9 +29,9 @@ function inviteUrl(email) {
 // Executor-only: send a sign-up invitation (email + optional SMS) to a person
 // who has been added to an estate but hasn't created a login yet.
 export const handler = async (event) => {
-  let email, name, phone, estateName, existing;
+  let email, name, phone, estateName, existing, estateId;
   try {
-    ({ email, name, phone, estateName, existing } = JSON.parse(event.body));
+    ({ email, name, phone, estateName, existing, estateId } = JSON.parse(event.body));
   } catch {
     return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) };
   }
@@ -127,6 +127,17 @@ export const handler = async (event) => {
     }
   } else if (phone) {
     result.sms = { sent: false, error: "phone number not in a recognizable US format" };
+  }
+
+  // Capture the invitation on the communications portal (non-fatal).
+  if (estateId && (result.email?.sent || result.sms?.sent)) {
+    try {
+      await admin.from("estate_contact_interactions").insert({
+        estate_id: estateId, contact_id: null, direction: "outbound", channel: "email",
+        subject, summary: `${existing ? "Sign-in link" : "Invitation"} sent to ${who} (${email})`,
+        is_private: false, source: "app", occurred_at: new Date().toISOString(),
+      });
+    } catch (e) { console.warn("invite interaction log failed:", e?.message); }
   }
 
   return { statusCode: 200, body: JSON.stringify(result) };

@@ -125,5 +125,17 @@ export const handler = async (event) => {
     sent_by: caller.id,
   }).select().single();
 
+  // Also capture it on the unified communications portal (non-fatal).
+  try {
+    const reached = recipients.filter(r => r.emailed || r.texted);
+    const names = reached.map(r => r.name || r.email).filter(Boolean);
+    await admin.from("estate_contact_interactions").insert({
+      estate_id: estateId, contact_id: null, direction: "outbound", channel: "email",
+      subject,
+      summary: `Heir ${String(noticeType).replace(/_/g, " ")} "${subject}" sent to ${reached.length} heir(s)${names.length ? `: ${names.join(", ")}` : ""}`,
+      body, is_private: false, source: "app", occurred_at: new Date().toISOString(),
+    });
+  } catch (e) { console.warn("heir notice interaction log failed:", e?.message); }
+
   return { statusCode: 200, body: JSON.stringify({ success: true, emailed, texted, recipients, log: logged || null }) };
 };

@@ -75,9 +75,9 @@ export default function AdminUsers() {
   }
 
   // Send the invitation/access link (email + optional text) and report what went out.
-  async function fireInvite({ email, name, phone, estateName, existing }) {
+  async function fireInvite({ email, name, phone, estateName, estateId, existing }) {
     try {
-      const r = await sendInvite({ email, name, phone, estateName, existing })
+      const r = await sendInvite({ email, name, phone, estateName, estateId, existing })
       const parts = []
       parts.push(r.email?.sent ? 'email sent' : `email failed (${r.email?.error || 'unknown'})`)
       if (r.sms) parts.push(r.sms.sent ? 'text sent' : `text failed (${r.sms.error || 'unknown'})`)
@@ -89,7 +89,7 @@ export default function AdminUsers() {
 
   async function sendInviteToPerson(p) {
     setBusy(true); setMsg('')
-    try { await fireInvite({ email: p.email, name: p.name, phone: p.phone, estateName: estateName(p.memberships[0]?.estate_id), existing: !!p.auth_user_id }) }
+    try { await fireInvite({ email: p.email, name: p.name, phone: p.phone, estateName: estateName(p.memberships[0]?.estate_id), estateId: p.memberships[0]?.estate_id, existing: !!p.auth_user_id }) }
     finally { setBusy(false) }
   }
 
@@ -115,7 +115,7 @@ export default function AdminUsers() {
       }
       await refresh()
       // Send the sign-up invitation (email + text) right away.
-      await fireInvite({ email, name: invite.name, phone: invite.phone, estateName: estateName(invite.estates[0]) })
+      await fireInvite({ email, name: invite.name, phone: invite.phone, estateName: estateName(invite.estates[0]), estateId: invite.estates[0] })
       setInvite(BLANK_INVITE)
     } finally { setBusy(false) }
   }
