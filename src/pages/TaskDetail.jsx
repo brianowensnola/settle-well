@@ -41,6 +41,8 @@ export default function TaskDetail() {
   const [editingAssignment, setEditingAssignment] = useState(false)
   const [newAssignedTo, setNewAssignedTo] = useState('')
   const [notifying, setNotifying] = useState(false)
+  const [askOpen, setAskOpen] = useState(false)
+  const [askText, setAskText] = useState('')
   const [meeting, setMeeting] = useState(null)   // meeting linked to this task (if any)
 
   useEffect(() => {
@@ -399,6 +401,27 @@ export default function TaskDetail() {
     finally { setNotifying(false) }
   }
 
+  // Ask the assigned contact a custom question by email (reply comes back to the
+  // estate inbox and is captured). SMS auto-included once the text number is live.
+  async function askQuestion() {
+    const m = askText.trim()
+    if (!m) return
+    setNotifying(true)
+    try {
+      const token = await getAccessToken()
+      const r = await fetch('/.netlify/functions/notify-assignee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ taskId: id, message: m, channels: ['email', 'sms'] }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Could not send')
+      alert(`Question emailed to ${d.to || 'the contact'}.`)
+      setAskText(''); setAskOpen(false)
+    } catch (e) { alert(e.message || 'Could not send the question') }
+    finally { setNotifying(false) }
+  }
+
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
   if (!task) return <div className="p-8 text-gray-400">Task not found.</div>
 
@@ -444,13 +467,36 @@ export default function TaskDetail() {
             </span>
           )}
           {task.assigned_contact_id && canSeePrivate && (
-            <button onClick={notifyAssignee} disabled={notifying}
-              title="Email this contact the task details"
-              className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 disabled:opacity-50">
-              {notifying ? 'Sending…' : '✉️ Notify'}
-            </button>
+            <>
+              <button onClick={notifyAssignee} disabled={notifying}
+                title="Email this contact the task details"
+                className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 disabled:opacity-50">
+                {notifying ? 'Sending…' : '✉️ Notify'}
+              </button>
+              <button onClick={() => setAskOpen(o => !o)}
+                title="Email this contact a question about this task"
+                className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200">
+                💬 Ask a question
+              </button>
+            </>
           )}
         </div>
+
+        {askOpen && task.assigned_contact_id && canSeePrivate && (
+          <div className="mb-3 border border-gray-200 dark:border-gray-800 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
+            <label className="text-xs text-gray-500 block mb-1">Ask {task.assigned_to} a question (emailed to them; their reply comes back to this estate)</label>
+            <textarea value={askText} onChange={e => setAskText(e.target.value)} rows={3}
+              placeholder="Type your question…"
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm mb-2" />
+            <div className="flex gap-2">
+              <button onClick={askQuestion} disabled={notifying || !askText.trim()}
+                className="px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-xs font-medium disabled:opacity-50">
+                {notifying ? 'Sending…' : 'Send question'}
+              </button>
+              <button onClick={() => { setAskOpen(false); setAskText('') }} className="px-3 py-1.5 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+            </div>
+          </div>
+        )}
         {editingTitle ? (
           <div className="space-y-2 mb-2">
             <input

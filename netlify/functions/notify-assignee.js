@@ -23,8 +23,8 @@ function toE164(raw) {
 // Notify the contact a task is assigned to (email now; SMS when a sender is set)
 // and record it on the communications timeline. Executor-gated. Manual action.
 export const handler = async (event) => {
-  let taskId, channels;
-  try { ({ taskId, channels = ["email"] } = JSON.parse(event.body)); }
+  let taskId, channels, message;
+  try { ({ taskId, channels = ["email"], message = "" } = JSON.parse(event.body)); }
   catch { return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) }; }
   if (!taskId) return { statusCode: 400, body: JSON.stringify({ error: "taskId required" }) };
 
@@ -54,15 +54,28 @@ export const handler = async (event) => {
   const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || "in.settlewellestate.com";
   const replyTo = estate?.inbound_token ? { email: `${estate.inbound_token}@${INBOUND_DOMAIN}`, name: estateName } : (caller.email ? { email: caller.email } : undefined);
 
-  const subject = `Task for the ${estate?.deceased_name || ""} estate: ${task.text}`.trim();
-  const bodyText = `Hello${contact?.name ? ` ${contact.name.split(" ")[0]}` : ""},\n\nThis is regarding the ${estateName}. We'd like your help with the following:\n\n${task.text}${task.detail ? `\n\n${task.detail}` : ""}\n\nPlease reply to this email with any questions or once it's handled. Thank you.`;
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.6">
-    <p>Hello${contact?.name ? ` ${escapeHtml(contact.name.split(" ")[0])}` : ""},</p>
-    <p>This is regarding the ${escapeHtml(estateName)}. We'd like your help with the following:</p>
-    <p style="font-weight:600">${escapeHtml(task.text)}</p>
-    ${task.detail ? `<p>${escapeHtml(task.detail).replace(/\n/g, "<br>")}</p>` : ""}
-    <p>Please reply to this email with any questions or once it's handled. Thank you.</p>
-  </div>`;
+  const first = contact?.name ? ` ${contact.name.split(" ")[0]}` : "";
+  const isQuestion = !!(message && message.trim());
+  const subject = isQuestion
+    ? `Question about the ${estate?.deceased_name || ""} estate: ${task.text}`.trim()
+    : `Task for the ${estate?.deceased_name || ""} estate: ${task.text}`.trim();
+  const bodyText = isQuestion
+    ? `Hello${first},\n\nThis is regarding the ${estateName} (task: "${task.text}").\n\n${message.trim()}\n\nPlease reply to this email. Thank you.`
+    : `Hello${first},\n\nThis is regarding the ${estateName}. We'd like your help with the following:\n\n${task.text}${task.detail ? `\n\n${task.detail}` : ""}\n\nPlease reply to this email with any questions or once it's handled. Thank you.`;
+  const html = isQuestion
+    ? `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.6">
+        <p>Hello${escapeHtml(first)},</p>
+        <p>This is regarding the ${escapeHtml(estateName)} (task: &ldquo;${escapeHtml(task.text)}&rdquo;).</p>
+        <p>${escapeHtml(message.trim()).replace(/\n/g, "<br>")}</p>
+        <p>Please reply to this email. Thank you.</p>
+      </div>`
+    : `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.6">
+        <p>Hello${escapeHtml(first)},</p>
+        <p>This is regarding the ${escapeHtml(estateName)}. We'd like your help with the following:</p>
+        <p style="font-weight:600">${escapeHtml(task.text)}</p>
+        ${task.detail ? `<p>${escapeHtml(task.detail).replace(/\n/g, "<br>")}</p>` : ""}
+        <p>Please reply to this email with any questions or once it's handled. Thank you.</p>
+      </div>`;
 
   let emailed = false, texted = false;
   if (channels.includes("email") && toEmail && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(toEmail)) {
@@ -91,7 +104,7 @@ export const handler = async (event) => {
         const resp = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
           method: "POST",
           headers: { "api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ sender: SMS_SENDER, recipient: phone, content: `${estateName}: we'd like your help with — ${task.text}. We'll follow up by email.`, type: "transactional" }),
+          body: JSON.stringify({ sender: SMS_SENDER, recipient: phone, content: isQuestion ? `${estateName}: ${message.trim().slice(0, 280)}` : `${estateName}: we'd like your help with — ${task.text}. We'll follow up by email.`, type: "transactional" }),
         });
         if (resp.ok) texted = true;
       } catch (e) { console.error("notify-assignee sms error:", e); }
@@ -102,7 +115,7 @@ export const handler = async (event) => {
   try {
     await admin.from("estate_contact_interactions").insert({
       estate_id: task.estate_id, contact_id: task.assigned_contact_id, direction: "outbound", channel: "email",
-      subject, summary: `Task assigned & notified${toEmail ? ` (${toEmail})` : ""}: ${task.text}`,
+      subject, summary: isQuestion ? `Question to contact${toEmail ? ` (${toEmail})` : ""}: ${message.trim().slice(0, 200)}` : `Task assigned & notified${toEmail ? ` (${toEmail})` : ""}: ${task.text}`,
       body: bodyText, is_private: false, source: "app", occurred_at: new Date().toISOString(),
     });
   } catch (logErr) { console.warn("assignee interaction log failed:", logErr?.message); }
