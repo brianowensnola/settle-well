@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { INVITE_ROLES, roleLabel } from '../lib/roles'
 import { STATUS_STAGES } from '../lib/constants'
@@ -13,6 +13,9 @@ export default function Settings() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('heir')
   const [inviting, setInviting] = useState(false)
+  const [delPreview, setDelPreview] = useState(null) // {willDelete[], willLeave[]}
+  const [delConfirm, setDelConfirm] = useState('')
+  const [delBusy, setDelBusy] = useState(false)
 
   useEffect(() => {
     if (!currentEstate) return
@@ -116,6 +119,34 @@ export default function Settings() {
     reload()
   }
 
+  async function startDelete() {
+    setDelBusy(true)
+    try {
+      const token = await getAccessToken()
+      const r = await fetch('/.netlify/functions/delete-account', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({}),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Could not load account deletion details')
+      setDelPreview(d)
+    } catch (e) { alert(e.message) } finally { setDelBusy(false) }
+  }
+
+  async function confirmDelete() {
+    if (delConfirm !== 'DELETE') return
+    setDelBusy(true)
+    try {
+      const token = await getAccessToken()
+      const r = await fetch('/.netlify/functions/delete-account', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ confirm: 'DELETE' }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Could not delete the account')
+      await supabase.auth.signOut()
+      window.location.href = '/login'
+    } catch (e) { alert(e.message); setDelBusy(false) }
+  }
+
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate.</div>
 
   return (
@@ -199,6 +230,44 @@ export default function Settings() {
             </p>
             <button onClick={toggleArchive} className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-sm hover:bg-amber-200">Archive estate</button>
           </>
+        )}
+      </div>
+
+      <div className="mt-4 bg-white dark:bg-gray-900 border border-red-200 dark:border-red-900 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">Delete my account</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          Permanently deletes your account and every estate you solely administer — including all tasks, documents, finances, communications, and stored credentials. <strong>This cannot be undone.</strong> If you only want to stop working an estate, use <strong>Archive</strong> above instead — it keeps everything, read-only, and can be reopened later (estate matters can resurface years later).
+        </p>
+        {!delPreview ? (
+          <button onClick={startDelete} disabled={delBusy}
+            className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg text-sm hover:bg-red-100 disabled:opacity-50">
+            {delBusy ? 'Loading…' : 'Delete my account…'}
+          </button>
+        ) : (
+          <div className="border border-red-300 dark:border-red-800 rounded-lg p-3 bg-red-50/60 dark:bg-red-900/20 text-sm space-y-2">
+            <p className="font-semibold text-red-800 dark:text-red-300">This will permanently delete:</p>
+            {delPreview.willDelete?.length ? (
+              <ul className="list-disc pl-5 text-red-800 dark:text-red-300 space-y-0.5">
+                {delPreview.willDelete.map((n, i) => <li key={i}>The <strong>{n}</strong> estate and ALL of its data</li>)}
+                <li>Your login / account</li>
+              </ul>
+            ) : (
+              <p className="text-gray-700 dark:text-gray-300">Your login / account (no solely-owned estates to delete).</p>
+            )}
+            {delPreview.willLeave?.length > 0 && (
+              <p className="text-gray-600 dark:text-gray-400">You'll also be removed from (but these estates are <em>kept</em> for their other administrators): {delPreview.willLeave.join(', ')}.</p>
+            )}
+            <p className="text-red-800 dark:text-red-300 font-medium">Type <span className="font-mono">DELETE</span> to confirm. This is irreversible.</p>
+            <input value={delConfirm} onChange={e => setDelConfirm(e.target.value)} placeholder="DELETE"
+              className="w-full border border-red-300 dark:border-red-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+            <div className="flex gap-2">
+              <button onClick={confirmDelete} disabled={delConfirm !== 'DELETE' || delBusy}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                {delBusy ? 'Deleting…' : 'Permanently delete'}
+              </button>
+              <button onClick={() => { setDelPreview(null); setDelConfirm('') }} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+            </div>
+          </div>
         )}
       </div>
     </div>
