@@ -86,11 +86,13 @@ export default function TaskDetail() {
     setAllDocs(docs ?? [])
 
     // Load estate users AND contacts for assignment. Contacts stay separate per
-    // estate (each estate has its own heirs/contributors/attorneys), so only
-    // this task's estate's contacts are offered.
+    // estate, but include ones explicitly SHARED with this estate (e.g. an
+    // attorney owned by another family estate and shared here).
+    const eid = t.data?.estate_id
     const [{ data: users }, { data: assignContacts }] = await Promise.all([
-      supabase.from('estate_users').select('*').eq('estate_id', t.data?.estate_id),
-      supabase.from('estate_contacts').select('id, name, role, email, emails, phone, estate_id').eq('estate_id', t.data?.estate_id).order('name'),
+      supabase.from('estate_users').select('*').eq('estate_id', eid),
+      supabase.from('estate_contacts').select('id, name, role, email, emails, phone, estate_id')
+        .or(`estate_id.eq.${eid},shared_with.cs.{${eid}}`).order('name'),
     ])
     setEstateUsers(users ?? [])
     setContacts(assignContacts ?? [])
