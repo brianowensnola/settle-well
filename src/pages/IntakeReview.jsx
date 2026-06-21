@@ -93,6 +93,15 @@ export default function IntakeReview() {
     setSaving(false)
   }
 
+  // Mark the intake done (or reopen it). Quick-Setup estates start incomplete and
+  // nothing else flips this, so the executor confirms it here once answers are in.
+  async function setComplete(val) {
+    setSaving(true)
+    await supabase.from('estates').update({ intake_complete: val, updated_at: new Date().toISOString() }).eq('id', currentEstate.id)
+    await reload()
+    setSaving(false)
+  }
+
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
 
@@ -105,17 +114,32 @@ export default function IntakeReview() {
           <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 dark:text-white">Intake Review</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">{currentEstate.deceased_name}</p>
         </div>
-        <button
-          onClick={() => {
-            // Walk through every question with existing answers (including
-            // AI-extracted ones) pre-filled — nothing is cleared
-            setRetakeMode(true)
-            setEditingKey(INTAKE_QUESTIONS[0].key)
-          }}
-          className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700"
-        >
-          Full Re-take
-        </button>
+        <div className="flex items-center gap-2">
+          {currentEstate.intake_complete ? (
+            <button onClick={() => setComplete(false)} disabled={saving}
+              title="Intake is marked complete — click to reopen it"
+              className="px-3 py-2 rounded-lg text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50 disabled:opacity-50">
+              ✓ Intake complete
+            </button>
+          ) : (
+            <button onClick={() => setComplete(true)} disabled={saving}
+              title="Mark the intake as complete (clears it from the Getting Started checklist)"
+              className="px-3 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+              Mark intake complete
+            </button>
+          )}
+          <button
+            onClick={() => {
+              // Walk through every question with existing answers (including
+              // AI-extracted ones) pre-filled — nothing is cleared
+              setRetakeMode(true)
+              setEditingKey(INTAKE_QUESTIONS[0].key)
+            }}
+            className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-700"
+          >
+            Full Re-take
+          </button>
+        </div>
       </div>
 
       {editingKey && question ? (
