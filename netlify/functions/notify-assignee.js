@@ -23,8 +23,8 @@ function toE164(raw) {
 // Notify the contact a task is assigned to (email now; SMS when a sender is set)
 // and record it on the communications timeline. Executor-gated. Manual action.
 export const handler = async (event) => {
-  let taskId, channels, message;
-  try { ({ taskId, channels = ["email"], message = "" } = JSON.parse(event.body)); }
+  let taskId, channels, message, contactId;
+  try { ({ taskId, channels = ["email"], message = "", contactId = null } = JSON.parse(event.body)); }
   catch { return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) }; }
   if (!taskId) return { statusCode: 400, body: JSON.stringify({ error: "taskId required" }) };
 
@@ -42,15 +42,21 @@ export const handler = async (event) => {
   if (!(roles || []).some(r => r.role === "administrator" || r.role === "executor"))
     return { statusCode: 403, body: JSON.stringify({ error: "executor access required" }) };
 
-  // Resolve the assignee — a contact or an app user (heir/collaborator/executor).
-  let contact = null;
-  if (task.assigned_contact_id) {
+  // Resolve the recipient: an explicitly chosen contact (ask-any), else the
+  // task's assigned contact, else its assigned app user.
+  let contact = null, logContactId = null;
+  if (contactId) {
+    ({ data: contact } = await admin.from("estate_contacts").select("name, email, emails, phone").eq("id", contactId).eq("estate_id", task.estate_id).single());
+    logContactId = contactId;
+  } else if (task.assigned_contact_id) {
     ({ data: contact } = await admin.from("estate_contacts").select("name, email, emails, phone").eq("id", task.assigned_contact_id).single());
+    logContactId = task.assigned_contact_id;
   } else if (task.assigned_user_id) {
     ({ data: contact } = await admin.from("estate_users").select("name, email, phone").eq("id", task.assigned_user_id).single());
   } else {
-    return { statusCode: 400, body: JSON.stringify({ error: "this task isn't assigned to anyone reachable" }) };
+    return { statusCode: 400, body: JSON.stringify({ error: "pick a contact to message, or assign the task first" }) };
   }
+  if (!contact) return { statusCode: 404, body: JSON.stringify({ error: "recipient not found" }) };
   const toEmail = contact?.email || (Array.isArray(contact?.emails) ? contact.emails[0] : null);
 
   const apiKey = process.env.BREVO_API_KEY;
@@ -121,7 +127,7 @@ export const handler = async (event) => {
   // Capture on the communications timeline.
   try {
     await admin.from("estate_contact_interactions").insert({
-      estate_id: task.estate_id, contact_id: task.assigned_contact_id, direction: "outbound", channel: "email",
+      estate_id: task.estate_id, contact_id: logContactId, direction: "outbound", channel: "email",
       subject, summary: isQuestion ? `Question to contact${toEmail ? ` (${toEmail})` : ""}: ${message.trim().slice(0, 200)}` : `Task assigned & notified${toEmail ? ` (${toEmail})` : ""}: ${task.text}`,
       body: bodyText, is_private: false, source: "app", occurred_at: new Date().toISOString(),
     });

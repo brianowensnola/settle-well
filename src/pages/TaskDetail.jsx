@@ -43,6 +43,7 @@ export default function TaskDetail() {
   const [notifying, setNotifying] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
   const [askText, setAskText] = useState('')
+  const [askContactId, setAskContactId] = useState('')
   const [meeting, setMeeting] = useState(null)   // meeting linked to this task (if any)
 
   useEffect(() => {
@@ -419,13 +420,14 @@ export default function TaskDetail() {
   async function askQuestion() {
     const m = askText.trim()
     if (!m) return
+    if (!askContactId) { alert('Pick a contact to send the question to.'); return }
     setNotifying(true)
     try {
       const token = await getAccessToken()
       const r = await fetch('/.netlify/functions/notify-assignee', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ taskId: id, message: m, channels: ['email', 'sms'] }),
+        body: JSON.stringify({ taskId: id, contactId: askContactId, message: m, channels: ['email', 'sms'] }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Could not send')
@@ -433,6 +435,11 @@ export default function TaskDetail() {
       setAskText(''); setAskOpen(false)
     } catch (e) { alert(e.message || 'Could not send the question') }
     finally { setNotifying(false) }
+  }
+
+  function openAsk() {
+    setAskContactId(task.assigned_contact_id || '')
+    setAskOpen(o => !o)
   }
 
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
@@ -480,34 +487,42 @@ export default function TaskDetail() {
             </span>
           )}
           {(task.assigned_contact_id || task.assigned_user_id) && canSeePrivate && (
-            <>
-              <button onClick={() => notifyAssignee(false)} disabled={notifying}
-                title="Email the assignee the task details"
-                className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 disabled:opacity-50">
-                {notifying ? 'Sending…' : '✉️ Notify'}
-              </button>
-              <button onClick={() => setAskOpen(o => !o)}
-                title="Email the assignee a question about this task"
-                className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200">
-                💬 Ask a question
-              </button>
-            </>
+            <button onClick={() => notifyAssignee(false)} disabled={notifying}
+              title="Email the assignee the task details"
+              className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 disabled:opacity-50">
+              {notifying ? 'Sending…' : '✉️ Notify'}
+            </button>
+          )}
+          {canSeePrivate && (
+            <button onClick={openAsk}
+              title="Email a contact a question about this task (their reply comes back to this estate)"
+              className="text-xs px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-full hover:bg-blue-100">
+              💬 Ask / message a contact
+            </button>
           )}
         </div>
 
-        {askOpen && (task.assigned_contact_id || task.assigned_user_id) && canSeePrivate && (
+        {askOpen && canSeePrivate && (
           <div className="mb-3 border border-gray-200 dark:border-gray-800 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
-            <label className="text-xs text-gray-500 block mb-1">Ask {task.assigned_to} a question (emailed to them; their reply comes back to this estate)</label>
+            <label className="text-xs text-gray-500 block mb-1">Send a question about this task — emailed to the contact; their reply comes back to this estate (and is logged).</label>
+            <select value={askContactId} onChange={e => setAskContactId(e.target.value)}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm mb-2">
+              <option value="">Choose a contact…</option>
+              {contacts.map(c => (
+                <option key={c.id} value={c.id}>{c.name}{c.role ? ` (${c.role})` : ''}{!(c.email || c.emails?.[0]) ? ' — no email' : ''}</option>
+              ))}
+            </select>
             <textarea value={askText} onChange={e => setAskText(e.target.value)} rows={3}
               placeholder="Type your question…"
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm mb-2" />
             <div className="flex gap-2">
-              <button onClick={askQuestion} disabled={notifying || !askText.trim()}
+              <button onClick={askQuestion} disabled={notifying || !askText.trim() || !askContactId}
                 className="px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-xs font-medium disabled:opacity-50">
                 {notifying ? 'Sending…' : 'Send question'}
               </button>
               <button onClick={() => { setAskOpen(false); setAskText('') }} className="px-3 py-1.5 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
             </div>
+            {contacts.length === 0 && <p className="text-xs text-gray-400 mt-1">No contacts in this estate yet — add one under Contacts.</p>}
           </div>
         )}
         {editingTitle ? (
