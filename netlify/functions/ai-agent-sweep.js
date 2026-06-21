@@ -24,9 +24,16 @@ export default async () => {
   }
 
   // Due = never run, or changed since the last run.
-  const due = (rows || [])
+  let due = (rows || [])
     .filter(r => !r.last_run_at || new Date(r.last_seen_change_at) > new Date(r.last_run_at))
     .slice(0, MAX_PER_SWEEP);
+
+  // Skip archived (read-only) estates — no AI runs on them.
+  if (due.length) {
+    const { data: arch } = await supabase.from("estates").select("id").eq("archived", true).in("id", due.map(r => r.estate_id));
+    const archivedIds = new Set((arch || []).map(e => e.id));
+    due = due.filter(r => !archivedIds.has(r.estate_id));
+  }
 
   let triggered = 0;
   for (const row of due) {

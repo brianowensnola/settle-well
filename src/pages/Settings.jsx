@@ -102,6 +102,20 @@ export default function Settings() {
     await loadUsers()
   }
 
+  async function toggleArchive() {
+    const archiving = !currentEstate.archived
+    if (archiving && !confirm(
+      `Archive the ${currentEstate.deceased_name} estate?\n\n`
+      + `It becomes READ-ONLY — no edits, AI, or communications — but ALL data is preserved. `
+      + `Estate matters can reopen years later, so this keeps everything safe. You can reactivate anytime.`
+    )) return
+    const { error } = await supabase.from('estates')
+      .update({ archived: archiving, archived_at: archiving ? new Date().toISOString() : null })
+      .eq('id', currentEstate.id)
+    if (error) { alert('Error: ' + error.message); return }
+    reload()
+  }
+
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate.</div>
 
   return (
@@ -167,6 +181,25 @@ export default function Settings() {
           People, roles, and passwords are now managed in one place for all estates:{' '}
           <Link to="/admin" className="text-blue-600 hover:underline">Multi-Estate → Users &amp; Roles</Link>.
         </p>
+      </div>
+
+      <div className="mt-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Archive</h2>
+        {currentEstate.archived ? (
+          <>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              This estate is <strong className="text-amber-600 dark:text-amber-400">archived</strong> (read-only){currentEstate.archived_at ? ` since ${new Date(currentEstate.archived_at).toLocaleDateString()}` : ''}. All data is preserved. Reactivate to make changes again.
+            </p>
+            <button onClick={toggleArchive} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">Reactivate estate</button>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              Archiving freezes the estate <strong>read-only</strong> — no edits, AI, or communications — but keeps all data. It's the safe way to wind down, since estate matters can reopen years later. You can reactivate anytime.
+            </p>
+            <button onClick={toggleArchive} className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-lg text-sm hover:bg-amber-200">Archive estate</button>
+          </>
+        )}
       </div>
     </div>
   )

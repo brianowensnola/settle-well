@@ -357,8 +357,14 @@ export default function Layout() {
             </select>
           </div>
         )}
+        {/* Archived estate — read-only notice */}
+        {currentEstate?.archived && (
+          <div className="bg-gray-200 dark:bg-gray-800 border-b border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-4 py-1.5 text-xs font-medium">
+            🗄️ This estate is <strong>archived</strong> (read-only). Reactivate it in Estate Settings to make changes.
+          </div>
+        )}
         {/* Executor-tool banner — makes it unmistakable which estate you're editing */}
-        {currentEstate && isFullAccess(role) && EXECUTOR_NAV.some(n => pathname === n.to || pathname.startsWith(n.to + '/')) && (
+        {currentEstate && !currentEstate.archived && isFullAccess(role) && EXECUTOR_NAV.some(n => pathname === n.to || pathname.startsWith(n.to + '/')) && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-1.5 text-xs font-medium">
             ⚙️ Executor tool — working in the <strong>{currentEstate.deceased_name}</strong> estate
           </div>
