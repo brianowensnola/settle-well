@@ -66,6 +66,28 @@ Items graduate into the structured backlog below when it's time to do them.
   meeting-reminder job (a scheduled function that texts the executor/attendees
   ahead of `estate_meetings.scheduled_at`). No US SMS provider avoids the
   registration step. Revisit as soon as the TFN can be set up.
+- **(2026-06-21) Multi-tenant SMS architecture — address at the END, for resale.**
+  Today SMS uses ONE shared Brevo toll-free number (`BREVO_SMS_SENDER`) for every
+  estate. Correct for Brian's single-family use + a small beta; does NOT scale to
+  many paying customers:
+  1. **Inbound routing leaks across tenants.** `inbound-sms.js` routes an incoming
+     text by matching the *sender's phone* to a contact/user — with one shared
+     number that carries no tenant info, the same phone can match contacts in
+     different customers' estates (privacy leak). It is **single-tenant-only**
+     until reworked.
+  2. **Carrier throughput limits + one TFN registration** — high volume across many
+     customers from one number looks like spam and hits rate limits.
+  3. **Billing** — all SMS bills BEPO's one account.
+  **Plan at launch:** provision a dedicated number **per estate (or per customer)**
+  via **Twilio/Telnyx** so the number itself is the routing key — exactly like the
+  per-estate email inbound tokens — making inbound self-routing with no leakage;
+  register a **10DLC brand+campaign** (or per-number TFN); **price SMS into the
+  subscription** (BEPO fronts provider cost, recovers in the plan); enforce
+  **STOP/HELP opt-out** on inbound (TCPA); keep per-recipient `sms_consent`
+  (already captured). Email + in-app messaging already scale as-is (per-estate
+  addresses are free/infinite), so until the rework, treat SMS mainly as a one-way
+  nudge ("you have an update — open the app") with two-way content in email/in-app.
+  Context: memory `project_omnichannel_comms`.
 - **(2026-06-16)** RLS performance tuning (careful, later) — Supabase performance
   advisor flags ~90 "multiple permissive policies" and ~17 "auth_rls_initplan"
   (wrap `auth.uid()` in `(select auth.uid())` so it evaluates once per query, and
