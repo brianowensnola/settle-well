@@ -104,6 +104,10 @@ export default function Login() {
             {mode === 'login' ? 'First time? Create an account' : 'Already have an account? Sign in'}
           </button>
         </form>
+        <p className="text-center text-[11px] text-gray-400 mt-4 leading-relaxed">
+          SettleWell is not a law firm and does not provide legal advice.<br />
+          <a href="/privacy" className="hover:underline">Privacy Policy</a>
+        </p>
       </div>
     </div>
   )

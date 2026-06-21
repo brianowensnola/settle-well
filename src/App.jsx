@@ -41,6 +41,7 @@ import AdminUsers from './pages/AdminUsers'
 import ExecutorTools from './pages/ExecutorTools'
 import DeathNotifications from './pages/DeathNotifications'
 import ConfirmEmail from './pages/ConfirmEmail'
+import Privacy from './pages/Privacy'
 
 function RequireAuth({ children }) {
   const user = useUser()
@@ -79,6 +80,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth/confirm" element={<ConfirmEmail />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/invite" element={user ? <Navigate to="/" replace /> : <Invite />} />
       <Route path="/new-estate" element={user ? <NewEstate /> : <Navigate to="/login" replace />} />
