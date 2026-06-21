@@ -52,17 +52,20 @@ export const handler = async (event) => {
   const { data: heirs } = await q;
   const list = (heirs || []);
 
-  const { data: estate } = await admin.from("estates").select("deceased_name, inbound_token").eq("id", estateId).single();
+  const { data: estate } = await admin.from("estates").select("deceased_name, inbound_token, administrator_name").eq("id", estateId).single();
   const estateName = estate?.deceased_name ? `Estate of ${estate.deceased_name}` : "Estate";
+  const signer = estate?.administrator_name || "The Executor";
   const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || "in.settlewellestate.com";
   const replyTo = (INBOUND_DOMAIN && estate?.inbound_token)
     ? { email: `${estate.inbound_token}@${INBOUND_DOMAIN}`, name: estateName }
     : (caller.email ? { email: caller.email } : undefined);
   const subject = title?.trim() || `Update on the ${estate?.deceased_name || ""} estate`.trim();
+  const sigText = `\n\nSincerely,\n${signer}\nExecutor, ${estateName}`;
   const portalLine = `\n\nYou can view the full estate update and details any time here: ${SITE_URL}/dashboard`;
-  const fullText = `${body}${portalLine}`;
+  const fullText = `${body}${sigText}${portalLine}`;
   const htmlContent = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.6">
     ${escapeHtml(body).replace(/\n/g, "<br>")}
+    <p style="margin-top:14px">Sincerely,<br>${escapeHtml(signer)}<br>Executor, ${escapeHtml(estateName)}</p>
     <p style="margin-top:18px"><a href="${SITE_URL}/dashboard" style="color:#2563eb">View the full estate update &amp; details &rarr;</a></p>
     <p style="margin-top:14px;font-size:12px;color:#9ca3af">You're receiving this as a beneficiary of the ${escapeHtml(estate?.deceased_name || "")} estate. Sent via SettleWell.</p>
   </div>`;

@@ -62,8 +62,11 @@ export const handler = async (event) => {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) return { statusCode: 500, body: JSON.stringify({ error: "BREVO_API_KEY is not configured" }) };
 
-  const { data: estate } = await admin.from("estates").select("deceased_name, inbound_token").eq("id", task.estate_id).single();
+  const { data: estate } = await admin.from("estates").select("deceased_name, inbound_token, administrator_name").eq("id", task.estate_id).single();
   const estateName = estate?.deceased_name ? `Estate of ${estate.deceased_name}` : "Estate";
+  const signer = estate?.administrator_name || "The Executor";
+  const sigText = `\n\nSincerely,\n${signer}\nExecutor, ${estateName}`;
+  const sigHtml = `<p style="margin-top:14px">Sincerely,<br>${escapeHtml(signer)}<br>Executor, ${escapeHtml(estateName)}</p>`;
   const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN || "in.settlewellestate.com";
   const replyTo = estate?.inbound_token ? { email: `${estate.inbound_token}@${INBOUND_DOMAIN}`, name: estateName } : (caller.email ? { email: caller.email } : undefined);
 
@@ -73,21 +76,23 @@ export const handler = async (event) => {
     ? `Question about the ${estate?.deceased_name || ""} estate: ${task.text}`.trim()
     : `Task for the ${estate?.deceased_name || ""} estate: ${task.text}`.trim();
   const bodyText = isQuestion
-    ? `Hello${first},\n\nThis is regarding the ${estateName} (task: "${task.text}").\n\n${message.trim()}\n\nPlease reply to this email. Thank you.`
-    : `Hello${first},\n\nThis is regarding the ${estateName}. We'd like your help with the following:\n\n${task.text}${task.detail ? `\n\n${task.detail}` : ""}\n\nPlease reply to this email with any questions or once it's handled. Thank you.`;
+    ? `Hello${first},\n\nThis is regarding the ${estateName} (task: "${task.text}").\n\n${message.trim()}\n\nPlease reply to this email with any questions.${sigText}`
+    : `Hello${first},\n\nThis is regarding the ${estateName}. We'd like your help with the following:\n\n${task.text}${task.detail ? `\n\n${task.detail}` : ""}\n\nPlease reply with any questions, or let us know once it's handled.${sigText}`;
   const html = isQuestion
     ? `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.6">
         <p>Hello${escapeHtml(first)},</p>
         <p>This is regarding the ${escapeHtml(estateName)} (task: &ldquo;${escapeHtml(task.text)}&rdquo;).</p>
         <p>${escapeHtml(message.trim()).replace(/\n/g, "<br>")}</p>
-        <p>Please reply to this email. Thank you.</p>
+        <p>Please reply to this email with any questions.</p>
+        ${sigHtml}
       </div>`
     : `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;line-height:1.6">
         <p>Hello${escapeHtml(first)},</p>
         <p>This is regarding the ${escapeHtml(estateName)}. We'd like your help with the following:</p>
         <p style="font-weight:600">${escapeHtml(task.text)}</p>
         ${task.detail ? `<p>${escapeHtml(task.detail).replace(/\n/g, "<br>")}</p>` : ""}
-        <p>Please reply to this email with any questions or once it's handled. Thank you.</p>
+        <p>Please reply with any questions, or let us know once it's handled.</p>
+        ${sigHtml}
       </div>`;
 
   let emailed = false, texted = false;
