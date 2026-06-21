@@ -316,6 +316,17 @@ export const handler = async (event) => {
       recipient_id: recipientId, recipient_name: contact.name || toEmail,
       recipient_cc: cc || null, recipient_bcc: bcc || null,
     });
+
+    // Also capture it on the unified communications timeline (non-fatal).
+    try {
+      await admin.from("estate_contact_interactions").insert({
+        estate_id: estateId, contact_id: recipientId, direction: "outbound", channel: "email",
+        subject: report.title,
+        summary: `Report "${report.title}" emailed to ${toEmail}${ccList.length ? ` (cc: ${ccList.map(c => c.email).join(", ")})` : ""}`,
+        is_private: false, source: "app", occurred_at: new Date().toISOString(),
+      });
+    } catch (logErr) { console.warn("report interaction log failed:", logErr?.message); }
+
     return { statusCode: 200, body: JSON.stringify({ success: true, to: toEmail }) };
   } catch (e) {
     console.error("send-report error:", e);
