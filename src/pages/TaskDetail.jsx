@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { useUser } from '../lib/AuthContext'
 import { isFullAccess } from '../lib/roles'
@@ -40,6 +40,7 @@ export default function TaskDetail() {
   const [estateUsers, setEstateUsers] = useState([])
   const [editingAssignment, setEditingAssignment] = useState(false)
   const [newAssignedTo, setNewAssignedTo] = useState('')
+  const [notifying, setNotifying] = useState(false)
   const [meeting, setMeeting] = useState(null)   // meeting linked to this task (if any)
 
   useEffect(() => {
@@ -81,13 +82,15 @@ export default function TaskDetail() {
       .order('name')
     setAllDocs(docs ?? [])
 
-    // Load estate users for assignment
-    const { data: users } = await supabase
-      .from('estate_users')
-      .select('*')
-      .eq('estate_id', t.data?.estate_id)
+    // Load estate users AND contacts for assignment
+    const [{ data: users }, { data: assignContacts }] = await Promise.all([
+      supabase.from('estate_users').select('*').eq('estate_id', t.data?.estate_id),
+      supabase.from('estate_contacts').select('id, name, role, email, emails, phone').eq('estate_id', t.data?.estate_id).order('name'),
+    ])
     setEstateUsers(users ?? [])
-    setNewAssignedTo(t.data?.assigned_to || '')
+    setContacts(assignContacts ?? [])
+    // Encode current assignment: contact -> "c:<id>", app user -> "u:<name>".
+    setNewAssignedTo(t.data?.assigned_contact_id ? `c:${t.data.assigned_contact_id}` : (t.data?.assigned_to ? `u:${t.data.assigned_to}` : ''))
 
     // If a meeting is tracked by this task, load it so its prep checklist shows here too.
     const { data: mtg } = await supabase
@@ -367,12 +370,33 @@ export default function TaskDetail() {
   }
 
   async function updateAssignment() {
-    await supabase
-      .from('estate_tasks')
-      .update({ assigned_to: newAssignedTo })
-      .eq('id', id)
-    setTask(prev => ({ ...prev, assigned_to: newAssignedTo }))
+    let assigned_to = null, assigned_contact_id = null
+    if (newAssignedTo.startsWith('c:')) {
+      const c = contacts.find(x => x.id === newAssignedTo.slice(2))
+      assigned_to = c?.name || null; assigned_contact_id = c?.id || null
+    } else if (newAssignedTo.startsWith('u:')) {
+      assigned_to = newAssignedTo.slice(2)
+    }
+    await supabase.from('estate_tasks').update({ assigned_to, assigned_contact_id }).eq('id', id)
+    setTask(prev => ({ ...prev, assigned_to, assigned_contact_id }))
     setEditingAssignment(false)
+  }
+
+  // Email the contact this task is assigned to (manual — outward-facing).
+  async function notifyAssignee() {
+    setNotifying(true)
+    try {
+      const token = await getAccessToken()
+      const r = await fetch('/.netlify/functions/notify-assignee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ taskId: id }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Could not notify')
+      alert(`Emailed ${d.to || 'the contact'} about this task.`)
+    } catch (e) { alert(e.message || 'Could not notify the contact') }
+    finally { setNotifying(false) }
   }
 
   if (loading) return <div className="p-8 text-gray-400">Loading...</div>
@@ -416,8 +440,15 @@ export default function TaskDetail() {
           {task.tag && <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-full">{task.tag}</span>}
           {task.assigned_to && (
             <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
-              👤 {task.assigned_to}
+              {task.assigned_contact_id ? '📇' : '👤'} {task.assigned_to}
             </span>
+          )}
+          {task.assigned_contact_id && canSeePrivate && (
+            <button onClick={notifyAssignee} disabled={notifying}
+              title="Email this contact the task details"
+              className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 disabled:opacity-50">
+              {notifying ? 'Sending…' : '✉️ Notify'}
+            </button>
           )}
         </div>
         {editingTitle ? (
@@ -460,9 +491,20 @@ export default function TaskDetail() {
                 className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded px-2 py-1 text-xs"
               >
                 <option value="">Unassigned</option>
-                {estateUsers.map(u => (
-                  <option key={u.id} value={u.name}>{u.name}</option>
-                ))}
+                {estateUsers.length > 0 && (
+                  <optgroup label="People with app access">
+                    {estateUsers.map(u => (
+                      <option key={u.id} value={`u:${u.name}`}>{u.name}</option>
+                    ))}
+                  </optgroup>
+                )}
+                {contacts.length > 0 && (
+                  <optgroup label="Contacts">
+                    {contacts.map(c => (
+                      <option key={c.id} value={`c:${c.id}`}>{c.name}{c.role ? ` (${c.role})` : ''}</option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
               <button onClick={updateAssignment} className="text-blue-600 hover:underline">Save</button>
               <button onClick={() => setEditingAssignment(false)} className="text-gray-400 hover:text-gray-600">Cancel</button>
