@@ -38,6 +38,7 @@ export default function Communications() {
   const [contacts, setContacts] = useState([])
   const [interactions, setInteractions] = useState([])
   const [meetings, setMeetings] = useState([])
+  const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Filters
@@ -75,14 +76,16 @@ export default function Communications() {
 
   async function loadAll() {
     setLoading(true)
-    const [cRes, iRes, mRes] = await Promise.all([
+    const [cRes, iRes, mRes, msgRes] = await Promise.all([
       supabase.from('estate_contacts').select('id, name, role, emails, estate_id').in('estate_id', familyIds).order('name'),
       supabase.from('estate_contact_interactions').select('*').in('estate_id', familyIds).order('occurred_at', { ascending: false }),
       supabase.from('estate_meetings').select('*').in('estate_id', familyIds).order('scheduled_at', { ascending: false }),
+      supabase.from('estate_messages').select('*').in('estate_id', familyIds).order('created_at', { ascending: false }),
     ])
     setContacts(cRes.data ?? [])
     setInteractions(iRes.data ?? [])
     setMeetings(mRes.data ?? [])
+    setMessages(msgRes.data ?? [])
     setLoading(false)
   }
 
@@ -93,7 +96,9 @@ export default function Communications() {
   const events = useMemo(() => ([
     ...interactions.map(i => ({ key: `i-${i.id}`, type: 'comm', when: i.occurred_at || i.created_at, estateId: i.estate_id, contactId: i.contact_id, data: i })),
     ...meetings.map(m => ({ key: `m-${m.id}`, type: 'meeting', when: m.scheduled_at, estateId: m.estate_id, contactId: m.contact_id, data: m })),
-  ].sort((a, b) => new Date(b.when || 0) - new Date(a.when || 0))), [interactions, meetings])
+    // In-app heir/executor messages (non-private) appear here too for one unified record.
+    ...messages.filter(m => !m.is_private).map(m => ({ key: `msg-${m.id}`, type: 'message', when: m.created_at, estateId: m.estate_id, contactId: null, data: m })),
+  ].sort((a, b) => new Date(b.when || 0) - new Date(a.when || 0))), [interactions, meetings, messages])
 
   const q = search.toLowerCase()
   const filtered = events.filter(ev => {
@@ -104,6 +109,7 @@ export default function Communications() {
       const hay = [
         contactName(ev.contactId, ev.data.contact_name),
         ev.data.summary, ev.data.subject, ev.data.notes,
+        ev.data.body, ev.data.author_name,
       ].filter(Boolean).join(' ').toLowerCase()
       if (!hay.includes(q)) return false
     }
@@ -586,6 +592,19 @@ export default function Communications() {
           <div className="space-y-3">
             {filtered.map(ev => {
               const nm = contactName(ev.contactId, ev.data.contact_name)
+              if (ev.type === 'message') {
+                const m = ev.data
+                return (
+                  <div key={ev.key} className="text-sm border-l-2 border-indigo-200 dark:border-indigo-900 pl-3">
+                    <div className="text-xs text-gray-400 mb-0.5">
+                      {whenStr(ev.when)} · 💬 In-app message · {m.author_name || 'Member'}{m.author_role ? ` (${m.author_role})` : ''}
+                      {multiEstate && <span> · {estateName(ev.estateId)}</span>}
+                    </div>
+                    <div className="text-gray-700 dark:text-gray-300 whitespace-pre-line">{m.body}</div>
+                    <Link to="/messages" className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">Open Messages →</Link>
+                  </div>
+                )
+              }
               if (ev.type === 'meeting') {
                 const m = ev.data
                 return (
