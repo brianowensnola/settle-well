@@ -35,15 +35,22 @@ export const handler = async (event) => {
   if (cErr || !caller) return { statusCode: 401, body: JSON.stringify({ error: "invalid session" }) };
 
   const { data: task } = await admin.from("estate_tasks")
-    .select("id, text, detail, estate_id, assigned_contact_id").eq("id", taskId).single();
+    .select("id, text, detail, estate_id, assigned_contact_id, assigned_user_id").eq("id", taskId).single();
   if (!task) return { statusCode: 404, body: JSON.stringify({ error: "task not found" }) };
 
   const { data: roles } = await admin.from("estate_users").select("role").eq("auth_user_id", caller.id).eq("estate_id", task.estate_id);
   if (!(roles || []).some(r => r.role === "administrator" || r.role === "executor"))
     return { statusCode: 403, body: JSON.stringify({ error: "executor access required" }) };
-  if (!task.assigned_contact_id) return { statusCode: 400, body: JSON.stringify({ error: "this task isn't assigned to a contact" }) };
 
-  const { data: contact } = await admin.from("estate_contacts").select("name, email, emails, phone").eq("id", task.assigned_contact_id).single();
+  // Resolve the assignee — a contact or an app user (heir/collaborator/executor).
+  let contact = null;
+  if (task.assigned_contact_id) {
+    ({ data: contact } = await admin.from("estate_contacts").select("name, email, emails, phone").eq("id", task.assigned_contact_id).single());
+  } else if (task.assigned_user_id) {
+    ({ data: contact } = await admin.from("estate_users").select("name, email, phone").eq("id", task.assigned_user_id).single());
+  } else {
+    return { statusCode: 400, body: JSON.stringify({ error: "this task isn't assigned to anyone reachable" }) };
+  }
   const toEmail = contact?.email || (Array.isArray(contact?.emails) ? contact.emails[0] : null);
 
   const apiKey = process.env.BREVO_API_KEY;

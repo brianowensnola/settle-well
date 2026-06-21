@@ -91,8 +91,15 @@ export default function TaskDetail() {
     ])
     setEstateUsers(users ?? [])
     setContacts(assignContacts ?? [])
-    // Encode current assignment: contact -> "c:<id>", app user -> "u:<name>".
-    setNewAssignedTo(t.data?.assigned_contact_id ? `c:${t.data.assigned_contact_id}` : (t.data?.assigned_to ? `u:${t.data.assigned_to}` : ''))
+    // Encode current assignment: contact -> "c:<id>", app user -> "u:<id>".
+    // Fall back to matching a legacy name-only assignment to a user.
+    const legacyUser = (!t.data?.assigned_user_id && t.data?.assigned_to)
+      ? (users ?? []).find(u => u.name === t.data.assigned_to) : null
+    setNewAssignedTo(
+      t.data?.assigned_contact_id ? `c:${t.data.assigned_contact_id}`
+      : t.data?.assigned_user_id ? `u:${t.data.assigned_user_id}`
+      : legacyUser ? `u:${legacyUser.id}` : ''
+    )
 
     // If a meeting is tracked by this task, load it so its prep checklist shows here too.
     const { data: mtg } = await supabase
@@ -372,32 +379,38 @@ export default function TaskDetail() {
   }
 
   async function updateAssignment() {
-    let assigned_to = null, assigned_contact_id = null
+    let assigned_to = null, assigned_contact_id = null, assigned_user_id = null
     if (newAssignedTo.startsWith('c:')) {
       const c = contacts.find(x => x.id === newAssignedTo.slice(2))
       assigned_to = c?.name || null; assigned_contact_id = c?.id || null
     } else if (newAssignedTo.startsWith('u:')) {
-      assigned_to = newAssignedTo.slice(2)
+      const u = estateUsers.find(x => x.id === newAssignedTo.slice(2))
+      assigned_to = u?.name || null; assigned_user_id = u?.id || null
     }
-    await supabase.from('estate_tasks').update({ assigned_to, assigned_contact_id }).eq('id', id)
-    setTask(prev => ({ ...prev, assigned_to, assigned_contact_id }))
+    const isNewUserAssignment = assigned_user_id && assigned_user_id !== task.assigned_user_id
+    await supabase.from('estate_tasks').update({ assigned_to, assigned_contact_id, assigned_user_id }).eq('id', id)
+    setTask(prev => ({ ...prev, assigned_to, assigned_contact_id, assigned_user_id }))
     setEditingAssignment(false)
+    // App users are auto-notified the moment they're assigned (email now, text
+    // when the number is live). Contacts stay manual (external).
+    if (isNewUserAssignment) notifyAssignee(true)
   }
 
-  // Email the contact this task is assigned to (manual — outward-facing).
-  async function notifyAssignee() {
+  // Notify the assignee (contact or app user) about this task — email now, SMS
+  // when the number is live. `auto` = fired right after assignment (quieter copy).
+  async function notifyAssignee(auto = false) {
     setNotifying(true)
     try {
       const token = await getAccessToken()
       const r = await fetch('/.netlify/functions/notify-assignee', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ taskId: id }),
+        body: JSON.stringify({ taskId: id, channels: ['email', 'sms'] }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Could not notify')
-      alert(`Emailed ${d.to || 'the contact'} about this task.`)
-    } catch (e) { alert(e.message || 'Could not notify the contact') }
+      alert(auto ? `Assigned and notified ${d.to || 'them'} by email.` : `Emailed ${d.to || 'the assignee'} about this task.`)
+    } catch (e) { alert(e.message || 'Could not notify the assignee') }
     finally { setNotifying(false) }
   }
 
@@ -466,15 +479,15 @@ export default function TaskDetail() {
               {task.assigned_contact_id ? '📇' : '👤'} {task.assigned_to}
             </span>
           )}
-          {task.assigned_contact_id && canSeePrivate && (
+          {(task.assigned_contact_id || task.assigned_user_id) && canSeePrivate && (
             <>
-              <button onClick={notifyAssignee} disabled={notifying}
-                title="Email this contact the task details"
+              <button onClick={() => notifyAssignee(false)} disabled={notifying}
+                title="Email the assignee the task details"
                 className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200 disabled:opacity-50">
                 {notifying ? 'Sending…' : '✉️ Notify'}
               </button>
               <button onClick={() => setAskOpen(o => !o)}
-                title="Email this contact a question about this task"
+                title="Email the assignee a question about this task"
                 className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full hover:bg-gray-200">
                 💬 Ask a question
               </button>
@@ -482,7 +495,7 @@ export default function TaskDetail() {
           )}
         </div>
 
-        {askOpen && task.assigned_contact_id && canSeePrivate && (
+        {askOpen && (task.assigned_contact_id || task.assigned_user_id) && canSeePrivate && (
           <div className="mb-3 border border-gray-200 dark:border-gray-800 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50">
             <label className="text-xs text-gray-500 block mb-1">Ask {task.assigned_to} a question (emailed to them; their reply comes back to this estate)</label>
             <textarea value={askText} onChange={e => setAskText(e.target.value)} rows={3}
@@ -540,7 +553,7 @@ export default function TaskDetail() {
                 {estateUsers.length > 0 && (
                   <optgroup label="People with app access">
                     {estateUsers.map(u => (
-                      <option key={u.id} value={`u:${u.name}`}>{u.name}</option>
+                      <option key={u.id} value={`u:${u.id}`}>{u.name}</option>
                     ))}
                   </optgroup>
                 )}
