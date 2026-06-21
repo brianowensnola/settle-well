@@ -4,6 +4,7 @@ import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { ASSET_TYPE_LABELS, ASSET_DOC_CHECKLIST, assetRequiredItems } from '../lib/assetTypes'
+import { familySiblings, setAssetSharedWith, moveAssetToEstate } from '../lib/assetActions'
 
 const DISPOSITIONS = ['undecided', 'keep', 'sell', 'transfer', 'gift', 'sold', 'distributed']
 const PHASE_FOR_TYPE = {
@@ -127,26 +128,7 @@ export default function AssetDetail() {
       + (tasks.length ? ` ${tasks.length} linked task(s) move too.` : ''))) return
     setMoving(true)
     try {
-      // Re-file linked tasks into the target estate's matching phase (by label).
-      if (tasks.length) {
-        const [{ data: srcSec }, { data: tgtSec }] = await Promise.all([
-          supabase.from('estate_sections').select('id, label').eq('estate_id', asset.estate_id),
-          supabase.from('estate_sections').select('id, label').eq('estate_id', targetId),
-        ])
-        const labelBySrc = Object.fromEntries((srcSec ?? []).map(s => [s.id, s.label]))
-        const idByLabel = Object.fromEntries((tgtSec ?? []).map(s => [s.label, s.id]))
-        for (const t of tasks) {
-          await supabase.from('estate_tasks').update({
-            estate_id: targetId, section_id: idByLabel[labelBySrc[t.section_id]] ?? null,
-            updated_at: new Date().toISOString(),
-          }).eq('id', t.id)
-        }
-      }
-      // Attached documents move with the asset (stay attached, same estate).
-      await supabase.from('estate_documents').update({ estate_id: targetId }).eq('asset_id', asset.id)
-      // Move the asset itself.
-      const { error } = await supabase.from('estate_financials').update({ estate_id: targetId }).eq('id', asset.id)
-      if (error) throw error
+      await moveAssetToEstate(asset, targetId)
       alert(`Moved "${asset.name}" to the ${target?.deceased_name} estate.`)
       navigate('/assets')
     } catch (e) {
@@ -154,6 +136,17 @@ export default function AssetDetail() {
     } finally {
       setMoving(false)
     }
+  }
+
+  // Toggle whether this asset is joint (shared) with a sibling estate.
+  async function toggleJoint(sibId, on) {
+    const next = on ? [...new Set([...(asset.shared_with || []), sibId])] : (asset.shared_with || []).filter(x => x !== sibId)
+    setMoving(true)
+    try {
+      await setAssetSharedWith(asset.id, next)
+      setAsset(prev => ({ ...prev, shared_with: next }))
+    } catch (e) { alert('Could not update sharing: ' + e.message) }
+    finally { setMoving(false) }
   }
 
   // Add a checklist item as a "needed" document linked to this asset + obtain task.
@@ -245,6 +238,8 @@ export default function AssetDetail() {
   const checklist = ASSET_DOC_CHECKLIST[edit.asset_type] || []
   // Estates this asset can move to (executor on both, by RLS).
   const moveTargets = (estates ?? []).filter(e => e.id !== asset.estate_id && isFullAccess(e._role))
+  // Sibling estates in the same family — candidates for joint/shared.
+  const siblings = familySiblings(estates, (estates ?? []).find(e => e.id === asset.estate_id))
   const docByLabel = label => docs.find(d => d.name.toLowerCase() === label.toLowerCase())
   const set = (k, v) => setEdit(p => ({ ...p, [k]: v }))
 
@@ -457,15 +452,32 @@ export default function AssetDetail() {
         </div>
       )}
 
-      {/* Move to another estate */}
-      {moveTargets.length > 0 && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Move to another estate</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Moves this asset, its attached documents, and any linked tasks to the chosen estate.</p>
-          <select defaultValue="" disabled={moving} onChange={e => { moveAsset(e.target.value); e.target.value = '' }} className={`${inputCls}`}>
-            <option value="" disabled>{moving ? 'Moving…' : 'Choose estate…'}</option>
-            {moveTargets.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
-          </select>
+      {/* Joint / move — estate placement */}
+      {(siblings.length > 0 || moveTargets.length > 0) && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
+          {siblings.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Joint / shared with</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Joint assets are recorded once and counted once in the family roll-up.</p>
+              {siblings.map(s => (
+                <label key={s.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-0.5">
+                  <input type="checkbox" disabled={moving} checked={(asset.shared_with || []).includes(s.id)}
+                    onChange={e => toggleJoint(s.id, e.target.checked)} />
+                  {s.deceased_name}'s estate
+                </label>
+              ))}
+            </div>
+          )}
+          {moveTargets.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Move to another estate</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Moves this asset, its attached documents, and any linked tasks to the chosen estate.</p>
+              <select defaultValue="" disabled={moving} onChange={e => { moveAsset(e.target.value); e.target.value = '' }} className={`${inputCls}`}>
+                <option value="" disabled>{moving ? 'Working…' : 'Choose estate…'}</option>
+                {moveTargets.map(e => <option key={e.id} value={e.id}>{e.deceased_name}</option>)}
+              </select>
+            </div>
+          )}
         </div>
       )}
     </div>
