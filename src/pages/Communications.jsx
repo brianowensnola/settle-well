@@ -74,8 +74,20 @@ export default function Communications() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentEstate?.id, familyKey])
 
-  async function loadAll() {
-    setLoading(true)
+  // Auto-poll: silently re-check for new communications every 45s while the page
+  // is visible (and immediately when the tab regains focus), so inbound emails
+  // appear without a manual refresh. Silent = no loading flicker.
+  useEffect(() => {
+    if (!familyIds.length) return
+    const tick = () => { if (document.visibilityState === 'visible') loadAll(true) }
+    const id = setInterval(tick, 45000)
+    document.addEventListener('visibilitychange', tick)
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', tick) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEstate?.id, familyKey])
+
+  async function loadAll(silent = false) {
+    if (!silent) setLoading(true)
     const [cRes, iRes, mRes, msgRes] = await Promise.all([
       supabase.from('estate_contacts').select('id, name, role, emails, estate_id').in('estate_id', familyIds).order('name'),
       supabase.from('estate_contact_interactions').select('*').in('estate_id', familyIds).order('occurred_at', { ascending: false }),
@@ -86,7 +98,7 @@ export default function Communications() {
     setInteractions(iRes.data ?? [])
     setMeetings(mRes.data ?? [])
     setMessages(msgRes.data ?? [])
-    setLoading(false)
+    if (!silent) setLoading(false)
   }
 
   const contactById = useMemo(() => Object.fromEntries(contacts.map(c => [c.id, c])), [contacts])
