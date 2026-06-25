@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
@@ -11,6 +11,7 @@ const todayStr = () => new Date().toISOString().slice(0, 10)
 export default function ContactDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { currentEstate, estates, role } = useEstate()
   const canDelete = isFullAccess(role)
   const [contact, setContact] = useState(null)
@@ -38,6 +39,15 @@ export default function ContactDetail() {
       setLoading(false)
     })
   }, [id])
+
+  // Arrived here via the Contacts-list "Call" button → open the call-log note.
+  useEffect(() => {
+    if (location.state?.call && contact) {
+      startCallLog()
+      navigate(location.pathname, { replace: true, state: {} }) // clear so it doesn't re-fire
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, contact])
 
   async function scheduleMeeting() {
     if (!meetingForm.scheduled_at) return

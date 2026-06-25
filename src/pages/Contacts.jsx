@@ -1,13 +1,24 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { CONTACT_ROLES } from '../lib/constants'
 
 export default function Contacts() {
+  const navigate = useNavigate()
   const { currentEstate, estates, role } = useEstate()
   const canManage = isFullAccess(role)  // only the executor adds/edits contacts
+
+  // Call straight from the list: dial, then open the contact with the call-log
+  // note ready (same as the contact page's Call button) so it gets captured.
+  function callFromList(e, c) {
+    e.preventDefault(); e.stopPropagation()
+    const phone = (c.phones || []).find(Boolean)
+    if (!phone) return
+    window.location.href = `tel:${phone.replace(/[^\d+]/g, '')}`
+    navigate(`/contacts/${c.id}`, { state: { call: true } })
+  }
   const [contacts, setContacts] = useState([])
   const [appUserEmails, setAppUserEmails] = useState(new Set())
   const [search, setSearch] = useState('')
@@ -288,6 +299,10 @@ export default function Contacts() {
                       {c.phones?.length > 0 && c.phones.map((p, i) => <div key={i}>{c.phone_labels?.[i] || 'Phone'}: {p}</div>)}
                       {c.emails?.length > 0 && c.emails.map((e, i) => <div key={i}>{c.email_labels?.[i] || 'Email'}: {e}</div>)}
                     </div>
+                    {(c.phones || []).some(Boolean) && (
+                      <button onClick={e => callFromList(e, c)} title="Call (and log it)"
+                        className="shrink-0 self-center text-sm px-2.5 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full hover:bg-green-200">📞</button>
+                    )}
                   </Link>
                 ))}
               </div>
