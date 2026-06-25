@@ -326,8 +326,15 @@ export default function ContactDetail() {
               </div>
             </div>
             <div className="space-y-1 text-sm">
-              {contact.phones?.length > 0 && contact.phones.map((p, i) => <div key={i}><span className="text-gray-400">{contact.phone_labels?.[i] || 'Phone'}: </span>{p}</div>)}
-              {contact.emails?.length > 0 && contact.emails.map((e, i) => <div key={i}><span className="text-gray-400">{contact.email_labels?.[i] || 'Email'}: </span>{e}</div>)}
+              {contact.phones?.length > 0 && contact.phones.map((p, i) => (
+                <div key={i} className="flex items-center gap-2 flex-wrap">
+                  <span><span className="text-gray-400">{contact.phone_labels?.[i] || 'Phone'}: </span>{p}</span>
+                  <a href={`tel:${p.replace(/[^\d+]/g, '')}`} className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full hover:bg-green-200">📞 Call</a>
+                </div>
+              ))}
+              {contact.emails?.length > 0 && contact.emails.map((e, i) => (
+                <div key={i}><span className="text-gray-400">{contact.email_labels?.[i] || 'Email'}: </span><a href={`mailto:${e}`} className="text-blue-600 hover:underline">{e}</a></div>
+              ))}
               {contact.address && <div className="whitespace-pre-line"><span className="text-gray-400">Address: </span>{contact.address}</div>}
               {contact.website && (
                 <div>
