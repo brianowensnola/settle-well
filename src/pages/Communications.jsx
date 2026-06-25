@@ -313,6 +313,7 @@ export default function Communications() {
           <button onClick={() => { if (panel === 'compose') { setPanel(null); return } const def = familyEstates.find(e => e.id === currentEstate?.id)?.id || familyEstates[0]?.id || ''; setCm(p => ({ ...p, estateId: def })); setCmMsg(''); setPanel('compose') }} className="px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800">✍️ Compose email</button>
           <button onClick={() => { setPanel(panel === 'log' ? null : 'log') }} className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">+ Log</button>
           <button onClick={() => { panel === 'send' ? setPanel(null) : openSend() }} className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">📎 Send documents</button>
+          <Link to="/contacts" className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">👥 Contacts</Link>
         </div>
       </div>
 
