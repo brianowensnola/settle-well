@@ -30,6 +30,7 @@ export default function AllEstates() {
   const [aiByEstate, setAiByEstate] = useState({})
   const [lastRunByEstate, setLastRunByEstate] = useState({})
   const [mailPending, setMailPending] = useState(0)
+  const [commsNew, setCommsNew] = useState(0)
   const [familyName, setFamilyName] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -67,7 +68,7 @@ export default function AllEstates() {
     const ids = familyEstateIds
     if (ids.length === 0) { setLoading(false); return }
 
-    const [tasksRes, secRes, finRes, mtgRes, sugRes, agentRes, mailRes] = await Promise.all([
+    const [tasksRes, secRes, finRes, mtgRes, sugRes, agentRes, mailRes, commsRes] = await Promise.all([
       supabase.from('estate_tasks').select('id, estate_id, status, text, section_id, assigned_to').in('estate_id', ids).is('parent_task_id', null),
       supabase.from('estate_sections').select('id, label, sort_order').in('estate_id', ids),
       supabase.from('estate_financials').select('estate_id, amount, category, status').in('estate_id', ids),
@@ -75,6 +76,7 @@ export default function AllEstates() {
       supabase.from('estate_ai_suggestions').select('estate_id').in('estate_id', ids).eq('status', 'pending'),
       supabase.from('estate_ai_agent_state').select('estate_id, last_run_at').in('estate_id', ids),
       supabase.from('family_mail').select('id').eq('status', 'pending'),
+      supabase.from('estate_contact_interactions').select('id').in('estate_id', ids).eq('source', 'inbound').is('reviewed_at', null),
     ])
 
     const allTasks = tasksRes.data ?? []
@@ -110,6 +112,7 @@ export default function AllEstates() {
     setAiByEstate(aiCounts)
     setLastRunByEstate(runs)
     setMailPending((mailRes.data ?? []).length)
+    setCommsNew((commsRes.data ?? []).length)
     setLoading(false)
   }
 
@@ -142,7 +145,7 @@ export default function AllEstates() {
   const quickLinks = [
     { to: '/all-tasks',        label: 'Combined Task List', icon: '✓',  desc: 'Every task across the family, in one place', badge: submitted.length },
     { to: '/family-finances',  label: 'Family Finances',    icon: '💰', desc: 'Accounts, debts, and obligations across estates' },
-    { to: '/communications',   label: 'Communications',     icon: '✉️', desc: 'Calls, emails, letters & documents — the full history', execOnly: true },
+    { to: '/communications',   label: 'Communications',     icon: '✉️', desc: 'Calls, emails, letters & documents — the full history', execOnly: true, badge: commsNew },
     { to: '/mail',             label: 'Mail Intake',        icon: '📬', desc: 'File incoming mail to the right estate', badge: mailPending },
     { to: '/executor',         label: 'Executor Tools',     icon: '🧰', desc: 'Assets, documents, reports, notifications & more', execOnly: true },
     { to: '/reports',          label: 'Reports',            icon: '📊', desc: 'Asset lists & ledgers — print, save, or email', execOnly: true },

@@ -55,7 +55,7 @@ export default function Layout() {
   const [expandedEstate, setExpandedEstate] = useState(currentEstate?.id)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [groupNames, setGroupNames] = useState({}) // group_id -> name
-  const [counts, setCounts] = useState({ mail: 0, ai: 0, submittedByEstate: {}, submittedTotal: 0 })
+  const [counts, setCounts] = useState({ mail: 0, ai: 0, comms: 0, submittedByEstate: {}, submittedTotal: 0 })
   const closeMobile = () => setMobileNavOpen(false)
 
   // Group estates into families. A grouped estate's family is its group; an
@@ -95,11 +95,14 @@ export default function Layout() {
       // AI badge counts the whole family's pending findings (the dashboard /
       // Assistant show them family-wide), so the number matches what you can act on.
       const famIds = familyMembers.map(e => e.id)
-      const [mailRes, subRes, aiRes] = await Promise.all([
+      const [mailRes, subRes, aiRes, commsRes] = await Promise.all([
         supabase.from('family_mail').select('id').eq('status', 'pending'),
         supabase.from('estate_tasks').select('estate_id').eq('status', 'submitted'),
         famIds.length
           ? supabase.from('estate_ai_suggestions').select('id').in('estate_id', famIds).eq('status', 'pending')
+          : Promise.resolve({ data: [] }),
+        famIds.length
+          ? supabase.from('estate_contact_interactions').select('id').in('estate_id', famIds).eq('source', 'inbound').is('reviewed_at', null)
           : Promise.resolve({ data: [] }),
       ])
       if (off) return
@@ -108,6 +111,7 @@ export default function Layout() {
       setCounts({
         mail: (mailRes.data ?? []).length,
         ai: (aiRes.data ?? []).length,
+        comms: (commsRes.data ?? []).length,
         submittedByEstate: byEstate,
         submittedTotal: (subRes.data ?? []).length,
       })
@@ -176,7 +180,7 @@ export default function Layout() {
         ].filter(({ to }) => canAccess(to, role))
         if (!showDash && childLinks.length === 0) return null
         // One combined badge so the executor's nav still signals "something needs you."
-        const famBadge = (counts.mail ?? 0) + familySubmitted + (isFullAccess(role) ? (counts.ai ?? 0) : 0)
+        const famBadge = (counts.mail ?? 0) + familySubmitted + (isFullAccess(role) ? (counts.ai ?? 0) + (counts.comms ?? 0) : 0)
         return (
           <>
             <div className="px-3 py-2 text-xs font-bold text-gray-700 dark:text-gray-300 mt-2">Family</div>
