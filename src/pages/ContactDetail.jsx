@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
@@ -17,6 +17,7 @@ export default function ContactDetail() {
   const [interactions, setInteractions] = useState([])
   const [meetings, setMeetings] = useState([])
   const [logForm, setLogForm] = useState({ direction: 'outbound', channel: 'phone', subject: '', summary: '', date: todayStr() })
+  const summaryRef = useRef(null)
   const [meetingForm, setMeetingForm] = useState({ scheduled_at: '', meeting_type: 'initial', notes: '' })
   const [prepBusy, setPrepBusy] = useState(null)
   const [editMtg, setEditMtg] = useState(null) // { id, at } for rescheduling a meeting
@@ -128,6 +129,16 @@ export default function ContactDetail() {
       await deleteCommunication(interactionId)
       setInteractions(prev => prev.filter(x => x.id !== interactionId))
     } catch (e) { alert(`Couldn't delete: ${e.message}`) }
+  }
+
+  // When a call is started, jump to the log note pre-set to an outbound phone
+  // call so what was discussed gets captured in the app right after.
+  function startCallLog() {
+    setLogForm(p => ({ ...p, channel: 'phone', direction: 'outbound', date: todayStr() }))
+    setTimeout(() => {
+      summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      summaryRef.current?.focus()
+    }, 100)
   }
 
   async function logInteraction() {
@@ -329,7 +340,7 @@ export default function ContactDetail() {
               {contact.phones?.length > 0 && contact.phones.map((p, i) => (
                 <div key={i} className="flex items-center gap-2 flex-wrap">
                   <span><span className="text-gray-400">{contact.phone_labels?.[i] || 'Phone'}: </span>{p}</span>
-                  <a href={`tel:${p.replace(/[^\d+]/g, '')}`} className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full hover:bg-green-200">📞 Call</a>
+                  <a href={`tel:${p.replace(/[^\d+]/g, '')}`} onClick={startCallLog} className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full hover:bg-green-200">📞 Call</a>
                 </div>
               ))}
               {contact.emails?.length > 0 && contact.emails.map((e, i) => (
@@ -453,6 +464,7 @@ export default function ContactDetail() {
           placeholder="Subject (optional) — e.g. Probate filing timeline"
           className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none mb-2" />
         <textarea
+          ref={summaryRef}
           value={logForm.summary}
           onChange={e => setLogForm(p => ({ ...p, summary: e.target.value }))}
           placeholder="What was discussed or decided..."
