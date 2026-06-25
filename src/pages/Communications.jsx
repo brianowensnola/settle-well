@@ -216,6 +216,20 @@ export default function Communications() {
     setInteractions(prev => prev.map(i => i.id === interactionId ? { ...i, contact_id: contactId } : i))
   }
 
+  // Mark auto-captured inbound items as reviewed (clears the "New" highlight).
+  async function markReviewed(id) {
+    const at = new Date().toISOString()
+    setInteractions(prev => prev.map(i => i.id === id ? { ...i, reviewed_at: at } : i))
+    await supabase.from('estate_contact_interactions').update({ reviewed_at: at }).eq('id', id)
+  }
+  async function markAllReviewed() {
+    const ids = interactions.filter(i => i.source === 'inbound' && !i.reviewed_at).map(i => i.id)
+    if (!ids.length) return
+    const at = new Date().toISOString()
+    setInteractions(prev => prev.map(i => ids.includes(i.id) ? { ...i, reviewed_at: at } : i))
+    await supabase.from('estate_contact_interactions').update({ reviewed_at: at }).in('id', ids)
+  }
+
   // Reply to a captured inbound email: open Compose pre-filled with the sender,
   // a "Re:" subject, and the original quoted. Sends via the estate (reply-to is
   // the estate inbox) so the thread stays captured.
@@ -314,6 +328,8 @@ export default function Communications() {
   if (!currentEstate) return <div className="p-8 text-gray-400">No estate selected.</div>
   if (!isFullAccess(role)) return <div className="p-8 text-gray-400">Communications is available to the executor only.</div>
 
+  const newCount = interactions.filter(i => i.source === 'inbound' && !i.reviewed_at).length
+
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto w-full">
       <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
@@ -328,6 +344,14 @@ export default function Communications() {
           <Link to="/contacts" className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200">👥 Contacts</Link>
         </div>
       </div>
+
+      {/* New (unreviewed) inbound — needs review */}
+      {newCount > 0 && (
+        <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-800 rounded-xl p-3 mb-4 flex items-center justify-between gap-3">
+          <span className="text-sm font-medium text-blue-900 dark:text-blue-200">🔵 {newCount} new received message{newCount !== 1 ? 's' : ''} to review</span>
+          <button onClick={markAllReviewed} className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Mark all reviewed</button>
+        </div>
+      )}
 
       {/* Estate inbox address(es) — what to give contacts so replies are captured */}
       <div className="bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-900 rounded-xl p-3 mb-5 text-sm">
@@ -635,10 +659,12 @@ export default function Communications() {
               }
               const i = ev.data
               const dir = i.direction === 'inbound' ? '↘ from them' : '↗ to them'
+              const isNew = i.source === 'inbound' && !i.reviewed_at
               return (
-                <div key={ev.key} className="flex items-start justify-between gap-2 border-l-2 border-gray-200 dark:border-gray-800 pl-3 group">
+                <div key={ev.key} className={`flex items-start justify-between gap-2 border-l-2 pl-3 group ${isNew ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-900/15 rounded-r-lg py-1' : 'border-gray-200 dark:border-gray-800'}`}>
                   <div className="text-sm min-w-0 flex-1">
                     <div className="text-xs text-gray-400 mb-0.5">
+                      {isNew && <span className="mr-1 text-[10px] uppercase tracking-wide bg-blue-600 text-white rounded px-1.5 py-0.5 font-semibold">New</span>}
                       {whenStr(ev.when)} · {channelIcon(i.channel)} {channelLabel(i.channel)} · {dir}
                       {multiEstate && <span> · {estateName(ev.estateId)}</span>}
                       {i.source === 'auto' && <span className="ml-1 text-[10px] uppercase tracking-wide bg-gray-100 dark:bg-gray-800 text-gray-500 rounded px-1">auto</span>}
@@ -650,6 +676,9 @@ export default function Communications() {
                     {i.summary && <div className="text-gray-600 dark:text-gray-400">{i.summary}</div>}
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
+                    {isNew && (
+                      <button onClick={() => markReviewed(i.id)} title="Mark as reviewed" className="text-xs text-blue-600 hover:underline">Mark reviewed</button>
+                    )}
                     {i.channel === 'email' && i.direction === 'inbound' && (
                       <button onClick={() => replyTo(i)} title="Reply" className="text-xs text-blue-600 hover:underline opacity-0 group-hover:opacity-100 transition-opacity">↩ Reply</button>
                     )}
