@@ -39,6 +39,7 @@ export default function Communications() {
   const [interactions, setInteractions] = useState([])
   const [meetings, setMeetings] = useState([])
   const [messages, setMessages] = useState([])
+  const [mtgNote, setMtgNote] = useState({ id: null, text: '' }) // inline meeting-notes editor
   const [loading, setLoading] = useState(true)
 
   // Filters
@@ -228,6 +229,19 @@ export default function Communications() {
     const at = new Date().toISOString()
     setInteractions(prev => prev.map(i => ids.includes(i.id) ? { ...i, reviewed_at: at } : i))
     await supabase.from('estate_contact_interactions').update({ reviewed_at: at }).in('id', ids)
+  }
+
+  // Meeting actions, available right here in the timeline (not just the contact card).
+  async function markMeetingDone(m) {
+    setMeetings(prev => prev.map(x => x.id === m.id ? { ...x, status: 'completed' } : x))
+    await supabase.from('estate_meetings').update({ status: 'completed' }).eq('id', m.id)
+    if (m.linked_task_id) await supabase.from('estate_tasks').update({ status: 'done', updated_at: new Date().toISOString() }).eq('id', m.linked_task_id)
+  }
+  async function saveMtgNote() {
+    const { id, text } = mtgNote
+    setMeetings(prev => prev.map(x => x.id === id ? { ...x, notes: text } : x))
+    setMtgNote({ id: null, text: '' })
+    await supabase.from('estate_meetings').update({ notes: text }).eq('id', id)
   }
 
   // Reply to a captured inbound email: open Compose pre-filled with the sender,
@@ -644,6 +658,7 @@ export default function Communications() {
               }
               if (ev.type === 'meeting') {
                 const m = ev.data
+                const editingNote = mtgNote.id === m.id
                 return (
                   <div key={ev.key} className="text-sm border-l-2 border-blue-200 dark:border-blue-900 pl-3">
                     <div className="text-xs text-gray-400 mb-0.5">
@@ -654,6 +669,22 @@ export default function Communications() {
                       {ev.contactId ? <Link to={`/contacts/${ev.contactId}`} className="font-medium hover:underline">{nm}</Link> : <span className="font-medium">{nm}</span>}
                       {m.notes && <span className="text-gray-600 dark:text-gray-400"> — {m.notes}</span>}
                     </div>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      {m.status === 'scheduled' && <button onClick={() => markMeetingDone(m)} className="text-xs text-green-700 dark:text-green-400 hover:underline">✓ Mark done</button>}
+                      <button onClick={() => setMtgNote({ id: m.id, text: m.notes || '' })} className="text-xs text-blue-600 hover:underline">📝 {m.notes ? 'Edit note' : 'Add note'}</button>
+                      {ev.contactId && <Link to={`/contacts/${ev.contactId}`} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">Open meeting →</Link>}
+                    </div>
+                    {editingNote && (
+                      <div className="mt-2">
+                        <textarea value={mtgNote.text} onChange={e => setMtgNote(s => ({ ...s, text: e.target.value }))} rows={2}
+                          placeholder="What was discussed / outcome…"
+                          className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm mb-1" />
+                        <div className="flex gap-2">
+                          <button onClick={saveMtgNote} className="px-3 py-1 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-xs">Save note</button>
+                          <button onClick={() => setMtgNote({ id: null, text: '' })} className="px-3 py-1 text-gray-500 text-xs hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">Cancel</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               }

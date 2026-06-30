@@ -22,6 +22,7 @@ export default function ContactDetail() {
   const [meetingForm, setMeetingForm] = useState({ scheduled_at: '', meeting_type: 'initial', notes: '' })
   const [prepBusy, setPrepBusy] = useState(null)
   const [editMtg, setEditMtg] = useState(null) // { id, at } for rescheduling a meeting
+  const [mtgNote, setMtgNote] = useState({ id: null, text: '' }) // post-meeting notes editor
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [loading, setLoading] = useState(true)
@@ -131,6 +132,13 @@ export default function ContactDetail() {
       await supabase.from('estate_tasks').update({ status: 'done', updated_at: new Date().toISOString() }).eq('id', meeting.linked_task_id)
     }
     setMeetings(prev => prev.map(x => x.id === meeting.id ? { ...x, status } : x))
+  }
+
+  async function saveMeetingNote() {
+    const { id, text } = mtgNote
+    setMeetings(prev => prev.map(x => x.id === id ? { ...x, notes: text } : x))
+    setMtgNote({ id: null, text: '' })
+    await supabase.from('estate_meetings').update({ notes: text }).eq('id', id)
   }
 
   async function removeInteraction(interactionId) {
@@ -440,12 +448,24 @@ export default function ContactDetail() {
                 )}
 
                 {/* Actions */}
-                <div className="mt-2 flex items-center gap-3">
+                <div className="mt-2 flex items-center gap-3 flex-wrap">
                   {m.status === 'scheduled' && editMtg?.id !== m.id && <button onClick={() => setEditMtg({ id: m.id, at: toLocalInput(m.scheduled_at) })} className="text-xs text-blue-600 hover:underline">Edit time</button>}
                   {m.status === 'scheduled' && <button onClick={() => setMeetingStatus(m, 'completed')} className="text-xs text-green-700 hover:underline">Mark completed</button>}
                   {m.status === 'scheduled' && <button onClick={() => setMeetingStatus(m, 'cancelled')} className="text-xs text-gray-400 hover:text-red-500 hover:underline">Cancel</button>}
+                  <button onClick={() => setMtgNote({ id: m.id, text: m.notes || '' })} className="text-xs text-blue-600 hover:underline">📝 {m.notes ? 'Edit notes' : 'Add notes'}</button>
                   {m.linked_task_id && <Link to={`/tasks/${m.linked_task_id}`} className="text-xs text-blue-600 hover:underline">View task →</Link>}
                 </div>
+                {mtgNote.id === m.id && (
+                  <div className="mt-2">
+                    <textarea value={mtgNote.text} onChange={e => setMtgNote(s => ({ ...s, text: e.target.value }))} rows={3}
+                      placeholder="What was discussed / outcome / next steps…"
+                      className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm mb-1 focus:outline-none" />
+                    <div className="flex gap-2">
+                      <button onClick={saveMeetingNote} className="px-3 py-1.5 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-xs">Save notes</button>
+                      <button onClick={() => setMtgNote({ id: null, text: '' })} className="px-3 py-1.5 text-gray-500 rounded-lg text-xs hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
