@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { DOC_TYPES } from '../lib/constants'
 import { CHANNELS, channelIcon, channelLabel, logCommunication, EMAIL_INTENTS, draftEmail, sendEstateEmail, estateInboxAddress, deleteCommunication } from '../lib/communications'
+import { buildDocumentSend } from '../lib/sendDocuments'
 
-const LINK_TTL_SECONDS = 7 * 24 * 60 * 60
 const todayStr = () => new Date().toISOString().slice(0, 10)
 const whenStr = d => d ? new Date(d).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
 
@@ -28,8 +28,6 @@ const appendEmail = (val, email) => {
 // actions that create them — log a communication, or send documents to anyone.
 export default function Communications() {
   const { currentEstate, estates, role } = useEstate()
-  const location = useLocation()
-  const navigate = useNavigate()
   const familyEstates = estates.filter(e =>
     currentEstate && (currentEstate.group_id ? e.group_id === currentEstate.group_id : e.id === currentEstate.id))
   const familyIds = familyEstates.length ? familyEstates.map(e => e.id) : (currentEstate ? [currentEstate.id] : [])
@@ -275,15 +273,6 @@ export default function Communications() {
     })()
   }, [panel, sEstate])
 
-  // Opened here from a contact card's "Send documents" — pre-target that contact.
-  useEffect(() => {
-    if (location.state?.send) {
-      openSend({ estateId: location.state.estateId, to: location.state.to })
-      navigate(location.pathname, { replace: true, state: {} })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state])
-
   // Recipient matched to a contact in this estate (if any); else we'll create one.
   const sSendContact = contacts.find(c => c.estate_id === sEstate &&
     (c.emails || []).some(e => (e || '').toLowerCase() === (sTo || '').trim().toLowerCase()))
@@ -298,50 +287,12 @@ export default function Communications() {
     }
     setSendBusy(true); setSendMsg('')
     try {
-      // Resolve or auto-create the recipient contact in this estate.
-      let recipientContactId = sSendContact?.id || null
-      const recipientName = sSendContact?.name || nameFromEmail(sendEmail)
-      if (!recipientContactId) {
-        const { data: newC, error: cErr } = await supabase.from('estate_contacts')
-          .insert({ estate_id: sEstate, name: recipientName, role: 'other', emails: [sendEmail] }).select().single()
-        if (cErr) throw cErr
-        recipientContactId = newC?.id || null
-        if (newC) setContacts(prev => [...prev, newC])
-      }
-      const paths = chosenDocs.map(d => d.file_path)
-      const { data: signed, error } = await supabase.storage.from('estate-documents').createSignedUrls(paths, LINK_TTL_SECONDS)
-      if (error) throw error
-      const byPath = Object.fromEntries((signed ?? []).map(r => [r.path, r.signedUrl]))
-      const lines = [`Documents for the ${estateName(sEstate)} estate`, '']
-      if (note.trim()) { lines.push(note.trim()); lines.push('') }
-      chosenDocs.forEach((d, i) => {
-        lines.push(`${i + 1}. ${d.name} (${DOC_TYPES[d.doc_type] ?? d.doc_type})`)
-        lines.push(`   ${byPath[d.file_path] || '[link unavailable]'}`)
+      const { mailtoHref, interaction, createdContact } = await buildDocumentSend({
+        estateId: sEstate, estateName: estateName(sEstate), to: sendEmail, docs: chosenDocs, note, cc: sCc, bcc: sBcc,
       })
-      lines.push(''); lines.push('These secure download links expire in 7 days.')
-      const body = lines.join('\n')
-      const subject = `Documents — ${estateName(sEstate)} Estate`
-
-      // Record the send and auto-capture it on the contact's timeline.
-      await supabase.from('attorney_document_sends').insert({
-        estate_id: sEstate,
-        document_ids: chosenDocs.map(d => d.id),
-        document_count: chosenDocs.length,
-        document_names: chosenDocs.map(d => d.name).join(', '),
-        sent_at: new Date().toISOString(),
-        recipient_name: `${recipientName} <${sendEmail}>`,
-      })
-      const comm = await logCommunication({
-        estateId: sEstate, contactId: recipientContactId, direction: 'outbound', channel: 'document',
-        subject: `Sent ${chosenDocs.length} document${chosenDocs.length !== 1 ? 's' : ''}`,
-        summary: `Sent to ${recipientName} (${sendEmail})${sCc.trim() ? ` (cc: ${sCc.trim()})` : ''}: ${chosenDocs.map(d => d.name).join(', ')}${note.trim() ? ` — “${note.trim()}”` : ''}`,
-        source: 'auto',
-      })
-      if (comm) setInteractions(prev => [comm, ...prev])
-      const params = [`subject=${encodeURIComponent(subject)}`, `body=${encodeURIComponent(body)}`]
-      if (sCc.trim()) params.unshift(`cc=${encodeURIComponent(sCc.trim())}`)
-      if (sBcc.trim()) params.unshift(`bcc=${encodeURIComponent(sBcc.trim())}`)
-      window.location.href = `mailto:${encodeURIComponent(sendEmail)}?${params.join('&')}`
+      if (createdContact) setContacts(prev => [...prev, createdContact])
+      if (interaction) setInteractions(prev => [interaction, ...prev])
+      window.location.href = mailtoHref
       setPanel(null)
     } catch (e) {
       setSendMsg(e.message || 'Could not prepare the email.')

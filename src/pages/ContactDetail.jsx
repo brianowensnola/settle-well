@@ -5,6 +5,7 @@ import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
 import { CONTACT_ROLES } from '../lib/constants'
 import { logCommunication, CHANNELS, channelLabel, channelIcon, deleteCommunication } from '../lib/communications'
+import SendDocumentsModal from '../components/SendDocumentsModal'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
@@ -23,6 +24,7 @@ export default function ContactDetail() {
   const [prepBusy, setPrepBusy] = useState(null)
   const [editMtg, setEditMtg] = useState(null) // { id, at } for rescheduling a meeting
   const [mtgNote, setMtgNote] = useState({ id: null, text: '' }) // post-meeting notes editor
+  const [showSend, setShowSend] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [loading, setLoading] = useState(true)
@@ -194,6 +196,15 @@ export default function ContactDetail() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto w-full">
+      {showSend && currentEstate && (
+        <SendDocumentsModal
+          estateId={currentEstate.id}
+          estateName={currentEstate.deceased_name}
+          defaultTo={contact.email || contact.emails?.[0] || ''}
+          onClose={() => setShowSend(false)}
+          onSent={i => { if (i) setInteractions(prev => [i, ...prev]) }}
+        />
+      )}
       <Link to="/contacts" className="text-sm text-gray-400 hover:text-gray-600 dark:text-gray-400 mb-4 block">← Back to contacts</Link>
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
@@ -346,7 +357,7 @@ export default function ContactDetail() {
               </div>
               <div className="flex gap-3 shrink-0">
                 {canDelete && (
-                  <button onClick={() => navigate('/communications', { state: { send: true, estateId: contact.estate_id, to: contact.email || contact.emails?.[0] || '' } })}
+                  <button onClick={() => setShowSend(true)}
                     className="text-xs text-blue-600 hover:underline">📎 Send documents</button>
                 )}
                 {canDelete && (
