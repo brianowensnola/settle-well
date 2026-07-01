@@ -6,6 +6,7 @@ import { isFullAccess } from '../lib/roles'
 import { loadContactRoles, roleLabelMap } from '../lib/contactRoles'
 import { logCommunication, CHANNELS, channelLabel, channelIcon, deleteCommunication } from '../lib/communications'
 import SendDocumentsModal from '../components/SendDocumentsModal'
+import ComposeEmailModal from '../components/ComposeEmailModal'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 
@@ -25,6 +26,7 @@ export default function ContactDetail() {
   const [editMtg, setEditMtg] = useState(null) // { id, at } for rescheduling a meeting
   const [mtgNote, setMtgNote] = useState({ id: null, text: '' }) // post-meeting notes editor
   const [showSend, setShowSend] = useState(false)
+  const [emailTo, setEmailTo] = useState(null) // recipient address → opens the compose modal
   const [roles, setRoles] = useState([])
   const roleMap = roleLabelMap(roles)
   const [editing, setEditing] = useState(false)
@@ -210,6 +212,17 @@ export default function ContactDetail() {
           onSent={i => { if (i) setInteractions(prev => [i, ...prev]) }}
         />
       )}
+      {emailTo !== null && currentEstate && (
+        <ComposeEmailModal
+          estateId={currentEstate.id}
+          contactId={id}
+          contactName={contact.name}
+          contactRole={contact.role}
+          defaultTo={emailTo}
+          onClose={() => setEmailTo(null)}
+          onSent={i => { if (i) setInteractions(prev => [i, ...prev]) }}
+        />
+      )}
       <Link to="/contacts" className="text-sm text-gray-400 hover:text-gray-600 dark:text-gray-400 mb-4 block">← Back to contacts</Link>
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 mb-4">
@@ -370,6 +383,10 @@ export default function ContactDetail() {
               </div>
               <div className="flex gap-3 shrink-0">
                 {canDelete && (
+                  <button onClick={() => setEmailTo(contact.email || contact.emails?.[0] || '')}
+                    className="text-xs text-blue-600 hover:underline">✉️ Email</button>
+                )}
+                {canDelete && (
                   <button onClick={() => setShowSend(true)}
                     className="text-xs text-blue-600 hover:underline">📎 Send documents</button>
                 )}
@@ -385,12 +402,19 @@ export default function ContactDetail() {
             <div className="space-y-1 text-sm">
               {contact.phones?.length > 0 && contact.phones.map((p, i) => (
                 <div key={i} className="flex items-center gap-2 flex-wrap">
-                  <span><span className="text-gray-400">{contact.phone_labels?.[i] || 'Phone'}: </span>{p}</span>
+                  <span className="text-gray-400">{contact.phone_labels?.[i] || 'Phone'}: </span>
+                  {/* Tapping the number itself places the call AND opens a note to log it */}
+                  <a href={`tel:${p.replace(/[^\d+]/g, '')}`} onClick={startCallLog} className="text-blue-600 hover:underline">{p}</a>
                   <a href={`tel:${p.replace(/[^\d+]/g, '')}`} onClick={startCallLog} className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full hover:bg-green-200">📞 Call</a>
                 </div>
               ))}
               {contact.emails?.length > 0 && contact.emails.map((e, i) => (
-                <div key={i}><span className="text-gray-400">{contact.email_labels?.[i] || 'Email'}: </span><a href={`mailto:${e}`} className="text-blue-600 hover:underline">{e}</a></div>
+                <div key={i}>
+                  <span className="text-gray-400">{contact.email_labels?.[i] || 'Email'}: </span>
+                  {canDelete
+                    ? <button onClick={() => setEmailTo(e)} className="text-blue-600 hover:underline">{e}</button>
+                    : <span className="text-gray-700 dark:text-gray-300">{e}</span>}
+                </div>
               ))}
               {contact.address && <div className="whitespace-pre-line"><span className="text-gray-400">Address: </span>{contact.address}</div>}
               {contact.website && (
