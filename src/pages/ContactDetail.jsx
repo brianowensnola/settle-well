@@ -346,6 +346,10 @@ export default function ContactDetail() {
               </div>
               <div className="flex gap-3 shrink-0">
                 {canDelete && (
+                  <button onClick={() => navigate('/communications', { state: { send: true, estateId: contact.estate_id, to: contact.email || contact.emails?.[0] || '' } })}
+                    className="text-xs text-blue-600 hover:underline">📎 Send documents</button>
+                )}
+                {canDelete && (
                   <button onClick={() => { setEditing(true); setEditData({ ...contact }) }}
                     className="text-xs text-blue-600 hover:underline">Edit</button>
                 )}

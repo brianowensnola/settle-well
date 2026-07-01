@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
@@ -28,6 +28,8 @@ const appendEmail = (val, email) => {
 // actions that create them — log a communication, or send documents to anyone.
 export default function Communications() {
   const { currentEstate, estates, role } = useEstate()
+  const location = useLocation()
+  const navigate = useNavigate()
   const familyEstates = estates.filter(e =>
     currentEstate && (currentEstate.group_id ? e.group_id === currentEstate.group_id : e.id === currentEstate.id))
   const familyIds = familyEstates.length ? familyEstates.map(e => e.id) : (currentEstate ? [currentEstate.id] : [])
@@ -259,9 +261,9 @@ export default function Communications() {
   }
 
   // ----- Send documents -----
-  function openSend() {
-    const def = familyEstates.find(e => e.id === currentEstate?.id)?.id || familyEstates[0]?.id || ''
-    setSEstate(def); setSTo(''); setSel({}); setNote(''); setSCc(''); setSBcc(''); setSendMsg('')
+  function openSend(opts) {
+    const def = opts?.estateId || familyEstates.find(e => e.id === currentEstate?.id)?.id || familyEstates[0]?.id || ''
+    setSEstate(def); setSTo(opts?.to || ''); setSel({}); setNote(''); setSCc(''); setSBcc(''); setSendMsg('')
     setPanel('send')
   }
   useEffect(() => {
@@ -272,6 +274,15 @@ export default function Communications() {
       setSel({})
     })()
   }, [panel, sEstate])
+
+  // Opened here from a contact card's "Send documents" — pre-target that contact.
+  useEffect(() => {
+    if (location.state?.send) {
+      openSend({ estateId: location.state.estateId, to: location.state.to })
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   // Recipient matched to a contact in this estate (if any); else we'll create one.
   const sSendContact = contacts.find(c => c.estate_id === sEstate &&
