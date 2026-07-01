@@ -461,26 +461,32 @@ export default function ContactDetail() {
                 )}
                 {m.notes && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{m.notes}</div>}
 
-                {/* AI prep */}
-                {prep.length === 0 ? (
-                  <button onClick={() => generatePrep(m)} disabled={prepBusy === m.id}
-                    className="mt-2 text-xs px-2.5 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50">
-                    {prepBusy === m.id ? 'Generating…' : '✨ Generate prep questions'}
-                  </button>
-                ) : (
+                {/* AI prep — collapsed by default so it doesn't crowd the card */}
+                <details className="mt-2">
+                  <summary className="cursor-pointer select-none text-xs text-purple-700 dark:text-purple-300 hover:underline w-fit">
+                    ✨ Meeting prep{prep.length ? ` (${prep.length})` : ''}
+                  </summary>
                   <div className="mt-2">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Prep questions</div>
-                    <div className="space-y-1">
-                      {prep.map((p, i) => (
-                        <label key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                          <input type="checkbox" checked={!!p.checked} onChange={() => togglePrep(m, i)} className="mt-1" />
-                          <span className={p.checked ? 'line-through text-gray-400' : ''}>{p.q}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <button onClick={() => generatePrep(m)} disabled={prepBusy === m.id} className="mt-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">{prepBusy === m.id ? 'Regenerating…' : '↻ Regenerate'}</button>
+                    {prep.length === 0 ? (
+                      <button onClick={() => generatePrep(m)} disabled={prepBusy === m.id}
+                        className="text-xs px-2.5 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50">
+                        {prepBusy === m.id ? 'Generating…' : 'Generate prep questions'}
+                      </button>
+                    ) : (
+                      <>
+                        <div className="space-y-1">
+                          {prep.map((p, i) => (
+                            <label key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                              <input type="checkbox" checked={!!p.checked} onChange={() => togglePrep(m, i)} className="mt-1" />
+                              <span className={p.checked ? 'line-through text-gray-400' : ''}>{p.q}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <button onClick={() => generatePrep(m)} disabled={prepBusy === m.id} className="mt-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">{prepBusy === m.id ? 'Regenerating…' : '↻ Regenerate'}</button>
+                      </>
+                    )}
                   </div>
-                )}
+                </details>
 
                 {/* Actions */}
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
