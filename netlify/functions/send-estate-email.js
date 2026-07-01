@@ -61,16 +61,24 @@ export const handler = async (event) => {
   const ccList = addrList(cc);
   const bccList = addrList(bcc);
 
-  // Attach real files via Brevo — it downloads each from a short-lived signed URL.
+  // Attach real files via Brevo as base64 content (more reliable than URL
+  // attachments, and lets us guarantee a filename WITH an extension — Brevo
+  // rejects attachments whose name has no extension).
   let brevoAttachments = [];
   if (Array.isArray(docIds) && docIds.length) {
     const { data: attDocs } = await admin.from("estate_documents")
       .select("name, file_path").eq("estate_id", estateId).in("id", docIds);
-    const withFiles = (attDocs || []).filter(d => d.file_path);
-    if (withFiles.length) {
-      const { data: signed } = await admin.storage.from("estate-documents").createSignedUrls(withFiles.map(d => d.file_path), 3600);
-      const urlByPath = Object.fromEntries((signed || []).map(s => [s.path, s.signedUrl]));
-      brevoAttachments = withFiles.filter(d => urlByPath[d.file_path]).map(d => ({ url: urlByPath[d.file_path], name: d.name || "document" }));
+    for (const d of (attDocs || [])) {
+      if (!d.file_path) continue;
+      try {
+        const { data: file, error: dErr } = await admin.storage.from("estate-documents").download(d.file_path);
+        if (dErr || !file) { console.warn("attachment download failed:", d.file_path, dErr?.message); continue; }
+        const buf = Buffer.from(await file.arrayBuffer());
+        const ext = (d.file_path.split(".").pop() || "").toLowerCase();
+        let nm = (d.name || "document").replace(/[\r\n]+/g, " ").trim();
+        if (ext && !nm.toLowerCase().endsWith("." + ext)) nm = `${nm}.${ext}`;
+        brevoAttachments.push({ content: buf.toString("base64"), name: nm });
+      } catch (e) { console.warn("attachment build failed:", d.file_path, e?.message); }
     }
   }
 
@@ -93,7 +101,7 @@ export const handler = async (event) => {
     if (!resp.ok) {
       const detail = await resp.text();
       console.error("Brevo send failed:", resp.status, detail);
-      return { statusCode: 502, body: JSON.stringify({ error: "The email couldn't be sent. Please try again." }) };
+      return { statusCode: 502, body: JSON.stringify({ error: `The email couldn't be sent (${resp.status}): ${String(detail).slice(0, 300)}` }) };
     }
 
     // Capture it on the contact's communications timeline.
