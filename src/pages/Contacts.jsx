@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
-import { CONTACT_ROLES } from '../lib/constants'
+import { loadContactRoles, roleLabelMap } from '../lib/contactRoles'
 
 export default function Contacts() {
   const navigate = useNavigate()
@@ -23,13 +23,16 @@ export default function Contacts() {
   const [appUserEmails, setAppUserEmails] = useState(new Set())
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', website: '', notes: '', shared_with: [] })
+  const [form, setForm] = useState({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], account_numbers: '', address: '', website: '', notes: '', shared_with: [] })
+  const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!currentEstate) return
     load()
   }, [currentEstate])
+
+  useEffect(() => { loadContactRoles().then(setRoles) }, [])
 
   async function load() {
     // Contacts whose home is this estate, OR that are shared into this estate.
@@ -66,6 +69,7 @@ export default function Contacts() {
       phone_labels,
       emails,
       email_labels,
+      account_numbers: (form.account_numbers || '').split('\n').map(s => s.trim()).filter(Boolean),
       address: form.address,
       website: form.website || null,
       notes: form.notes,
@@ -74,7 +78,7 @@ export default function Contacts() {
     }).select().single()
     if (data) setContacts(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
     setAdding(false)
-    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], address: '', website: '', notes: '', shared_with: [] })
+    setForm({ name: '', company: '', role: 'other', phones: [''], phone_labels: ['Cell'], emails: [''], email_labels: ['Primary'], account_numbers: '', address: '', website: '', notes: '', shared_with: [] })
   }
 
   async function seedContacts() {
@@ -145,7 +149,7 @@ export default function Contacts() {
               <label className="text-xs text-gray-500 block mb-1">Role</label>
               <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
                 className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-                {Object.entries(CONTACT_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
               </select>
             </div>
           </div>
@@ -235,6 +239,13 @@ export default function Contacts() {
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
           </div>
 
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Account numbers (one per line)</label>
+            <textarea value={form.account_numbers} onChange={e => setForm(p => ({ ...p, account_numbers: e.target.value }))}
+              placeholder={"e.g. Checking ...1234\nPolicy #ABC-9876"} rows={2}
+              className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+          </div>
+
           <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
             placeholder="Notes..." rows={2}
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
@@ -272,9 +283,10 @@ export default function Contacts() {
       )}
 
       <div className="space-y-4">
-        {Object.entries(CONTACT_ROLES).map(([roleKey, roleLabel]) => {
+        {[...roles.map(r => r.key), ...Object.keys(byRole).filter(k => !roles.some(r => r.key === k))].map(roleKey => {
           const group = byRole[roleKey]
           if (!group?.length) return null
+          const roleLabel = roleLabelMap(roles)[roleKey] || roleKey
           return (
             <div key={roleKey} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
               <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100">

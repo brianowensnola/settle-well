@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess, roleLabel, INVITE_ROLES } from '../lib/roles'
 import { loadPeople, updateRole, removeMembership, removePerson, addMembership, updateDemographics, resetPassword, sendInvite } from '../lib/adminUsers'
+import { loadContactRoles, addContactRole, removeContactRole } from '../lib/contactRoles'
 
 const BLANK_INVITE = { name: '', email: '', phone: '', relationship: '', role: 'heir', estates: [], sms_consent: false }
 
@@ -19,6 +20,24 @@ export default function AdminUsers() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [confirmRemove, setConfirmRemove] = useState(null)
+  const [roles, setRoles] = useState([])
+  const [newRole, setNewRole] = useState('')
+  const [roleBusy, setRoleBusy] = useState(false)
+
+  useEffect(() => { loadContactRoles().then(setRoles) }, [])
+
+  async function addRole(e) {
+    e.preventDefault()
+    if (!newRole.trim()) return
+    setRoleBusy(true)
+    try { const r = await addContactRole(newRole); setRoles(prev => [...prev, r]); setNewRole('') }
+    catch (err) { alert(err.message) } finally { setRoleBusy(false) }
+  }
+  async function delRole(key) {
+    if (!confirm('Remove this contact role? Existing contacts keep their current label.')) return
+    try { await removeContactRole(key); setRoles(prev => prev.filter(r => r.key !== key)) }
+    catch (err) { alert(err.message) }
+  }
 
   async function refresh() { setPeople(await loadPeople(estateIds)) }
 
@@ -258,6 +277,25 @@ export default function AdminUsers() {
         </button>
         <p className="text-xs text-gray-400 mt-2">Adding a person emails them a sign-up link (and texts it too, if you enter a phone). They get access once they create their login. You can also re-send anytime with “Send invite” above.</p>
       </form>
+
+      <div className="mt-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Contact roles</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">The role options shown when adding or editing a contact. Add or remove as needed.</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {roles.map(r => (
+            <span key={r.key} className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full">
+              {r.label}
+              <button onClick={() => delRole(r.key)} title="Remove role" className="text-gray-400 hover:text-red-500 leading-none">×</button>
+            </span>
+          ))}
+          {roles.length === 0 && <span className="text-xs text-gray-400">Loading…</span>}
+        </div>
+        <form onSubmit={addRole} className="flex gap-2">
+          <input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="New role (e.g. Accountant)"
+            className="flex-1 border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
+          <button type="submit" disabled={roleBusy || !newRole.trim()} className="px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg text-sm disabled:opacity-50">Add role</button>
+        </form>
+      </div>
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { supabase, getAccessToken } from '../lib/supabase'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess } from '../lib/roles'
-import { CONTACT_ROLES } from '../lib/constants'
+import { loadContactRoles, roleLabelMap } from '../lib/contactRoles'
 import { logCommunication, CHANNELS, channelLabel, channelIcon, deleteCommunication } from '../lib/communications'
 import SendDocumentsModal from '../components/SendDocumentsModal'
 
@@ -25,6 +25,8 @@ export default function ContactDetail() {
   const [editMtg, setEditMtg] = useState(null) // { id, at } for rescheduling a meeting
   const [mtgNote, setMtgNote] = useState({ id: null, text: '' }) // post-meeting notes editor
   const [showSend, setShowSend] = useState(false)
+  const [roles, setRoles] = useState([])
+  const roleMap = roleLabelMap(roles)
   const [editing, setEditing] = useState(false)
   const [editData, setEditData] = useState({})
   const [loading, setLoading] = useState(true)
@@ -42,6 +44,8 @@ export default function ContactDetail() {
       setLoading(false)
     })
   }, [id])
+
+  useEffect(() => { loadContactRoles().then(setRoles) }, [])
 
   // Arrived here via the Contacts-list "Call" button → open the call-log note.
   useEffect(() => {
@@ -178,8 +182,9 @@ export default function ContactDetail() {
   }
 
   async function saveEdit() {
-    await supabase.from('estate_contacts').update({ ...editData, updated_at: new Date().toISOString() }).eq('id', id)
-    setContact(prev => ({ ...prev, ...editData }))
+    const payload = { ...editData, account_numbers: (editData.account_numbers || []).map(s => (s || '').trim()).filter(Boolean), updated_at: new Date().toISOString() }
+    await supabase.from('estate_contacts').update(payload).eq('id', id)
+    setContact(prev => ({ ...prev, ...payload }))
     setEditing(false)
   }
 
@@ -221,7 +226,7 @@ export default function ContactDetail() {
               <label className="text-xs text-gray-500 block mb-1">Role</label>
               <select value={editData.role ?? 'other'} onChange={e => setEditData(p => ({ ...p, role: e.target.value }))}
                 className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none">
-                {Object.entries(CONTACT_ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {roles.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
               </select>
             </div>
 
@@ -308,6 +313,14 @@ export default function ContactDetail() {
                 className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none" />
             </div>
 
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Account numbers (one per line)</label>
+              <textarea value={(editData.account_numbers ?? []).join('\n')}
+                onChange={e => setEditData(p => ({ ...p, account_numbers: e.target.value.split('\n') }))}
+                rows={2} placeholder={"e.g. Checking ...1234\nPolicy #ABC-9876"}
+                className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
+            </div>
+
             <textarea value={editData.notes ?? ''} onChange={e => setEditData(p => ({ ...p, notes: e.target.value }))}
               rows={3} placeholder="Notes..."
               className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none resize-none" />
@@ -348,7 +361,7 @@ export default function ContactDetail() {
               <div>
                 <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{contact.name}</h1>
                 {contact.company && <div className="text-sm text-gray-500 dark:text-gray-400">{contact.company}</div>}
-                <div className="text-xs text-gray-400 mt-0.5">{CONTACT_ROLES[contact.role] ?? contact.role}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{roleMap[contact.role] ?? contact.role}</div>
                 {contact.shared_with?.length > 0 && (
                   <div className="text-xs text-blue-600 dark:text-blue-300 mt-0.5">
                     ↔ Shared with {contact.shared_with.map(eid => estates?.find(e => e.id === eid)?.deceased_name).filter(Boolean).join(', ')}
@@ -385,6 +398,13 @@ export default function ContactDetail() {
                   <span className="text-gray-400">Website: </span>
                   <a href={/^https?:\/\//i.test(contact.website) ? contact.website : `https://${contact.website}`}
                     target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{contact.website}</a>
+                </div>
+              )}
+              {isFullAccess(role) && contact.account_numbers?.length > 0 && (
+                <div className="mt-1">
+                  <span className="text-gray-400">Account numbers: </span>
+                  <span className="font-mono text-gray-700 dark:text-gray-300">{contact.account_numbers.join(' · ')}</span>
+                  <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400">executor only</span>
                 </div>
               )}
               {contact.notes && <div className="text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">{contact.notes}</div>}
