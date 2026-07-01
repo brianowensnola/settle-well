@@ -25,9 +25,9 @@ function addrList(raw) {
 // Send an estate email through Brevo, on behalf of the estate, and capture it on
 // the recipient contact's communications timeline. Executor-gated.
 export const handler = async (event) => {
-  let estateId, contactId, to, cc, bcc, subject, body, isPrivate;
+  let estateId, contactId, to, cc, bcc, subject, body, isPrivate, docIds;
   try {
-    ({ estateId, contactId, to, cc, bcc, subject, body, isPrivate = false } = JSON.parse(event.body));
+    ({ estateId, contactId, to, cc, bcc, subject, body, isPrivate = false, docIds = [] } = JSON.parse(event.body));
   } catch {
     return { statusCode: 400, body: JSON.stringify({ error: "invalid body" }) };
   }
@@ -61,6 +61,19 @@ export const handler = async (event) => {
   const ccList = addrList(cc);
   const bccList = addrList(bcc);
 
+  // Attach real files via Brevo — it downloads each from a short-lived signed URL.
+  let brevoAttachments = [];
+  if (Array.isArray(docIds) && docIds.length) {
+    const { data: attDocs } = await admin.from("estate_documents")
+      .select("name, file_path").eq("estate_id", estateId).in("id", docIds);
+    const withFiles = (attDocs || []).filter(d => d.file_path);
+    if (withFiles.length) {
+      const { data: signed } = await admin.storage.from("estate-documents").createSignedUrls(withFiles.map(d => d.file_path), 3600);
+      const urlByPath = Object.fromEntries((signed || []).map(s => [s.path, s.signedUrl]));
+      brevoAttachments = withFiles.filter(d => urlByPath[d.file_path]).map(d => ({ url: urlByPath[d.file_path], name: d.name || "document" }));
+    }
+  }
+
   try {
     const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -74,6 +87,7 @@ export const handler = async (event) => {
         subject,
         htmlContent,
         textContent: body,
+        ...(brevoAttachments.length ? { attachment: brevoAttachments } : {}),
       }),
     });
     if (!resp.ok) {
@@ -83,13 +97,14 @@ export const handler = async (event) => {
     }
 
     // Capture it on the contact's communications timeline.
+    const attachNote = brevoAttachments.length ? ` [${brevoAttachments.length} attachment${brevoAttachments.length !== 1 ? "s" : ""}: ${brevoAttachments.map(a => a.name).join(", ")}]` : "";
     const { data: logged } = await admin.from("estate_contact_interactions").insert({
       estate_id: estateId,
       contact_id: contactId || null,
       direction: "outbound",
-      channel: "email",
+      channel: brevoAttachments.length ? "document" : "email",
       subject,
-      summary: `To ${to}${ccList.length ? ` (cc: ${ccList.map(c => c.email).join(", ")})` : ""}: ${body.slice(0, 280)}${body.length > 280 ? "…" : ""}`,
+      summary: `To ${to}${ccList.length ? ` (cc: ${ccList.map(c => c.email).join(", ")})` : ""}${attachNote}: ${body.slice(0, 280)}${body.length > 280 ? "…" : ""}`,
       body,
       is_private: !!isPrivate,
       source: "app",

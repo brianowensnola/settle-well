@@ -48,12 +48,12 @@ export async function draftEmail({ estateId, contactName, contactRole, intent, i
 
 // Send an estate email through the app (Brevo). It's captured on the contact's
 // communications timeline automatically. Returns { interaction }.
-export async function sendEstateEmail({ estateId, contactId, to, cc, bcc, subject, body, isPrivate }) {
+export async function sendEstateEmail({ estateId, contactId, to, cc, bcc, subject, body, isPrivate, docIds }) {
   const token = await getAccessToken()
   const resp = await fetch('/.netlify/functions/send-estate-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ estateId, contactId, to, cc, bcc, subject, body, isPrivate }),
+    body: JSON.stringify({ estateId, contactId, to, cc, bcc, subject, body, isPrivate, docIds }),
   })
   const data = await resp.json().catch(() => ({}))
   if (!resp.ok) throw new Error(data.error || 'Could not send the email')

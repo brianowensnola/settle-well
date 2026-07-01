@@ -55,6 +55,7 @@ export default function Communications() {
   const [drafting, setDrafting] = useState(false)
   const [cmBusy, setCmBusy] = useState(false)
   const [cmMsg, setCmMsg] = useState('')
+  const [composeDocs, setComposeDocs] = useState([]) // estate docs available to attach in Compose
 
   // Log-communication form
   const [log, setLog] = useState({ contactId: '', channel: 'phone', direction: 'outbound', date: todayStr(), subject: '', summary: '' })
@@ -192,7 +193,7 @@ export default function Communications() {
       }
       const { interaction } = await sendEstateEmail({
         estateId: cm.estateId, contactId, to: cm.to.trim(),
-        cc: cm.cc, bcc: cm.bcc, subject: cm.subject, body: cm.body, isPrivate: cm.isPrivate,
+        cc: cm.cc, bcc: cm.bcc, subject: cm.subject, body: cm.body, isPrivate: cm.isPrivate, docIds: cm.docIds || [],
       })
       if (interaction) setInteractions(prev => [interaction, ...prev])
       setCm({ estateId: cm.estateId, to: '', intent: 'attorney_status', instruction: '', subject: '', body: '', cc: '', bcc: '', isPrivate: false })
@@ -273,6 +274,15 @@ export default function Communications() {
     })()
   }, [panel, sEstate])
 
+  // Documents available to attach in Compose (for the compose estate).
+  useEffect(() => {
+    if (panel !== 'compose' || !cm.estateId) { setComposeDocs([]); return }
+    ;(async () => {
+      const { data } = await supabase.from('estate_documents').select('id, name, doc_type').eq('estate_id', cm.estateId).eq('have', true).not('file_path', 'is', null).order('name')
+      setComposeDocs(data ?? [])
+    })()
+  }, [panel, cm.estateId])
+
   // Recipient matched to a contact in this estate (if any); else we'll create one.
   const sSendContact = contacts.find(c => c.estate_id === sEstate &&
     (c.emails || []).some(e => (e || '').toLowerCase() === (sTo || '').trim().toLowerCase()))
@@ -287,12 +297,11 @@ export default function Communications() {
     }
     setSendBusy(true); setSendMsg('')
     try {
-      const { mailtoHref, interaction, createdContact } = await buildDocumentSend({
+      const { interaction, createdContact } = await buildDocumentSend({
         estateId: sEstate, estateName: estateName(sEstate), to: sendEmail, docs: chosenDocs, note, cc: sCc, bcc: sBcc,
       })
       if (createdContact) setContacts(prev => [...prev, createdContact])
       if (interaction) setInteractions(prev => [interaction, ...prev])
-      window.location.href = mailtoHref
       setPanel(null)
     } catch (e) {
       setSendMsg(e.message || 'Could not prepare the email.')
@@ -442,6 +451,22 @@ export default function Communications() {
             placeholder="Write the email, or use Draft with AI above and edit here…"
             className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none font-serif leading-relaxed" />
 
+          {composeDocs.length > 0 && (
+            <details className="border border-gray-200 dark:border-gray-800 rounded-lg">
+              <summary className="cursor-pointer px-3 py-2 text-sm text-gray-600 dark:text-gray-300 select-none">📎 Attach documents{(cm.docIds?.length) ? ` (${cm.docIds.length})` : ''}</summary>
+              <div className="px-3 pb-2 max-h-40 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+                {composeDocs.map(d => (
+                  <label key={d.id} className="flex items-center gap-2 py-1.5 text-sm cursor-pointer">
+                    <input type="checkbox" checked={(cm.docIds || []).includes(d.id)}
+                      onChange={e => setCm(p => { const cur = p.docIds || []; return { ...p, docIds: e.target.checked ? [...cur, d.id] : cur.filter(x => x !== d.id) } })} />
+                    <span className="flex-1 truncate text-gray-800 dark:text-gray-200">{d.name}</span>
+                    <span className="text-xs text-gray-400 shrink-0">{DOC_TYPES[d.doc_type] ?? d.doc_type}</span>
+                  </label>
+                ))}
+              </div>
+            </details>
+          )}
+
           <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <input type="checkbox" checked={cm.isPrivate} onChange={e => setCm(p => ({ ...p, isPrivate: e.target.checked }))} />
             Executor-only (hide from the heir transparency view)
@@ -564,10 +589,10 @@ export default function Communications() {
           {sendMsg && <p className="text-xs text-red-600">{sendMsg}</p>}
           <div className="flex gap-2 items-center">
             <button onClick={sendDocuments} disabled={sendBusy || !sTo.trim() || chosenDocs.length === 0} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
-              {sendBusy ? 'Preparing…' : `Open email${chosenDocs.length ? ` (${chosenDocs.length})` : ''}`}
+              {sendBusy ? 'Sending…' : `Send documents${chosenDocs.length ? ` (${chosenDocs.length})` : ''}`}
             </button>
             <button onClick={() => setPanel(null)} className="px-4 py-2 text-gray-500 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
-            <span className="text-xs text-gray-400">Opens your mail app with secure 7-day links. Logged automatically.</span>
+            <span className="text-xs text-gray-400">Sent from the app with the files attached. Logged automatically.</span>
           </div>
         </div>
       )}

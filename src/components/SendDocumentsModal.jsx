@@ -29,11 +29,10 @@ export default function SendDocumentsModal({ estateId, estateName, defaultTo = '
   async function send() {
     setBusy(true); setMsg('')
     try {
-      const { mailtoHref, interaction } = await buildDocumentSend({ estateId, estateName, to, docs: chosen, note, cc, bcc })
+      const { interaction } = await buildDocumentSend({ estateId, estateName, to, docs: chosen, note, cc, bcc })
       onSent?.(interaction)
-      window.location.href = mailtoHref
       onClose?.()
-    } catch (e) { setMsg(e.message || 'Could not prepare the email.') }
+    } catch (e) { setMsg(e.message || 'Could not send the documents.') }
     finally { setBusy(false) }
   }
 
@@ -70,11 +69,11 @@ export default function SendDocumentsModal({ estateId, estateName, defaultTo = '
         <div className="flex gap-2">
           <button onClick={send} disabled={busy || !to.trim() || chosen.length === 0}
             className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50">
-            {busy ? 'Preparing…' : `Send ${chosen.length || ''} document${chosen.length !== 1 ? 's' : ''}`}
+            {busy ? 'Sending…' : `Send ${chosen.length || ''} document${chosen.length !== 1 ? 's' : ''}`}
           </button>
           <button onClick={onClose} className="px-4 py-2 text-gray-500 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
         </div>
-        <p className="text-xs text-gray-400 mt-2">Opens your email with secure 7-day download links, and logs it to Communications.</p>
+        <p className="text-xs text-gray-400 mt-2">Sent from the app with the files attached, and logged to Communications.</p>
       </div>
     </div>
   )
