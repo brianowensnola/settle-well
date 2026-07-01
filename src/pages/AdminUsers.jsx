@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useEstate } from '../lib/EstateContext'
 import { isFullAccess, roleLabel, INVITE_ROLES } from '../lib/roles'
 import { loadPeople, updateRole, removeMembership, removePerson, addMembership, updateDemographics, resetPassword, sendInvite } from '../lib/adminUsers'
@@ -279,7 +280,10 @@ export default function AdminUsers() {
       </form>
 
       <div className="mt-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Contact roles</h2>
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Contact roles</h2>
+          <Link to="/contacts" className="text-xs text-blue-600 hover:underline">📇 Go to Contacts →</Link>
+        </div>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">The role options shown when adding or editing a contact. Add or remove as needed.</p>
         <div className="flex flex-wrap gap-2 mb-3">
           {roles.map(r => (
